@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 import { LOGO_B64 } from './lib/logo';
 
@@ -32,6 +32,97 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const EMOJIS = ['🐴','🏇','🦄','🐎','🎠','🏆','🌾','🍀','🔱','⚜️','🌿','🪄','🎯','🌙','⭐'];
 const RANK_BADGES = ['🥇','🥈','🥉'];
 const SUITS = ['♠','♥','♦','♣'];
+
+// ─── Trash Talk ──────────────────────────────────────────────────────────────
+const TRASH = {
+  pick: (arr) => arr[Math.floor(Math.random() * arr.length)],
+  loginGreet: (name) => TRASH.pick([
+    `Well well well... ${name} crawled back.`,
+    `Oh look who decided to show up. ${name}.`,
+    `${name}! Back for another ass whooping?`,
+    `The audacity of ${name} showing their face again.`,
+    `${name} returns! Hope you brought your A-game.`,
+    `${name}... didn't you get enough last time?`,
+  ]),
+  loginSub: () => TRASH.pick([
+    `Let's see if you can back it up tonight.`,
+    `Try not to embarrass yourself... again.`,
+    `Ready to get your ass handed to you?`,
+    `Your throne awaits. Just kidding, you never had one.`,
+    `Everyone's been talking shit. Prove them wrong.`,
+  ]),
+  homeGreet: (name) => TRASH.pick([
+    `What's good, ${name}?`,
+    `${name}. The legend. Allegedly.`,
+    `${name}'s in the building. Hide your points.`,
+    `${name}. Still delusional about winning?`,
+    `Ah, ${name}. Ready to donate some points?`,
+  ]),
+  winnerTaunt: (name) => TRASH.pick([
+    `${name} absolutely wiped the floor with everyone.`,
+    `Bow down. ${name} owns this table now.`,
+    `${name} just made the rest of you look pathetic.`,
+    `Everybody shut up — ${name} is the real deal.`,
+    `${name} ate and left no crumbs. Disgusting.`,
+    `${name} destroyed the competition. Not even close.`,
+  ]),
+  loserRoast: () => TRASH.pick([
+    `Better luck next time... maybe.`,
+    `That was genuinely embarrassing.`,
+    `Someone call an ambulance for that score.`,
+    `You played like absolute garbage. Respectfully.`,
+    `Your cards were fine. You were the problem.`,
+    `Last time you got your ass beat this bad was... actually, last game.`,
+  ]),
+  dealCards: () => TRASH.pick([
+    `Let's settle this 🐴`,
+    `Time to deal some pain 🐴`,
+    `Shuffle up and shut up 🐴`,
+    `Talk is cheap. Deal the cards 🐴`,
+  ]),
+  endGamePrompt: () => TRASH.pick([
+    `End this massacre?`,
+    `Put them out of their misery?`,
+    `Time to crown someone (or embarrass everyone)?`,
+    `Seen enough? Let's finish this.`,
+  ]),
+  noGames: () => TRASH.pick([
+    `No games yet. Scared?`,
+    `Empty history. What a coward.`,
+    `Play a damn game already.`,
+    `Nothing here. Go deal some cards, you bum.`,
+  ]),
+  historyWin: () => TRASH.pick([`Dominated`, `Crushed it`, `Wrecked 'em`, `Victory`]),
+  historyLoss: () => TRASH.pick([`Got cooked`, `Embarrassing`, `Took an L`, `Oof`]),
+  nemesisComment: (name) => TRASH.pick([
+    `${name} owns your soul`,
+    `${name} keeps making you look silly`,
+    `${name} has your number... and your dignity`,
+  ]),
+  streakComment: (n) => n >= 5 ? `${n} in a row. You're disgusting.` : n >= 3 ? `${n} straight. Okay, relax.` : `${n}`,
+  resumeGame: () => TRASH.pick([
+    `Unfinished business`,
+    `Get back in there`,
+    `Don't run from it`,
+  ]),
+  newGameTaunt: () => TRASH.pick([
+    `Pick your victims.`,
+    `Choose who's catching this L.`,
+    `Select the unfortunate souls.`,
+  ]),
+  roundSave: () => TRASH.pick([
+    `Lock it in →`,
+    `Save Round →`,
+    `That's the damage →`,
+  ]),
+  abandonTaunt: () => TRASH.pick([
+    `Quit like a coward (won't count)`,
+    `Rage quit (doesn't count)`,
+    `Run away (no stats recorded)`,
+  ]),
+};
+
+const displayPlayer = (p) => p?.deleted ? { ...p, username: 'Deleted Player', emoji: '👻' } : p;
 
 const s = {
   btn: (variant = 'red', extra = {}) => ({
@@ -81,28 +172,28 @@ function KedroLogo({ height = 60 }) {
   return <img src={LOGO_B64} alt="Kedro" style={{ height, display: 'block', mixBlendMode: 'screen' }} />;
 }
 
-function Confetti() {
-  const particles = useRef(
-    Array.from({ length: 55 }, (_, i) => ({
+function Snow({ intensity = 'normal' }) {
+  const count = intensity === 'blizzard' ? 80 : intensity === 'light' ? 18 : 40;
+  const flakes = useRef(
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      delay: Math.random() * 1.8,
-      duration: 2.5 + Math.random() * 2,
-      color: [C.red, C.gold, C.silver, C.green, C.blue, '#fff'][Math.floor(Math.random() * 6)],
-      size: 6 + Math.floor(Math.random() * 8),
-      isCircle: Math.random() > 0.5,
-      rotate: Math.floor(Math.random() * 360),
+      delay: Math.random() * 5,
+      duration: 4 + Math.random() * 6,
+      size: 2 + Math.random() * (intensity === 'blizzard' ? 6 : 4),
+      opacity: 0.2 + Math.random() * 0.7,
+      drift: Math.floor(Math.random() * 6), // picks snowFall0–snowFall5
     }))
   ).current;
+  const iter = intensity === 'blizzard' ? 'infinite' : '3';
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 60, overflow: 'hidden' }}>
-      {particles.map(p => (
-        <div key={p.id} style={{
-          position: 'absolute', left: `${p.left}%`, top: -20,
-          width: p.size, height: p.size, background: p.color,
-          borderRadius: p.isCircle ? '50%' : 2,
-          animation: `confettiFall ${p.duration}s ${p.delay}s cubic-bezier(.25,.46,.45,.94) forwards`,
-          transform: `rotate(${p.rotate}deg)`,
+      {flakes.map(f => (
+        <div key={f.id} style={{
+          position: 'absolute', left: `${f.left}%`, top: -10,
+          width: f.size, height: f.size, borderRadius: '50%',
+          background: '#fff', opacity: f.opacity, willChange: 'transform',
+          animation: `snowFall${f.drift} ${f.duration}s ${f.delay}s linear ${iter}`,
         }} />
       ))}
     </div>
@@ -141,6 +232,22 @@ export default function KedroApp() {
   const [editingRound, setEditingRound]     = useState(null);
   const [editInputs, setEditInputs]         = useState({});
 
+  // Combo box login state
+  const [lDropdownOpen, setLDropdownOpen]   = useState(false);
+
+  // Edit profile / delete state
+  const [editingProfile, setEditingProfile]   = useState(false);
+  const [editUsername, setEditUsername]         = useState('');
+  const [editEmoji, setEditEmoji]             = useState('');
+  const [deletePlayerConfirm, setDeletePlayerConfirm] = useState(false);
+
+  // Clear game data state
+  const [deleteGameConfirm, setDeleteGameConfirm] = useState(null);
+  const [clearAllConfirm, setClearAllConfirm]     = useState(false);
+
+  // Dashboard state
+  const [dashboardView, setDashboardView] = useState('table');
+
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
@@ -157,7 +264,7 @@ export default function KedroApp() {
         if (saved) {
           const parsed = JSON.parse(saved);
           const found = p.find(pl => pl.id === parsed.id);
-          if (found) { loggedInUser = found; setUser(found); }
+          if (found && !found.deleted) { loggedInUser = found; setUser(found); }
         }
       } catch {}
 
@@ -232,6 +339,43 @@ export default function KedroApp() {
     localStorage.removeItem('kedro_user');
     setLStep('username'); setLUsername('');
     navigate('login', 'back');
+  }
+
+  async function handleEditProfile() {
+    const name = editUsername.trim();
+    if (!name) return;
+    if (allPlayers.find(p => p.id !== user.id && !p.deleted && p.username.toLowerCase() === name.toLowerCase())) return;
+    const updated = allPlayers.map(p => p.id === user.id ? { ...p, username: name, emoji: editEmoji } : p);
+    const newUser = { ...user, username: name, emoji: editEmoji };
+    setUser(newUser);
+    localStorage.setItem('kedro_user', JSON.stringify(newUser));
+    await savePlayers(updated);
+    if (session) {
+      const updatedSession = { ...session, players: session.players.map(p => p.id === user.id ? { ...p, username: name, emoji: editEmoji } : p) };
+      await saveSession(updatedSession);
+    }
+    setEditingProfile(false);
+  }
+
+  async function handleDeletePlayer() {
+    if (session) return;
+    const updated = allPlayers.map(p => p.id === user.id ? { ...p, deleted: true } : p);
+    await savePlayers(updated);
+    setDeletePlayerConfirm(false);
+    logout();
+  }
+
+  async function deleteGame(gameId) {
+    const updated = allGames.filter(g => g.id !== gameId);
+    await saveGames(updated);
+    setHistoryGame(null);
+    setDeleteGameConfirm(null);
+  }
+
+  async function clearAllGames() {
+    await saveGames([]);
+    setHistoryGame(null);
+    setClearAllConfirm(false);
   }
 
   // ── Game logic ───────────────────────────────────────────────────────────────
@@ -409,7 +553,12 @@ export default function KedroApp() {
     @keyframes pulse       { 0%,100%{opacity:1;} 50%{opacity:.3;} }
     @keyframes slideUp     { from { transform:translateY(100%); } to { transform:translateY(0); } }
     @keyframes deltaFade   { 0%{opacity:0;transform:translateY(-6px);} 15%{opacity:1;transform:translateY(0);} 75%{opacity:1;} 100%{opacity:0;} }
-    @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+    @keyframes snowFall0 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(-15px);opacity:0} }
+    @keyframes snowFall1 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(20px);opacity:0} }
+    @keyframes snowFall2 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(-25px);opacity:0} }
+    @keyframes snowFall3 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(10px);opacity:0} }
+    @keyframes snowFall4 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(-8px);opacity:0} }
+    @keyframes snowFall5 { 0%{transform:translateY(-10px) translateX(0);opacity:0} 10%{opacity:1} 90%{opacity:.6} 100%{transform:translateY(105vh) translateX(30px);opacity:0} }
     @keyframes crownBob    { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
     @keyframes shimmer     { 0%,100%{opacity:.7;} 50%{opacity:1;} }
     .screen-fwd { animation: slideInRight .25s cubic-bezier(.4,0,.2,1); }
@@ -444,6 +593,8 @@ export default function KedroApp() {
             <LoginScreen
               step={lStep} username={lUsername} error={lError} found={lFoundPlayer}
               rName={rName} rEmoji={rEmoji}
+              allPlayers={allPlayers.filter(p => !p.deleted)}
+              dropdownOpen={lDropdownOpen} onDropdownChange={setLDropdownOpen}
               onUsernameChange={setLUsername}
               onUsernameNext={handleUsernameNext}
               onLogin={handleLogin}
@@ -466,6 +617,7 @@ export default function KedroApp() {
                   onResumeGame={() => navigate('game', 'forward')}
                   onHistory={() => navigate('history', 'forward')}
                   onProfile={() => navigate('profile', 'forward')}
+                  onDashboard={() => navigate('dashboard', 'forward')}
                   onLogout={logout}
                   onRematch={(g) => rematch(g.players)}
                 />
@@ -473,7 +625,7 @@ export default function KedroApp() {
 
               {view === 'newgame' && (
                 <NewGameScreen
-                  user={user} allPlayers={allPlayers} selected={ngSelected}
+                  user={user} allPlayers={allPlayers.filter(p => !p.deleted)} selected={ngSelected}
                   onToggle={p => setNgSelected(prev =>
                     prev.find(x => x.id === p.id) ? prev.filter(x => x.id !== p.id) : [...prev, p]
                   )}
@@ -517,7 +669,7 @@ export default function KedroApp() {
 
               {view === 'postgame' && postGameData && (
                 <PostGameScreen
-                  game={postGameData} user={user}
+                  game={postGameData} user={user} getStats={getStats}
                   onRematch={() => rematch(postGameData.players)}
                   onHome={() => { setPostGameData(null); navigate('home', 'back'); }}
                 />
@@ -527,16 +679,37 @@ export default function KedroApp() {
                 <HistoryScreen
                   games={allGames} user={user} selected={historyGame}
                   onSelect={setHistoryGame} onBack={() => navigate('home', 'back')}
+                  deleteGameConfirm={deleteGameConfirm} onDeleteGameConfirm={setDeleteGameConfirm}
+                  onDeleteGame={deleteGame}
+                  clearAllConfirm={clearAllConfirm} onClearAllConfirm={setClearAllConfirm}
+                  onClearAll={clearAllGames}
                 />
               )}
 
               {view === 'profile' && (
                 <ProfileScreen
                   user={user} stats={getStats(user.id)} games={allGames}
-                  allPlayers={allPlayers}
+                  allPlayers={allPlayers} session={session}
                   onBack={() => navigate('home', 'back')}
                   onSwitchPlayer={switchPlayer}
                   onLogout={logout}
+                  editingProfile={editingProfile}
+                  onStartEdit={() => { setEditUsername(user.username); setEditEmoji(user.emoji); setEditingProfile(true); }}
+                  onCancelEdit={() => setEditingProfile(false)}
+                  editUsername={editUsername} onEditUsername={setEditUsername}
+                  editEmoji={editEmoji} onEditEmoji={setEditEmoji}
+                  onSaveEdit={handleEditProfile}
+                  deleteConfirm={deletePlayerConfirm} onDeleteConfirm={setDeletePlayerConfirm}
+                  onDeletePlayer={handleDeletePlayer}
+                />
+              )}
+
+              {view === 'dashboard' && (
+                <DashboardScreen
+                  allPlayers={allPlayers.filter(p => !p.deleted)} allGames={allGames}
+                  user={user} getStats={getStats}
+                  viewMode={dashboardView} onToggleView={setDashboardView}
+                  onBack={() => navigate('home', 'back')}
                 />
               )}
             </>
@@ -553,6 +726,7 @@ export default function KedroApp() {
 function SplashScreen() {
   return (
     <div className="screen" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, textAlign: 'center' }}>
+      <Snow intensity="light" />
       <KedroLogo height={160} />
       <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase' }}>Score Tracker</div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -564,8 +738,11 @@ function SplashScreen() {
   );
 }
 
-function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameChange, onUsernameNext, onLogin, onRegister, onStepChange, onErrorChange, onRNameChange, onREmojiChange }) {
+function LoginScreen({ step, username, error, found, rName, rEmoji, allPlayers, dropdownOpen, onDropdownChange, onUsernameChange, onUsernameNext, onLogin, onRegister, onStepChange, onErrorChange, onRNameChange, onREmojiChange }) {
   const enter = (e, fn) => { if (e.key === 'Enter') fn(); };
+  const filtered = (allPlayers || []).filter(p => !username || p.username.toLowerCase().includes(username.toLowerCase()));
+  const greet = useMemo(() => found ? TRASH.loginGreet(found.username) : '', [found]);
+  const sub = useMemo(() => TRASH.loginSub(), [found]);
   return (
     <div className="screen" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -576,10 +753,28 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
       <div style={s.card({ padding: 28 })}>
         {step === 'username' && (
           <>
-            <div style={{ ...s.h2, fontSize: 26, marginBottom: 20 }}>Welcome Back</div>
+            <div style={{ ...s.h2, fontSize: 26, marginBottom: 20 }}>Who's talking shit?</div>
             <label style={s.label}>Username</label>
-            <input style={s.input()} placeholder="Enter your username..." value={username}
-              onChange={e => onUsernameChange(e.target.value)} onKeyDown={e => enter(e, onUsernameNext)} autoFocus />
+            <div style={{ position: 'relative' }}>
+              <input style={s.input()} placeholder="Type or select your name..." value={username}
+                onChange={e => { onUsernameChange(e.target.value); onDropdownChange(true); }}
+                onFocus={() => onDropdownChange(true)}
+                onBlur={() => setTimeout(() => onDropdownChange(false), 180)}
+                onKeyDown={e => enter(e, onUsernameNext)} autoFocus />
+              {dropdownOpen && filtered.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: '0 0 6px 6px', maxHeight: 200, overflowY: 'auto' }}>
+                  {filtered.map(p => (
+                    <div key={p.id} onMouseDown={() => { onUsernameChange(p.username); onDropdownChange(false); setTimeout(onUsernameNext, 50); }}
+                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.border}`, transition: 'background .1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = C.surface3}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <span style={{ fontSize: 20 }}>{p.emoji}</span>
+                      <span style={{ color: C.cream, fontSize: 14 }}>{p.username}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {error && <div style={{ color: C.red, fontSize: 13, marginTop: 8 }}>{error}</div>}
             <button className="btn-red btn-press" onClick={onUsernameNext} style={{ ...s.btn('red'), width: '100%', marginTop: 16 }}>Continue →</button>
             <div style={{ textAlign: 'center', marginTop: 14 }}>
@@ -592,10 +787,10 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
             <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} />
             <div style={{ textAlign: 'center', margin: '20px 0 28px' }}>
               <div style={{ fontSize: 60 }}>{found.emoji}</div>
-              <div style={{ ...s.h2, fontSize: 30, marginTop: 10 }}>Hey, {found.username}!</div>
-              <div style={{ color: C.creamDim, fontSize: 14, marginTop: 6 }}>Ready to play?</div>
+              <div style={{ ...s.h2, fontSize: 24, marginTop: 10, lineHeight: 1.2 }}>{greet}</div>
+              <div style={{ color: C.creamDim, fontSize: 14, marginTop: 6 }}>{sub}</div>
             </div>
-            <button className="btn-red btn-press" onClick={() => onLogin(found)} style={{ ...s.btn('red'), width: '100%', fontSize: 15, padding: 14 }}>Let's Play 🐴</button>
+            <button className="btn-red btn-press" onClick={() => onLogin(found)} style={{ ...s.btn('red'), width: '100%', fontSize: 15, padding: 14 }}>Let's Go 🐴</button>
           </>
         )}
         {step === 'notfound' && (
@@ -603,7 +798,7 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
             <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} />
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
               <div style={{ fontSize: 40 }}>🤔</div>
-              <div style={{ ...s.h2, fontSize: 22, marginTop: 12 }}>Not Found</div>
+              <div style={{ ...s.h2, fontSize: 22, marginTop: 12 }}>Who the hell is that?</div>
               <div style={{ color: C.creamDim, fontSize: 14, marginTop: 8 }}>"{username}" doesn't exist yet.</div>
             </div>
             <button className="btn-red btn-press" onClick={() => { onStepChange('register'); onRNameChange(username); onErrorChange(''); }}
@@ -613,7 +808,7 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
         {step === 'register' && (
           <>
             <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} label="Back to login" />
-            <div style={{ ...s.h2, fontSize: 24, margin: '16px 0 20px' }}>Create Profile</div>
+            <div style={{ ...s.h2, fontSize: 24, margin: '16px 0 20px' }}>Fresh Meat</div>
             <div style={{ marginBottom: 16 }}>
               <label style={s.label}>Choose your avatar</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -630,7 +825,7 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
               <input style={s.input()} placeholder="Choose a username..." value={rName} onChange={e => onRNameChange(e.target.value)} autoFocus />
             </div>
             {error && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{error}</div>}
-            <button className="btn-red btn-press" onClick={onRegister} style={{ ...s.btn('red'), width: '100%' }}>Create Profile 🐴</button>
+            <button className="btn-red btn-press" onClick={onRegister} style={{ ...s.btn('red'), width: '100%' }}>Let's Go 🐴</button>
           </>
         )}
       </div>
@@ -638,14 +833,15 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, onUsernameCh
   );
 }
 
-function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onLogout, onRematch }) {
+function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onDashboard, onLogout, onRematch }) {
+  const greet = useMemo(() => TRASH.homeGreet(user.username), [user.username]);
   return (
     <div className="screen" style={{ paddingTop: 36, paddingBottom: 60 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <KedroLogo height={44} />
           <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 11, color: C.silverDim, textTransform: 'uppercase', letterSpacing: '.1em' }}>Player</div>
+            <div style={{ fontSize: 12, color: C.creamDim, marginBottom: 2 }}>{greet}</div>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: C.cream, lineHeight: 1 }}>{user.emoji} {user.username}</div>
           </div>
         </div>
@@ -668,7 +864,7 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
         <div style={{ background: 'rgba(212,43,43,.08)', border: `1px solid rgba(212,43,43,.4)`, borderRadius: 10, padding: '16px 18px', marginBottom: 12, cursor: 'pointer' }} onClick={onResumeGame}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ color: C.red, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>Game in Progress</div>
+              <div style={{ color: C.red, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>Unfinished Business</div>
               <div style={{ color: C.cream, fontSize: 14 }}>{session.players.map(p => p.username).join(' · ')}</div>
               <div style={{ color: C.creamDim, fontSize: 12, marginTop: 3 }}>{session.rounds.length} round{session.rounds.length !== 1 ? 's' : ''} played</div>
             </div>
@@ -678,7 +874,7 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
       )}
 
       <button className="btn-red btn-press" onClick={onNewGame} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15, marginBottom: 8 }}>
-        + New Game
+        + New Game 🐴
       </button>
       {lastGame && !session && (
         <button className="btn-outline btn-press" onClick={() => onRematch(lastGame)} style={{ ...s.btn('outline'), width: '100%', padding: 12, marginBottom: 0 }}>
@@ -711,7 +907,8 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 28, flexWrap: 'wrap' }}>
+        <button className="btn-press" onClick={onDashboard} style={s.btn('ghost')}>📊 Leaderboard</button>
         <button className="btn-press" onClick={onHistory} style={s.btn('ghost')}>📋 History</button>
         <button className="btn-press" onClick={onProfile} style={s.btn('ghost')}>👤 Profile</button>
         <button className="btn-press" onClick={onLogout} style={s.btn('ghost', { fontSize: 11 })}>Sign out</button>
@@ -729,7 +926,7 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
       <div style={{ margin: '16px 0 6px' }}><KedroLogo height={36} /></div>
       <div style={{ ...s.h1, fontSize: 36 }}>New Game</div>
       <div className="red-line" />
-      <div style={{ color: C.creamDim, fontSize: 14, marginBottom: 22 }}>Select who's playing. You're always in.</div>
+      <div style={{ color: C.creamDim, fontSize: 14, marginBottom: 22 }}>Pick your victims. You're always in.</div>
 
       <div style={{ ...s.card({ padding: '12px 16px', marginBottom: 14, border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)' }), display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ fontSize: 26 }}>{user.emoji}</div>
@@ -766,7 +963,7 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
       </div>
       <button className="btn-red btn-press" onClick={onStart} disabled={count < 2}
         style={{ ...s.btn('red', { width: '100%', marginTop: 12, padding: 14, fontSize: 15, opacity: count < 2 ? 0.5 : 1 }) }}>
-        Deal Cards 🐴
+        Shuffle Up & Deal 🐴
       </button>
     </div>
   );
@@ -923,19 +1120,19 @@ function GameScreen({
       {/* End game controls */}
       {!showScoreSheet && !endConfirm && (
         <button className="btn-outline btn-press" onClick={onEndConfirm} style={{ ...s.btn('outline', { width: '100%', marginBottom: 10 }) }}>
-          End Game & See Winner
+          End This Shit
         </button>
       )}
       {endConfirm && (
         <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)', marginBottom: 10 })}>
           <div style={{ color: C.cream, fontSize: 14, marginBottom: 14, textAlign: 'center' }}>
-            End game now?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Current scores will be final.</span>
+            Put them out of their misery?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Current scores will be final. No take-backs.</span>
           </div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-            <button className="btn-press" onClick={onCancelEnd} style={s.btn('outline', { flex: 1 })}>Keep Playing</button>
+            <button className="btn-press" onClick={onCancelEnd} style={s.btn('outline', { flex: 1 })}>Not Yet</button>
             <button className="btn-press" onClick={onEndGame} style={s.btn('danger', { flex: 1 })}>🐴 Kedro!</button>
           </div>
-          <button className="btn-press" onClick={onAbandon} style={s.btn('ghost', { width: '100%', fontSize: 11 })}>Abandon (won't count toward stats)</button>
+          <button className="btn-press" onClick={onAbandon} style={s.btn('ghost', { width: '100%', fontSize: 11 })}>Rage quit (doesn't count)</button>
         </div>
       )}
 
@@ -1002,9 +1199,14 @@ function GameScreen({
   );
 }
 
-function PostGameScreen({ game, user, onRematch, onHome }) {
+function PostGameScreen({ game, user, getStats, onRematch, onHome }) {
   const sorted = [...game.players].sort((a, b) => a.total - b.total);
   const winner = sorted[0];
+  const winnerStats = getStats ? getStats(winner.id) : null;
+  const margin = sorted.length > 1 ? sorted[sorted.length - 1].total - sorted[0].total : 0;
+  const snowIntensity = (margin > 30 || (winnerStats && winnerStats.currentStreak >= 3)) ? 'blizzard' : 'normal';
+  const taunt = useMemo(() => TRASH.winnerTaunt(winner.username), [winner.username]);
+  const roast = useMemo(() => TRASH.loserRoast(), []);
 
   // Best single round score
   let bestScore = null, bestScorePlayer = null;
@@ -1032,13 +1234,14 @@ function PostGameScreen({ game, user, onRematch, onHome }) {
 
   return (
     <div className="screen" style={{ paddingTop: 32, paddingBottom: 60 }}>
-      <Confetti />
+      <Snow intensity={snowIntensity} />
 
       {/* Winner hero */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ fontSize: 88, animation: 'crownBob 2s ease infinite', lineHeight: 1.1 }}>{winner.emoji}</div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 54, color: C.gold, letterSpacing: '.04em', lineHeight: 1, marginTop: 8 }}>{winner.username}</div>
-        <div style={{ color: C.silver, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase', marginTop: 6 }}>Wins · {winner.total} pts · {game.rounds.length} rounds</div>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, color: C.gold, letterSpacing: '.04em', lineHeight: 1.1, marginTop: 8 }}>{taunt}</div>
+        <div style={{ color: C.silver, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase', marginTop: 6 }}>{winner.total} pts · {game.rounds.length} rounds</div>
+        <div style={{ color: C.creamDim, fontSize: 13, marginTop: 8, fontStyle: 'italic' }}>{roast}</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
           <KedroLogo height={46} />
         </div>
@@ -1130,13 +1333,14 @@ function PostGameScreen({ game, user, onRematch, onHome }) {
   );
 }
 
-function HistoryScreen({ games, user, selected, onSelect, onBack }) {
+function HistoryScreen({ games, user, selected, onSelect, onBack, deleteGameConfirm, onDeleteGameConfirm, onDeleteGame, clearAllConfirm, onClearAllConfirm, onClearAll }) {
   const displayGames = games.filter(g => g.status === 'complete' || g.status === 'abandoned');
   if (selected) {
-    const winner = selected.players.find(p => p.id === selected.winnerId);
+    const w = selected.players.find(p => p.id === selected.winnerId);
+    const winner = displayPlayer(w);
     return (
       <div className="screen" style={{ paddingTop: 28, paddingBottom: 40 }}>
-        <BackBtn onBack={() => onSelect(null)} label="Back to history" />
+        <BackBtn onBack={() => { onSelect(null); onDeleteGameConfirm(null); }} label="Back to history" />
         <div style={{ margin: '14px 0 6px' }}><KedroLogo height={32} /></div>
         <div style={{ ...s.h1, fontSize: 32 }}>Game Detail</div>
         <div className="red-line" />
@@ -1156,18 +1360,21 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
 
         <div style={s.card({ marginBottom: 14 })}>
           <div style={{ color: C.silverDim, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Final Standings</div>
-          {[...selected.players].sort((a, b) => a.total - b.total).map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ width: 24, textAlign: 'center' }}>{i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}</div>
-              <div style={{ fontSize: 22 }}>{p.emoji}</div>
-              <div style={{ flex: 1, color: C.cream }}>{p.username}</div>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: i === 0 ? C.gold : C.cream }}>{p.total}</div>
-            </div>
-          ))}
+          {[...selected.players].sort((a, b) => a.total - b.total).map((p, i) => {
+            const dp = displayPlayer(p);
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ width: 24, textAlign: 'center' }}>{i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}</div>
+                <div style={{ fontSize: 22 }}>{dp.emoji}</div>
+                <div style={{ flex: 1, color: C.cream }}>{dp.username}</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: i === 0 ? C.gold : C.cream }}>{p.total}</div>
+              </div>
+            );
+          })}
         </div>
 
         {selected.rounds && selected.rounds.length > 0 && (
-          <div style={s.card()}>
+          <div style={s.card({ marginBottom: 16 })}>
             <div style={{ color: C.silverDim, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Round by Round</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -1175,7 +1382,7 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
                   <tr>
                     <th style={{ color: C.creamDim, textAlign: 'left', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>#</th>
                     {selected.players.map(p => (
-                      <th key={p.id} style={{ color: C.creamDim, textAlign: 'center', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>{p.emoji}</th>
+                      <th key={p.id} style={{ color: C.creamDim, textAlign: 'center', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>{displayPlayer(p).emoji}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1206,6 +1413,21 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
             </div>
           </div>
         )}
+
+        {/* Delete game */}
+        {deleteGameConfirm === selected.id ? (
+          <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)', marginBottom: 10 })}>
+            <div style={{ color: C.cream, fontSize: 14, marginBottom: 14, textAlign: 'center' }}>
+              Delete this game?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Gone from everyone's stats. No backsies.</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-press" onClick={() => onDeleteGameConfirm(null)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
+              <button className="btn-press" onClick={() => onDeleteGame(selected.id)} style={s.btn('danger', { flex: 1 })}>Delete Forever</button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn-press" onClick={() => onDeleteGameConfirm(selected.id)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Delete This Game</button>
+        )}
       </div>
     );
   }
@@ -1217,9 +1439,10 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
       <div style={{ ...s.h1, fontSize: 32 }}>History</div>
       <div className="red-line" style={{ marginBottom: 18 }} />
       {displayGames.length === 0 ? (
-        <div style={{ ...s.card({ textAlign: 'center', padding: 40 }), color: C.creamDim }}>No games yet. Deal some cards!</div>
+        <div style={{ ...s.card({ textAlign: 'center', padding: 40 }), color: C.creamDim }}>{TRASH.noGames()}</div>
       ) : displayGames.map(g => {
-        const winner    = g.players.find(p => p.id === g.winnerId);
+        const w = g.players.find(p => p.id === g.winnerId);
+        const winner = displayPlayer(w);
         const isUserWin = g.winnerId === user?.id;
         const date      = new Date(g.endedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const abandoned = g.status === 'abandoned';
@@ -1228,7 +1451,7 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
             style={{ ...s.card({ padding: '14px 16px', marginBottom: 8, cursor: 'pointer', opacity: abandoned ? 0.6 : 1 }), display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ fontSize: 28 }}>{abandoned ? '⚠️' : winner?.emoji}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ color: C.cream, fontSize: 14 }}>{g.players.map(p => p.username).join(' · ')}</div>
+              <div style={{ color: C.cream, fontSize: 14 }}>{g.players.map(p => displayPlayer(p).username).join(' · ')}</div>
               <div style={{ color: C.creamDim, fontSize: 11, marginTop: 3 }}>{date} · {g.rounds.length}R{abandoned ? ' · Abandoned' : ''}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -1241,23 +1464,67 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
           </div>
         );
       })}
+      {displayGames.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          {clearAllConfirm ? (
+            <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)' })}>
+              <div style={{ color: C.cream, fontSize: 14, marginBottom: 14, textAlign: 'center' }}>
+                Nuke all history?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Every game wiped from existence. Everyone's stats reset.</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-press" onClick={() => onClearAllConfirm(false)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
+                <button className="btn-press" onClick={onClearAll} style={s.btn('danger', { flex: 1 })}>Burn It All</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn-press" onClick={() => onClearAllConfirm(true)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Clear All History</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function ProfileScreen({ user, stats, games, allPlayers, onBack, onSwitchPlayer, onLogout }) {
+function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwitchPlayer, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, deleteConfirm, onDeleteConfirm, onDeletePlayer }) {
   const userGames = games.filter(g => g.status === 'complete' && g.players.find(p => p.id === user.id));
   return (
     <div className="screen" style={{ paddingTop: 28, paddingBottom: 60 }}>
       <BackBtn onBack={onBack} />
-      <div style={{ textAlign: 'center', margin: '20px 0 28px' }}>
-        <div style={{ fontSize: 64 }}>{user.emoji}</div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: C.cream, marginTop: 8 }}>{user.username}</div>
-        <div className="red-line" style={{ margin: '8px auto 0' }} />
-        <div style={{ color: C.creamDim, fontSize: 12, marginTop: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-          Since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+
+      {editingProfile ? (
+        <div style={{ margin: '20px 0 28px' }}>
+          <div style={{ ...s.h2, fontSize: 24, marginBottom: 16, textAlign: 'center' }}>Edit Profile</div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={s.label}>Avatar</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {EMOJIS.map(e => (
+                <button key={e} className="emoji-btn" onClick={() => onEditEmoji(e)}
+                  style={{ fontSize: 22, background: editEmoji === e ? C.surface3 : 'transparent', border: `2px solid ${editEmoji === e ? C.red : C.border}`, borderRadius: 8, padding: '5px 7px', cursor: 'pointer', transition: 'all .15s' }}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={s.label}>Username</label>
+            <input style={s.input()} value={editUsername} onChange={e => onEditUsername(e.target.value)} autoFocus />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn-press" onClick={onCancelEdit} style={s.btn('outline', { flex: 1 })}>Cancel</button>
+            <button className="btn-red btn-press" onClick={onSaveEdit} style={s.btn('red', { flex: 1 })}>Save</button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{ textAlign: 'center', margin: '20px 0 28px' }}>
+          <div style={{ fontSize: 64 }}>{user.emoji}</div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: C.cream, marginTop: 8 }}>{user.username}</div>
+          <div className="red-line" style={{ margin: '8px auto 0' }} />
+          <div style={{ color: C.creamDim, fontSize: 12, marginTop: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+            Since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </div>
+          <button className="btn-press" onClick={onStartEdit} style={s.btn('ghost', { fontSize: 12, marginTop: 8 })}>✏️ Edit Profile</button>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         <StatBox label="Games"      value={stats.played} />
@@ -1283,7 +1550,7 @@ function ProfileScreen({ user, stats, games, allPlayers, onBack, onSwitchPlayer,
           <div>
             <div style={{ color: C.silverDim, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em' }}>Nemesis</div>
             <div style={{ color: C.cream, fontSize: 15 }}>{stats.nemesis.emoji} {stats.nemesis.username}</div>
-            <div style={{ color: C.creamDim, fontSize: 12 }}>Beats you most often</div>
+            <div style={{ color: C.creamDim, fontSize: 12 }}>Has your number... and your dignity</div>
           </div>
         </div>
       )}
@@ -1359,6 +1626,164 @@ function ProfileScreen({ user, stats, games, allPlayers, onBack, onSwitchPlayer,
         <button className="btn-press" onClick={onSwitchPlayer} style={{ ...s.btn('outline', { flex: 1 }) }}>Switch Player</button>
         <button className="btn-press" onClick={onLogout} style={{ ...s.btn('ghost', { flex: 1 }) }}>Sign Out</button>
       </div>
+
+      {/* Delete account */}
+      <div style={{ marginTop: 24 }}>
+        {deleteConfirm ? (
+          <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)' })}>
+            <div style={{ color: C.cream, fontSize: 14, marginBottom: 6, textAlign: 'center' }}>Delete your profile?</div>
+            <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 14, textAlign: 'center' }}>
+              This can't be undone. Past games stay on the record, but your profile is gone forever.
+              {session ? <><br /><span style={{ color: C.red }}>Finish your active game first.</span></> : null}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-press" onClick={() => onDeleteConfirm(false)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
+              <button className="btn-press" onClick={onDeletePlayer} disabled={!!session} style={s.btn('danger', { flex: 1, opacity: session ? 0.4 : 1 })}>Delete Forever</button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn-press" onClick={() => onDeleteConfirm(true)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Delete Account</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Dashboard / Leaderboard ──────────────────────────────────────────────────
+
+function ScoreChart({ allGames, allPlayers }) {
+  const completed = [...allGames].filter(g => g.status === 'complete').reverse();
+  if (completed.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>No data yet. Go play some games.</div>;
+
+  const COLORS = [C.red, C.gold, C.green, C.blue, C.silver, '#e87d7d', '#7de8b8'];
+  const playerIds = allPlayers.map(p => p.id);
+
+  const series = playerIds.map((pid, idx) => {
+    const points = [];
+    completed.forEach((g, gi) => {
+      const pp = g.players.find(p => p.id === pid);
+      if (pp) points.push({ x: gi, y: pp.total });
+    });
+    return { playerId: pid, color: COLORS[idx % COLORS.length], points, player: allPlayers.find(p => p.id === pid) };
+  }).filter(s => s.points.length >= 2);
+
+  if (series.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>Need at least 2 games per player to chart.</div>;
+
+  const W = 340, H = 200, PAD = { top: 10, right: 10, bottom: 25, left: 35 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+  const allY = series.flatMap(s => s.points.map(p => p.y));
+  const minY = Math.min(...allY), maxY = Math.max(...allY);
+  const rangeY = maxY - minY || 1;
+  const maxX = completed.length - 1 || 1;
+  const scaleX = (x) => PAD.left + (x / maxX) * chartW;
+  const scaleY = (y) => PAD.top + chartH - ((y - minY) / rangeY) * chartH;
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
+        {[0, 0.25, 0.5, 0.75, 1].map(frac => {
+          const y = PAD.top + chartH * (1 - frac);
+          const val = Math.round(minY + rangeY * frac);
+          return (<g key={frac}>
+            <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke={C.border} strokeWidth="0.5" />
+            <text x={PAD.left - 4} y={y + 3} fill={C.creamDim} fontSize="8" textAnchor="end">{val}</text>
+          </g>);
+        })}
+        {series.map(sr => (
+          <polyline key={sr.playerId} fill="none" stroke={sr.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            points={sr.points.map(p => `${scaleX(p.x)},${scaleY(p.y)}`).join(' ')} />
+        ))}
+        {series.map(sr => {
+          const last = sr.points[sr.points.length - 1];
+          return <circle key={sr.playerId} cx={scaleX(last.x)} cy={scaleY(last.y)} r="3" fill={sr.color} />;
+        })}
+        <text x={PAD.left} y={H - 4} fill={C.creamDim} fontSize="7">Game 1</text>
+        <text x={W - PAD.right} y={H - 4} fill={C.creamDim} fontSize="7" textAnchor="end">Game {completed.length}</text>
+      </svg>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10, justifyContent: 'center' }}>
+        {series.map(sr => (
+          <div key={sr.playerId} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 10, height: 3, background: sr.color, borderRadius: 2 }} />
+            <span style={{ fontSize: 11, color: C.creamDim }}>{sr.player?.emoji} {sr.player?.username}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onToggleView, onBack }) {
+  const ranked = useMemo(() => {
+    return allPlayers.map(p => ({ ...p, stats: getStats(p.id) }))
+      .filter(p => p.stats.played > 0)
+      .sort((a, b) => b.stats.winRate - a.stats.winRate || b.stats.wins - a.stats.wins);
+  }, [allPlayers, allGames]);
+
+  return (
+    <div className="screen" style={{ paddingTop: 28, paddingBottom: 40 }}>
+      <BackBtn onBack={onBack} />
+      <div style={{ margin: '14px 0 6px' }}><KedroLogo height={32} /></div>
+      <div style={{ ...s.h1, fontSize: 32 }}>Leaderboard</div>
+      <div className="red-line" />
+      <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 16 }}>Who actually runs this table?</div>
+
+      {/* View toggle */}
+      <div style={{ display: 'flex', background: C.surface, borderRadius: 6, padding: 2, marginBottom: 16 }}>
+        {['table', 'chart'].map(mode => (
+          <button key={mode} onClick={() => onToggleView(mode)} style={{
+            flex: 1, padding: '8px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
+            background: viewMode === mode ? C.red : 'transparent',
+            color: viewMode === mode ? '#fff' : C.creamDim,
+            fontFamily: 'Barlow, sans-serif', fontSize: 13, fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '.06em', transition: 'all .15s',
+          }}>
+            {mode === 'table' ? 'Table' : 'Chart'}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === 'table' ? (
+        ranked.length === 0 ? (
+          <div style={{ ...s.card({ textAlign: 'center', padding: 40 }), color: C.creamDim }}>No stats yet. Play some games first.</div>
+        ) : (
+          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'Best', 'Worst', 'GP', 'Strk', 'KR%'].map(h => (
+                    <th key={h} style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: h === 'Player' ? 'left' : 'center', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ranked.map((p, i) => (
+                  <tr key={p.id} style={{ borderBottom: `1px solid ${C.border}`, background: p.id === user.id ? 'rgba(212,43,43,.06)' : 'transparent' }}>
+                    <td style={{ padding: '10px 5px', textAlign: 'center' }}>{i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}</td>
+                    <td style={{ padding: '10px 5px', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 16, marginRight: 6 }}>{p.emoji}</span>
+                      <span style={{ color: C.cream, fontSize: 13 }}>{p.username}{p.id === user.id ? ' (you)' : ''}</span>
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.green }}>{p.stats.wins}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.blue }}>{p.stats.winRate}%</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgScore}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgRound}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{p.stats.best}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.red }}>{p.stats.worst}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{p.stats.played}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.green }}>{p.stats.currentStreak || 0}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.blue }}>{p.stats.knockRate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : (
+        <div style={s.card({ padding: 16 })}>
+          <ScoreChart allGames={allGames} allPlayers={allPlayers} />
+        </div>
+      )}
     </div>
   );
 }
