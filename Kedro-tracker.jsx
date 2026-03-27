@@ -110,6 +110,7 @@ export default function KedroApp() {
   const [roundInputs, setRoundInputs] = useState({});
   const [roundError, setRoundError] = useState('');
   const [calledKedroBy, setCalledKedroBy] = useState(null);
+  const [knockResult, setKnockResult] = useState(null); // 'correct' | 'incorrect' | null
   const [celebration, setCelebration] = useState(false);
   const [endConfirm, setEndConfirm] = useState(false);
   const [live, setLive] = useState(false);
@@ -190,25 +191,41 @@ export default function KedroApp() {
       rounds: [],
     };
     await saveSession(newSession);
-    setNgSelected([]); setRoundInputs({}); setCalledKedroBy(null);
+    setNgSelected([]); setRoundInputs({}); setCalledKedroBy(null); setKnockResult(null);
     setView('game');
   }
 
   async function addRound() {
     if (!session) return;
-    const missing = session.players.some(p => roundInputs[p.id] === undefined || roundInputs[p.id] === '');
+    const missing = session.players.some(p => {
+      if (p.id === calledKedroBy && knockResult === 'correct') return false;
+      return roundInputs[p.id] === undefined || roundInputs[p.id] === '';
+    });
     if (missing) { setRoundError('Enter scores for all players'); return; }
-    const roundScores = session.players.map(p => ({ playerId: p.id, score: parseInt(roundInputs[p.id]) || 0 }));
+    if (calledKedroBy && !knockResult) { setRoundError('Mark the knock as correct or incorrect'); return; }
+    const roundScores = session.players.map(p => {
+      let score;
+      if (p.id === calledKedroBy) {
+        if (knockResult === 'correct') {
+          score = -10;
+        } else {
+          score = (parseInt(roundInputs[p.id]) || 0) + 10;
+        }
+      } else {
+        score = parseInt(roundInputs[p.id]) || 0;
+      }
+      return { playerId: p.id, score };
+    });
     const round = { id: uid(), timestamp: Date.now(), scores: roundScores, calledKedroBy };
     const updated = {
       ...session, rounds: [...session.rounds, round],
       players: session.players.map(p => {
         const rs = roundScores.find(r => r.playerId === p.id);
-        return { ...p, total: p.total + (rs?.score || 0) };
+        return { ...p, total: p.total + rs.score };
       }),
     };
     await saveSession(updated);
-    setRoundInputs({}); setCalledKedroBy(null); setRoundError('');
+    setRoundInputs({}); setCalledKedroBy(null); setKnockResult(null); setRoundError('');
     if (calledKedroBy) { setCelebration(true); setTimeout(() => setCelebration(false), 2200); }
   }
 
@@ -294,9 +311,10 @@ export default function KedroApp() {
           )}
           {view==='game' && session && (
             <GameScreen session={session} user={user} roundInputs={roundInputs}
-              calledKedroBy={calledKedroBy} roundError={roundError} endConfirm={endConfirm}
+              calledKedroBy={calledKedroBy} knockResult={knockResult} roundError={roundError} endConfirm={endConfirm}
               onInput={(pid,val) => { setRoundInputs(p=>({...p,[pid]:val})); setRoundError(''); }}
-              onCalledKedro={(pid) => setCalledKedroBy(prev => prev===pid ? null : pid)}
+              onCalledKedro={(pid) => { setCalledKedroBy(prev => prev===pid ? null : pid); setKnockResult(null); }}
+              onKnockResult={setKnockResult}
               onAddRound={addRound} onEndGame={endGame}
               onEndConfirm={() => setEndConfirm(true)} onCancelEnd={() => setEndConfirm(false)}
               onHome={() => setView('home')}
@@ -545,7 +563,7 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
   );
 }
 
-function GameScreen({ session, user, roundInputs, calledKedroBy, roundError, endConfirm, onInput, onCalledKedro, onAddRound, onEndGame, onEndConfirm, onCancelEnd, onHome }) {
+function GameScreen({ session, user, roundInputs, calledKedroBy, knockResult, roundError, endConfirm, onInput, onCalledKedro, onKnockResult, onAddRound, onEndGame, onEndConfirm, onCancelEnd, onHome }) {
   const sorted = [...session.players].sort((a,b)=>a.total-b.total);
   const minScore = Math.min(...session.players.map(p=>p.total));
   const maxScore = session.players.length > 1 ? Math.max(...session.players.map(p=>p.total)) : null;
@@ -579,7 +597,7 @@ function GameScreen({ session, user, roundInputs, calledKedroBy, roundError, end
                   {isLeading && <div style={{ fontSize:10, color:C.green, textTransform:'uppercase', letterSpacing:'.06em' }}>🏆 Leading</div>}
                 </div>
               </div>
-              {lastRound && <div style={{ color:C.creamDim, fontSize:13, paddingRight:16, textAlign:'center' }}>+{lastRound.score}</div>}
+              {lastRound && <div style={{ color:C.creamDim, fontSize:13, paddingRight:16, textAlign:'center' }}>{lastRound.score >= 0 ? `+${lastRound.score}` : lastRound.score}</div>}
               <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, color:isLeading?C.green:isLosing?C.red:C.cream, textAlign:'right' }}>
                 {p.total}
               </div>
@@ -593,20 +611,40 @@ function GameScreen({ session, user, roundInputs, calledKedroBy, roundError, end
           <div className="red-line" style={{ margin:0 }} />
           <div style={{ color:C.red, fontSize:12, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase' }}>Enter Round Scores</div>
         </div>
-        {session.players.map(p => (
-          <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-            <div style={{ fontSize:20, width:28 }}>{p.emoji}</div>
-            <div style={{ flex:1, color:C.cream, fontSize:14 }}>{p.username}</div>
-            <input type="number" min={-2} max={100}
-              style={s.input({width:68,textAlign:'center',padding:'8px 6px'})}
-              placeholder="0" value={roundInputs[p.id]??''}
-              onChange={e=>onInput(p.id,e.target.value)} />
-            <button onClick={() => onCalledKedro(p.id)}
-              style={{ padding:'7px 10px', borderRadius:6, border:`1px solid ${calledKedroBy===p.id?C.red:C.border}`, background:calledKedroBy===p.id?'rgba(212,43,43,.2)':'transparent', color:calledKedroBy===p.id?C.red:C.creamDim, fontSize:11, cursor:'pointer', whiteSpace:'nowrap', transition:'all .15s', fontFamily:'Barlow,sans-serif', fontWeight:600, letterSpacing:'.04em', textTransform:'uppercase' }}>
-              {calledKedroBy===p.id?'✓ Kedro':'Kedro'}
-            </button>
-          </div>
-        ))}
+        {session.players.map(p => {
+          const isKnocker = calledKedroBy === p.id;
+          const inputDisabled = isKnocker && knockResult === 'correct';
+          return (
+            <div key={p.id}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom: isKnocker ? 6 : 10 }}>
+                <div style={{ fontSize:20, width:28 }}>{p.emoji}</div>
+                <div style={{ flex:1, color:C.cream, fontSize:14 }}>{p.username}</div>
+                <input type="number"
+                  style={s.input({width:68,textAlign:'center',padding:'8px 6px',opacity:inputDisabled?.5:1})}
+                  placeholder="0"
+                  value={inputDisabled ? '-10' : (roundInputs[p.id]??'')}
+                  disabled={inputDisabled}
+                  onChange={e=>onInput(p.id,e.target.value)} />
+                <button onClick={() => onCalledKedro(p.id)}
+                  style={{ padding:'7px 10px', borderRadius:6, border:`1px solid ${isKnocker?C.red:C.border}`, background:isKnocker?'rgba(212,43,43,.2)':'transparent', color:isKnocker?C.red:C.creamDim, fontSize:11, cursor:'pointer', whiteSpace:'nowrap', transition:'all .15s', fontFamily:'Barlow,sans-serif', fontWeight:600, letterSpacing:'.04em', textTransform:'uppercase' }}>
+                  {isKnocker?'✓ Kedro':'Kedro'}
+                </button>
+              </div>
+              {isKnocker && (
+                <div style={{ display:'flex', gap:6, marginLeft:38, marginBottom:10 }}>
+                  <button onClick={() => onKnockResult(knockResult==='correct' ? null : 'correct')}
+                    style={{ flex:1, padding:'5px 8px', borderRadius:6, border:`1px solid ${knockResult==='correct'?C.green:C.border}`, background:knockResult==='correct'?'rgba(61,186,106,.2)':'transparent', color:knockResult==='correct'?C.green:C.creamDim, fontSize:11, cursor:'pointer', fontFamily:'Barlow,sans-serif', fontWeight:600, letterSpacing:'.04em', textTransform:'uppercase' }}>
+                    ✓ Correct (−10)
+                  </button>
+                  <button onClick={() => onKnockResult(knockResult==='incorrect' ? null : 'incorrect')}
+                    style={{ flex:1, padding:'5px 8px', borderRadius:6, border:`1px solid ${knockResult==='incorrect'?C.red:C.border}`, background:knockResult==='incorrect'?'rgba(212,43,43,.2)':'transparent', color:knockResult==='incorrect'?C.red:C.creamDim, fontSize:11, cursor:'pointer', fontFamily:'Barlow,sans-serif', fontWeight:600, letterSpacing:'.04em', textTransform:'uppercase' }}>
+                    ✗ Incorrect (+10)
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
         {roundError && <div style={{ color:C.red, fontSize:13, marginBottom:10 }}>{roundError}</div>}
         <button className="btn-red" onClick={onAddRound} style={{ ...s.btn('red',{width:'100%',marginTop:4}) }}>
           {calledKedroBy ? '🐴 Kedro — Add Round' : 'Add Round'}

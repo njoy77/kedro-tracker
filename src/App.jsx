@@ -226,6 +226,7 @@ export default function KedroApp() {
   const [roundInputs, setRoundInputs]       = useState({});
   const [roundError, setRoundError]         = useState('');
   const [knockedBy, setKnockedBy]           = useState(null);
+  const [knockResult, setKnockResult]       = useState(null); // 'correct' | 'incorrect' | null
   const [lastRoundDeltas, setLastRoundDeltas] = useState(null);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
   const [endConfirm, setEndConfirm]         = useState(false);
@@ -392,34 +393,37 @@ export default function KedroApp() {
 
   async function addRound() {
     if (!session) return;
-    const missing = session.players.some(p => roundInputs[p.id] === undefined || roundInputs[p.id] === '');
+    const missing = session.players.some(p => {
+      if (p.id === knockedBy && knockResult === 'correct') return false;
+      return roundInputs[p.id] === undefined || roundInputs[p.id] === '';
+    });
     if (missing) { setRoundError('Enter a score for every player'); return; }
+    if (knockedBy && !knockResult) { setRoundError('Mark the knock as correct or incorrect'); return; }
 
-    const roundScores = session.players.map(p => ({
-      playerId: p.id,
-      score: parseInt(roundInputs[p.id]) || 0,
-    }));
+    const roundScores = session.players.map(p => {
+      let score;
+      if (p.id === knockedBy) {
+        score = knockResult === 'correct' ? -10 : (parseInt(roundInputs[p.id]) || 0) + 10;
+      } else {
+        score = parseInt(roundInputs[p.id]) || 0;
+      }
+      return { playerId: p.id, score };
+    });
 
-    let knockerWon = false;
-    if (knockedBy) {
-      const knockerScore = roundScores.find(r => r.playerId === knockedBy)?.score;
-      const minScore = Math.min(...roundScores.map(r => r.score));
-      knockerWon = knockerScore !== undefined && knockerScore === minScore;
-    }
-
+    const knockerWon = knockedBy ? knockResult === 'correct' : false;
     const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon };
     const updated = {
       ...session,
       rounds: [...session.rounds, round],
       players: session.players.map(p => {
         const rs = roundScores.find(r => r.playerId === p.id);
-        return { ...p, total: p.total + (rs?.score || 0) };
+        return { ...p, total: p.total + rs.score };
       }),
     };
     await saveSession(updated);
     setLastRoundDeltas(roundScores);
     setTimeout(() => setLastRoundDeltas(null), 2500);
-    setRoundInputs({}); setKnockedBy(null); setRoundError('');
+    setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError('');
     setShowScoreSheet(false);
   }
 
@@ -641,12 +645,13 @@ export default function KedroApp() {
               {view === 'game' && session && (
                 <GameScreen
                   session={session} user={user}
-                  roundInputs={roundInputs} knockedBy={knockedBy}
+                  roundInputs={roundInputs} knockedBy={knockedBy} knockResult={knockResult}
                   roundError={roundError} lastRoundDeltas={lastRoundDeltas}
                   showScoreSheet={showScoreSheet} endConfirm={endConfirm}
                   editingRound={editingRound} editInputs={editInputs}
                   onInput={(id, val) => setRoundInputs(prev => ({ ...prev, [id]: val }))}
-                  onKnockedBy={id => setKnockedBy(prev => prev === id ? null : id)}
+                  onKnockedBy={id => { setKnockedBy(prev => prev === id ? null : id); setKnockResult(null); }}
+                  onKnockResult={setKnockResult}
                   onAddRound={addRound}
                   onEndGame={endGame}
                   onEndConfirm={() => setEndConfirm(true)}
@@ -970,9 +975,9 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
 }
 
 function GameScreen({
-  session, user, roundInputs, knockedBy, roundError, lastRoundDeltas,
+  session, user, roundInputs, knockedBy, knockResult, roundError, lastRoundDeltas,
   showScoreSheet, endConfirm, editingRound, editInputs,
-  onInput, onKnockedBy, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
+  onInput, onKnockedBy, onKnockResult, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
   onShowSheet, onHideSheet, onAbandon, onHome,
   onEditRound, onEditInput, onSaveEdit, onCancelEdit,
 }) {
@@ -1167,26 +1172,57 @@ function GameScreen({
                 Round {session.rounds.length + 1} Scores
               </div>
             </div>
-            {session.players.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <div style={{ fontSize: 22, width: 28, textAlign: 'center' }}>{p.emoji}</div>
-                <div style={{ flex: 1, color: C.cream, fontSize: 14 }}>{p.username}</div>
-                <input type="number" min={-100} max={100} inputMode="numeric"
-                  style={s.input({ width: 74, textAlign: 'center', padding: '10px 6px', fontSize: 18 })}
-                  placeholder="0" value={roundInputs[p.id] ?? ''}
-                  onChange={e => onInput(p.id, e.target.value)} />
-                <button onClick={() => onKnockedBy(p.id)} style={{
-                  padding: '8px 10px', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
-                  border: `1px solid ${knockedBy === p.id ? C.red : C.border}`,
-                  background: knockedBy === p.id ? 'rgba(212,43,43,.2)' : 'transparent',
-                  color: knockedBy === p.id ? C.red : C.creamDim,
-                  fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
-                  letterSpacing: '.04em', textTransform: 'uppercase', transition: 'all .15s',
-                }}>
-                  {knockedBy === p.id ? '🃏 Knocked' : 'Knocked?'}
-                </button>
-              </div>
-            ))}
+            {session.players.map(p => {
+              const isKnocker = knockedBy === p.id;
+              const inputDisabled = isKnocker && knockResult === 'correct';
+              return (
+                <div key={p.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isKnocker ? 8 : 14 }}>
+                    <div style={{ fontSize: 22, width: 28, textAlign: 'center' }}>{p.emoji}</div>
+                    <div style={{ flex: 1, color: C.cream, fontSize: 14 }}>{p.username}</div>
+                    <input type="number" min={-100} max={100} inputMode="numeric"
+                      style={s.input({ width: 74, textAlign: 'center', padding: '10px 6px', fontSize: 18, opacity: inputDisabled ? 0.5 : 1 })}
+                      placeholder="0" value={inputDisabled ? '-10' : (roundInputs[p.id] ?? '')}
+                      disabled={inputDisabled}
+                      onChange={e => onInput(p.id, e.target.value)} />
+                    <button onClick={() => onKnockedBy(p.id)} style={{
+                      padding: '8px 10px', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                      border: `1px solid ${isKnocker ? C.red : C.border}`,
+                      background: isKnocker ? 'rgba(212,43,43,.2)' : 'transparent',
+                      color: isKnocker ? C.red : C.creamDim,
+                      fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                      letterSpacing: '.04em', textTransform: 'uppercase', transition: 'all .15s',
+                    }}>
+                      {isKnocker ? '🃏 Knocked' : 'Knocked?'}
+                    </button>
+                  </div>
+                  {isKnocker && (
+                    <div style={{ display: 'flex', gap: 6, marginLeft: 38, marginBottom: 14 }}>
+                      <button onClick={() => onKnockResult(knockResult === 'correct' ? null : 'correct')} style={{
+                        flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${knockResult === 'correct' ? C.green : C.border}`,
+                        background: knockResult === 'correct' ? 'rgba(61,186,106,.2)' : 'transparent',
+                        color: knockResult === 'correct' ? C.green : C.creamDim,
+                        fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                        letterSpacing: '.04em', textTransform: 'uppercase',
+                      }}>
+                        ✓ Correct (−10)
+                      </button>
+                      <button onClick={() => onKnockResult(knockResult === 'incorrect' ? null : 'incorrect')} style={{
+                        flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${knockResult === 'incorrect' ? C.red : C.border}`,
+                        background: knockResult === 'incorrect' ? 'rgba(212,43,43,.2)' : 'transparent',
+                        color: knockResult === 'incorrect' ? C.red : C.creamDim,
+                        fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                        letterSpacing: '.04em', textTransform: 'uppercase',
+                      }}>
+                        ✗ Incorrect (+10)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {roundError && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{roundError}</div>}
             <button className="btn-red btn-press" onClick={onAddRound}
               style={{ ...s.btn('red', { width: '100%', marginTop: 4, padding: 14, fontSize: 15 }) }}>
