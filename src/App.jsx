@@ -1166,11 +1166,14 @@ function GameScreen({
             maxHeight: '85vh', overflowY: 'auto',
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: C.borderLight, margin: '0 auto 20px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <div className="red-line" style={{ margin: 0 }} />
               <div style={{ color: C.red, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
                 Round {session.rounds.length + 1} Scores
               </div>
+            </div>
+            <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 16, fontStyle: 'italic' }}>
+              Enter your card score... we will do the math.... ya bisssssh
             </div>
             {session.players.map(p => {
               const isKnocker = knockedBy === p.id;
