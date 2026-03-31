@@ -1074,7 +1074,10 @@ function GameScreen({
                 <tr>
                   <th style={{ color: C.creamDim, textAlign: 'left', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>#</th>
                   {session.players.map(p => (
-                    <th key={p.id} style={{ color: C.creamDim, textAlign: 'center', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>{p.emoji}</th>
+                    <th key={p.id} style={{ color: C.creamDim, textAlign: 'center', paddingBottom: 8, fontWeight: 500, fontSize: 11 }}>
+                      <div>{p.emoji}</div>
+                      <div style={{ fontSize: 10, color: C.silverDim, marginTop: 2 }}>{p.username}</div>
+                    </th>
                   ))}
                   <th style={{ width: 36 }} />
                 </tr>
@@ -1183,6 +1186,20 @@ function GameScreen({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isKnocker ? 8 : 14 }}>
                     <div style={{ fontSize: 22, width: 28, textAlign: 'center' }}>{p.emoji}</div>
                     <div style={{ flex: 1, color: C.cream, fontSize: 14 }}>{p.username}</div>
+                    <button
+                      disabled={inputDisabled}
+                      onClick={() => {
+                        const cur = roundInputs[p.id];
+                        if (cur === undefined || cur === '' || cur === '0' || cur === 0) return;
+                        const num = parseFloat(cur);
+                        if (!isNaN(num)) onInput(p.id, String(-num));
+                      }}
+                      style={{
+                        width: 36, height: 42, borderRadius: 6, cursor: inputDisabled ? 'default' : 'pointer',
+                        border: `1px solid ${C.border}`, background: 'transparent',
+                        color: C.creamDim, fontSize: 18, fontWeight: 700,
+                        opacity: inputDisabled ? 0.3 : 1, flexShrink: 0,
+                      }}>±</button>
                     <input type="number" min={-100} max={100} inputMode="numeric"
                       style={s.input({ width: 74, textAlign: 'center', padding: '10px 6px', fontSize: 18, opacity: inputDisabled ? 0.5 : 1 })}
                       placeholder="0" value={inputDisabled ? '-10' : (roundInputs[p.id] ?? '')}
