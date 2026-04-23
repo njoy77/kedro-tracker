@@ -126,79 +126,8 @@ const displayPlayer = (p) => p?.deleted ? { ...p, username: 'Deleted Player', em
 
 function playNeigh() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const vibLfo = ctx.createOscillator();
-    const vibGain = ctx.createGain();
-    const tremLfo = ctx.createOscillator();
-    const tremGain = ctx.createGain();
-    const gain1 = ctx.createGain();
-    const gain2 = ctx.createGain();
-    const masterGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    const hipass = ctx.createBiquadFilter();
-
-    vibLfo.frequency.value = 9;
-    vibGain.gain.value = 55;
-    vibLfo.connect(vibGain);
-    vibGain.connect(osc1.frequency);
-    vibGain.connect(osc2.frequency);
-
-    tremLfo.frequency.value = 13;
-    tremGain.gain.value = 0.08;
-    tremLfo.connect(tremGain);
-    tremGain.connect(masterGain.gain);
-
-    osc1.type = 'sawtooth';
-    osc2.type = 'sawtooth';
-    gain1.gain.value = 0.6;
-    gain2.gain.value = 0.4;
-
-    filter.type = 'bandpass';
-    filter.frequency.value = 900;
-    filter.Q.value = 2.2;
-
-    hipass.type = 'highpass';
-    hipass.frequency.value = 180;
-
-    osc1.connect(gain1); osc2.connect(gain2);
-    gain1.connect(filter); gain2.connect(filter);
-    filter.connect(hipass);
-    hipass.connect(masterGain);
-    masterGain.connect(ctx.destination);
-
-    const t = ctx.currentTime;
-    osc1.frequency.setValueAtTime(310, t);
-    osc2.frequency.setValueAtTime(312, t);
-
-    osc1.frequency.linearRampToValueAtTime(1150, t + 0.14);
-    osc2.frequency.linearRampToValueAtTime(1155, t + 0.14);
-
-    osc1.frequency.exponentialRampToValueAtTime(680, t + 0.38);
-    osc1.frequency.exponentialRampToValueAtTime(820, t + 0.52);
-    osc1.frequency.exponentialRampToValueAtTime(520, t + 0.72);
-    osc1.frequency.exponentialRampToValueAtTime(340, t + 1.0);
-    osc1.frequency.exponentialRampToValueAtTime(210, t + 1.45);
-
-    osc2.frequency.exponentialRampToValueAtTime(683, t + 0.38);
-    osc2.frequency.exponentialRampToValueAtTime(824, t + 0.52);
-    osc2.frequency.exponentialRampToValueAtTime(522, t + 0.72);
-    osc2.frequency.exponentialRampToValueAtTime(342, t + 1.0);
-    osc2.frequency.exponentialRampToValueAtTime(211, t + 1.45);
-
-    filter.frequency.setValueAtTime(480, t);
-    filter.frequency.linearRampToValueAtTime(1600, t + 0.14);
-    filter.frequency.exponentialRampToValueAtTime(700, t + 1.1);
-
-    masterGain.gain.setValueAtTime(0, t);
-    masterGain.gain.linearRampToValueAtTime(0.28, t + 0.07);
-    masterGain.gain.setValueAtTime(0.28, t + 1.05);
-    masterGain.gain.linearRampToValueAtTime(0, t + 1.55);
-
-    [vibLfo, tremLfo, osc1, osc2].forEach(n => n.start(t));
-    [vibLfo, tremLfo, osc1, osc2].forEach(n => n.stop(t + 1.6));
-    setTimeout(() => ctx.close(), 2000);
+    const audio = new Audio('/neigh.mp4');
+    audio.play();
   } catch (e) {}
 }
 
