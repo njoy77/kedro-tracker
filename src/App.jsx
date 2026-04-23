@@ -1951,7 +1951,7 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'GP', 'Strk', 'KR%', '🐴/G', '🐴', 'IK'].map(h => (
+                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'GP', 'Strk', 'KR%', 'IK', '🐴/G', '🐴'].map(h => (
                     <th key={h} style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: h === 'Player' ? 'left' : 'center', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -1971,9 +1971,9 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{p.stats.played}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.green }}>{p.stats.currentStreak || 0}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.blue }}>{p.stats.knockRate}%</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{p.stats.totalInherentKnocks}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.neighsPerGame}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.red }}>{p.stats.totalNeighs}</td>
-                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{p.stats.totalInherentKnocks}</td>
                   </tr>
                 ))}
               </tbody>
