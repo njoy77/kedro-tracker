@@ -124,6 +124,49 @@ const TRASH = {
 
 const displayPlayer = (p) => p?.deleted ? { ...p, username: 'Deleted Player', emoji: '👻' } : p;
 
+function playNeigh() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    lfo.frequency.value = 7;
+    lfoGain.gain.value = 40;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    osc.type = 'sawtooth';
+    filter.type = 'bandpass';
+    filter.frequency.value = 700;
+    filter.Q.value = 1.5;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    const t = ctx.currentTime;
+    osc.frequency.setValueAtTime(350, t);
+    osc.frequency.linearRampToValueAtTime(900, t + 0.25);
+    osc.frequency.exponentialRampToValueAtTime(600, t + 0.45);
+    osc.frequency.exponentialRampToValueAtTime(350, t + 0.75);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 1.1);
+
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.07);
+    gain.gain.setValueAtTime(0.22, t + 0.8);
+    gain.gain.linearRampToValueAtTime(0, t + 1.2);
+
+    lfo.start(t);
+    osc.start(t);
+    lfo.stop(t + 1.2);
+    osc.stop(t + 1.2);
+    setTimeout(() => ctx.close(), 1500);
+  } catch (e) {}
+}
+
 const s = {
   btn: (variant = 'red', extra = {}) => ({
     padding: '11px 22px', borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -245,6 +288,9 @@ export default function KedroApp() {
   // Clear game data state
   const [deleteGameConfirm, setDeleteGameConfirm] = useState(null);
   const [clearAllConfirm, setClearAllConfirm]     = useState(false);
+
+  // Neigh tracker state
+  const [neighCounts, setNeighCounts] = useState({});
 
   // Dashboard state
   const [dashboardView, setDashboardView] = useState('table');
@@ -387,7 +433,7 @@ export default function KedroApp() {
       rounds: [],
     };
     await saveSession(newSession);
-    setNgSelected([]); setRoundInputs({}); setKnockedBy(null);
+    setNgSelected([]); setRoundInputs({}); setKnockedBy(null); setNeighCounts({});
     navigate('game', 'forward');
   }
 
@@ -669,6 +715,8 @@ export default function KedroApp() {
                   onEditInput={(id, val) => setEditInputs(prev => ({ ...prev, [id]: val }))}
                   onSaveEdit={editRound}
                   onCancelEdit={() => { setEditingRound(null); setEditInputs({}); }}
+                  neighCounts={neighCounts}
+                  onNeigh={id => { playNeigh(); setNeighCounts(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 })); }}
                 />
               )}
 
@@ -980,6 +1028,7 @@ function GameScreen({
   onInput, onKnockedBy, onKnockResult, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
   onShowSheet, onHideSheet, onAbandon, onHome,
   onEditRound, onEditInput, onSaveEdit, onCancelEdit,
+  neighCounts = {}, onNeigh,
 }) {
   const sorted   = [...session.players].sort((a, b) => a.total - b.total);
   const leaderId = session.rounds.length > 0 ? sorted[0].id : null;
@@ -1010,10 +1059,11 @@ function GameScreen({
 
       {/* Scoreboard */}
       <div style={s.card({ padding: 0, overflow: 'hidden', marginBottom: 16 })}>
-        <div style={{ background: C.surface3, padding: '8px 16px', borderBottom: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '26px 1fr 48px 52px', gap: 6, alignItems: 'center' }}>
+        <div style={{ background: C.surface3, padding: '8px 16px', borderBottom: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '26px 1fr 56px 48px 52px', gap: 6, alignItems: 'center' }}>
           <div />
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', letterSpacing: '.08em' }}>Player</div>
-          {session.rounds.length > 0 && <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center' }}>Rnd</div>}
+          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center' }}>Neigh</div>
+          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center' }}>{session.rounds.length > 0 ? 'Rnd' : ''}</div>
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'right' }}>Total</div>
         </div>
 
@@ -1023,9 +1073,10 @@ function GameScreen({
           const lastRound = session.rounds.length > 0
             ? session.rounds[session.rounds.length - 1].scores.find(s => s.playerId === p.id)
             : null;
+          const neighCount = neighCounts[p.id] || 0;
           return (
             <div key={p.id} style={{
-              display: 'grid', gridTemplateColumns: '26px 1fr 48px 52px', gap: 6,
+              display: 'grid', gridTemplateColumns: '26px 1fr 56px 48px 52px', gap: 6,
               alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${C.border}`,
               background: isLeader ? 'rgba(245,200,66,.05)' : 'transparent',
               transition: 'background .4s',
@@ -1046,6 +1097,23 @@ function GameScreen({
                     <div style={{ fontSize: 10, color: C.gold, textTransform: 'uppercase', letterSpacing: '.06em' }}>Leading</div>
                   )}
                 </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={() => onNeigh(p.id)}
+                  style={{
+                    background: neighCount > 0 ? 'rgba(212,43,43,.15)' : 'transparent',
+                    border: `1px solid ${neighCount > 0 ? C.red : C.border}`,
+                    borderRadius: 20, cursor: 'pointer',
+                    padding: '3px 7px', display: 'inline-flex', alignItems: 'center', gap: 3,
+                    transition: 'all .15s',
+                  }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>🐴</span>
+                  {neighCount > 0 && (
+                    <span style={{ color: C.red, fontSize: 12, fontWeight: 700, lineHeight: 1 }}>{neighCount}</span>
+                  )}
+                </button>
               </div>
               <div style={{ textAlign: 'center', position: 'relative', minWidth: 48 }}>
                 {delta ? (
