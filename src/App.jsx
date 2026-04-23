@@ -127,43 +127,78 @@ const displayPlayer = (p) => p?.deleted ? { ...p, username: 'Deleted Player', em
 function playNeigh() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    const gain = ctx.createGain();
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const vibLfo = ctx.createOscillator();
+    const vibGain = ctx.createGain();
+    const tremLfo = ctx.createOscillator();
+    const tremGain = ctx.createGain();
+    const gain1 = ctx.createGain();
+    const gain2 = ctx.createGain();
+    const masterGain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const hipass = ctx.createBiquadFilter();
 
-    lfo.frequency.value = 7;
-    lfoGain.gain.value = 40;
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
+    vibLfo.frequency.value = 9;
+    vibGain.gain.value = 55;
+    vibLfo.connect(vibGain);
+    vibGain.connect(osc1.frequency);
+    vibGain.connect(osc2.frequency);
 
-    osc.type = 'sawtooth';
+    tremLfo.frequency.value = 13;
+    tremGain.gain.value = 0.08;
+    tremLfo.connect(tremGain);
+    tremGain.connect(masterGain.gain);
+
+    osc1.type = 'sawtooth';
+    osc2.type = 'sawtooth';
+    gain1.gain.value = 0.6;
+    gain2.gain.value = 0.4;
+
     filter.type = 'bandpass';
-    filter.frequency.value = 700;
-    filter.Q.value = 1.5;
+    filter.frequency.value = 900;
+    filter.Q.value = 2.2;
 
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
+    hipass.type = 'highpass';
+    hipass.frequency.value = 180;
+
+    osc1.connect(gain1); osc2.connect(gain2);
+    gain1.connect(filter); gain2.connect(filter);
+    filter.connect(hipass);
+    hipass.connect(masterGain);
+    masterGain.connect(ctx.destination);
 
     const t = ctx.currentTime;
-    osc.frequency.setValueAtTime(350, t);
-    osc.frequency.linearRampToValueAtTime(900, t + 0.25);
-    osc.frequency.exponentialRampToValueAtTime(600, t + 0.45);
-    osc.frequency.exponentialRampToValueAtTime(350, t + 0.75);
-    osc.frequency.exponentialRampToValueAtTime(220, t + 1.1);
+    osc1.frequency.setValueAtTime(310, t);
+    osc2.frequency.setValueAtTime(312, t);
 
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.22, t + 0.07);
-    gain.gain.setValueAtTime(0.22, t + 0.8);
-    gain.gain.linearRampToValueAtTime(0, t + 1.2);
+    osc1.frequency.linearRampToValueAtTime(1150, t + 0.14);
+    osc2.frequency.linearRampToValueAtTime(1155, t + 0.14);
 
-    lfo.start(t);
-    osc.start(t);
-    lfo.stop(t + 1.2);
-    osc.stop(t + 1.2);
-    setTimeout(() => ctx.close(), 1500);
+    osc1.frequency.exponentialRampToValueAtTime(680, t + 0.38);
+    osc1.frequency.exponentialRampToValueAtTime(820, t + 0.52);
+    osc1.frequency.exponentialRampToValueAtTime(520, t + 0.72);
+    osc1.frequency.exponentialRampToValueAtTime(340, t + 1.0);
+    osc1.frequency.exponentialRampToValueAtTime(210, t + 1.45);
+
+    osc2.frequency.exponentialRampToValueAtTime(683, t + 0.38);
+    osc2.frequency.exponentialRampToValueAtTime(824, t + 0.52);
+    osc2.frequency.exponentialRampToValueAtTime(522, t + 0.72);
+    osc2.frequency.exponentialRampToValueAtTime(342, t + 1.0);
+    osc2.frequency.exponentialRampToValueAtTime(211, t + 1.45);
+
+    filter.frequency.setValueAtTime(480, t);
+    filter.frequency.linearRampToValueAtTime(1600, t + 0.14);
+    filter.frequency.exponentialRampToValueAtTime(700, t + 1.1);
+
+    masterGain.gain.setValueAtTime(0, t);
+    masterGain.gain.linearRampToValueAtTime(0.28, t + 0.07);
+    masterGain.gain.setValueAtTime(0.28, t + 1.05);
+    masterGain.gain.linearRampToValueAtTime(0, t + 1.55);
+
+    [vibLfo, tremLfo, osc1, osc2].forEach(n => n.start(t));
+    [vibLfo, tremLfo, osc1, osc2].forEach(n => n.stop(t + 1.6));
+    setTimeout(() => ctx.close(), 2000);
   } catch (e) {}
 }
 
@@ -291,6 +326,7 @@ export default function KedroApp() {
 
   // Neigh tracker state
   const [neighCounts, setNeighCounts] = useState({});
+  const [inherentKnock, setInherentKnock] = useState(null);
 
   // Dashboard state
   const [dashboardView, setDashboardView] = useState('table');
@@ -433,7 +469,7 @@ export default function KedroApp() {
       rounds: [],
     };
     await saveSession(newSession);
-    setNgSelected([]); setRoundInputs({}); setKnockedBy(null); setNeighCounts({});
+    setNgSelected([]); setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
     navigate('game', 'forward');
   }
 
@@ -457,7 +493,7 @@ export default function KedroApp() {
     });
 
     const knockerWon = knockedBy ? knockResult === 'correct' : false;
-    const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon };
+    const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon, inherentKnock };
     const updated = {
       ...session,
       rounds: [...session.rounds, round],
@@ -469,7 +505,7 @@ export default function KedroApp() {
     await saveSession(updated);
     setLastRoundDeltas(roundScores);
     setTimeout(() => setLastRoundDeltas(null), 2500);
-    setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError('');
+    setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError(''); setInherentKnock(null);
     setShowScoreSheet(false);
   }
 
@@ -506,7 +542,7 @@ export default function KedroApp() {
     if (!session) return;
     const sorted  = [...session.players].sort((a, b) => a.total - b.total);
     const winner  = sorted[0];
-    const completed = { ...session, status: 'complete', endedAt: Date.now(), winnerId: winner.id };
+    const completed = { ...session, status: 'complete', endedAt: Date.now(), winnerId: winner.id, neighCounts };
     const updatedGames = [completed, ...allGames];
     await saveGames(updatedGames);
     await db.del('kedro_session');
@@ -533,7 +569,7 @@ export default function KedroApp() {
       rounds: [],
     };
     await saveSession(newSession);
-    setRoundInputs({}); setKnockedBy(null);
+    setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
     setPostGameData(null);
     navigate('game', 'forward');
   }
@@ -571,6 +607,9 @@ export default function KedroApp() {
     const nemesisId = Object.entries(nemesisCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
     const nemesis   = nemesisId ? allPlayers.find(p => p.id === nemesisId) : null;
 
+    const totalNeighs = pg.reduce((sum, g) => sum + (g.neighCounts?.[playerId] || 0), 0);
+    const totalInherentKnocks = allRounds.filter(r => r.inherentKnock === playerId).length;
+
     return {
       played: pg.length, wins,
       winRate:     pg.length      ? Math.round(wins / pg.length * 100) : 0,
@@ -583,6 +622,9 @@ export default function KedroApp() {
       knockRate:    allRounds.length  ? Math.round(myKnocks.length / allRounds.length * 100) : 0,
       kedroWinPct:  myKnocks.length   ? Math.round(kedroWins / myKnocks.length * 100) : '—',
       nemesis,
+      totalNeighs,
+      neighsPerGame: pg.length ? (totalNeighs / pg.length).toFixed(1) : '—',
+      totalInherentKnocks,
     };
   }
 
@@ -717,6 +759,8 @@ export default function KedroApp() {
                   onCancelEdit={() => { setEditingRound(null); setEditInputs({}); }}
                   neighCounts={neighCounts}
                   onNeigh={id => { playNeigh(); setNeighCounts(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 })); }}
+                  inherentKnock={inherentKnock}
+                  onInherentKnock={id => setInherentKnock(prev => prev === id ? null : id)}
                 />
               )}
 
@@ -1029,6 +1073,7 @@ function GameScreen({
   onShowSheet, onHideSheet, onAbandon, onHome,
   onEditRound, onEditInput, onSaveEdit, onCancelEdit,
   neighCounts = {}, onNeigh,
+  inherentKnock, onInherentKnock,
 }) {
   const sorted   = [...session.players].sort((a, b) => a.total - b.total);
   const leaderId = session.rounds.length > 0 ? sorted[0].id : null;
@@ -1248,10 +1293,11 @@ function GameScreen({
             </div>
             {session.players.map(p => {
               const isKnocker = knockedBy === p.id;
+              const isIK = inherentKnock === p.id;
               const inputDisabled = isKnocker && knockResult === 'correct';
               return (
                 <div key={p.id}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isKnocker ? 8 : 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: isKnocker ? 8 : 14 }}>
                     <div style={{ fontSize: 22, width: 28, textAlign: 'center' }}>{p.emoji}</div>
                     <div style={{ flex: 1, color: C.cream, fontSize: 14 }}>{p.username}</div>
                     <button
@@ -1282,6 +1328,16 @@ function GameScreen({
                       letterSpacing: '.04em', textTransform: 'uppercase', transition: 'all .15s',
                     }}>
                       {isKnocker ? '🃏 Knocked' : 'Knocked?'}
+                    </button>
+                    <button onClick={() => onInherentKnock(p.id)} style={{
+                      padding: '8px 10px', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                      border: `1px solid ${inherentKnock === p.id ? C.gold : C.border}`,
+                      background: inherentKnock === p.id ? 'rgba(245,200,66,.2)' : 'transparent',
+                      color: inherentKnock === p.id ? C.gold : C.creamDim,
+                      fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                      letterSpacing: '.04em', textTransform: 'uppercase', transition: 'all .15s',
+                    }}>
+                      {inherentKnock === p.id ? '⚡ IK' : 'IK?'}
                     </button>
                   </div>
                   {isKnocker && (
@@ -1376,16 +1432,36 @@ function PostGameScreen({ game, user, getStats, onRematch, onHome }) {
         <div style={{ background: C.surface3, padding: '8px 16px', borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', letterSpacing: '.1em' }}>Final Standings</div>
         </div>
-        {sorted.map((p, i) => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${C.border}`, background: i === 0 ? 'rgba(245,200,66,.06)' : 'transparent' }}>
-            <div style={{ fontSize: 18, width: 28, textAlign: 'center' }}>
-              {i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}
+        <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto auto', gap: 6, padding: '6px 16px 4px', background: C.surface3, borderBottom: `1px solid ${C.border}` }}>
+          <div />
+          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', letterSpacing: '.08em' }}>Player</div>
+          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center', minWidth: 40 }}>Neigh</div>
+          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'right', minWidth: 44 }}>Total</div>
+        </div>
+        {sorted.map((p, i) => {
+          const neighCount = game.neighCounts?.[p.id] || 0;
+          return (
+            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto auto', gap: 6, alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, background: i === 0 ? 'rgba(245,200,66,.06)' : 'transparent' }}>
+              <div style={{ fontSize: 18, textAlign: 'center' }}>
+                {i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 26 }}>{p.emoji}</span>
+                <span style={{ color: C.cream, fontSize: 14 }}>{p.username}{p.id === user?.id ? ' (you)' : ''}</span>
+              </div>
+              <div style={{ textAlign: 'center', minWidth: 40 }}>
+                {neighCount > 0 ? (
+                  <span style={{ fontSize: 13 }}>🐴 <span style={{ color: C.red, fontWeight: 700 }}>{neighCount}</span></span>
+                ) : (
+                  <span style={{ color: C.border, fontSize: 13 }}>—</span>
+                )}
+              </div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: i === 0 ? C.gold : C.cream, textAlign: 'right', minWidth: 44, lineHeight: 1 }}>
+                {p.total}
+              </div>
             </div>
-            <div style={{ fontSize: 28 }}>{p.emoji}</div>
-            <div style={{ flex: 1, color: C.cream, fontSize: 15 }}>{p.username}{p.id === user?.id ? ' (you)' : ''}</div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, color: i === 0 ? C.gold : C.cream }}>{p.total}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Game highlights */}
@@ -1875,7 +1951,7 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'Best', 'Worst', 'GP', 'Strk', 'KR%'].map(h => (
+                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'GP', 'Strk', 'KR%', '🐴/G', '🐴', 'IK'].map(h => (
                     <th key={h} style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: h === 'Player' ? 'left' : 'center', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -1892,11 +1968,12 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
                     <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.blue }}>{p.stats.winRate}%</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgScore}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgRound}</td>
-                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{p.stats.best}</td>
-                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.red }}>{p.stats.worst}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{p.stats.played}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.green }}>{p.stats.currentStreak || 0}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.blue }}>{p.stats.knockRate}%</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.neighsPerGame}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.red }}>{p.stats.totalNeighs}</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{p.stats.totalInherentKnocks}</td>
                   </tr>
                 ))}
               </tbody>
