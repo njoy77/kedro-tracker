@@ -276,6 +276,7 @@ export default function KedroApp() {
   const [lastRoundDeltas, setLastRoundDeltas] = useState(null);
   const [isSavingRound, setIsSavingRound]   = useState(false);
   const isSavingRoundRef                    = useRef(false);
+  const isEndingGameRef                     = useRef(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
   const [endConfirm, setEndConfirm]         = useState(false);
   const [editingRound, setEditingRound]     = useState(null);
@@ -527,16 +528,22 @@ export default function KedroApp() {
 
   async function endGame() {
     if (!session) return;
-    const sorted  = [...session.players].sort((a, b) => a.total - b.total);
-    const winner  = sorted[0];
-    const completed = { ...session, status: 'complete', endedAt: Date.now(), winnerId: winner.id, neighCounts };
-    const updatedGames = [completed, ...allGames];
-    await saveGames(updatedGames);
-    await db.del('kedro_session');
-    setSession(null); setAllGames(updatedGames);
-    setPostGameData(completed);
-    setEndConfirm(false);
-    navigate('postgame', 'forward');
+    if (isEndingGameRef.current) return;
+    isEndingGameRef.current = true;
+    try {
+      const sorted  = [...session.players].sort((a, b) => a.total - b.total);
+      const winner  = sorted[0];
+      const completed = { ...session, status: 'complete', endedAt: Date.now(), winnerId: winner.id, neighCounts };
+      const updatedGames = [completed, ...allGames];
+      await saveGames(updatedGames);
+      await db.del('kedro_session');
+      setSession(null); setAllGames(updatedGames);
+      setPostGameData(completed);
+      setEndConfirm(false);
+      navigate('postgame', 'forward');
+    } finally {
+      isEndingGameRef.current = false;
+    }
   }
 
   async function abandonGame() {
