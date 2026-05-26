@@ -2132,12 +2132,47 @@ function ScoreChart({ allGames, allPlayers }) {
   );
 }
 
+// Pairwise Elo — applied across all qualifying games chronologically.
+// Each game generates N-1 head-to-head matches between winner and each loser.
+// K=16 keeps any single game's swing reasonable in a multi-player context.
+function computeEloRatings(allGames, { minRounds = 3, k = 16, startRating = 1000 } = {}) {
+  const ratings = {};
+  const expected = (a, b) => 1 / (1 + Math.pow(10, (b - a) / 400));
+  const games = [...allGames]
+    .filter(g => g.status === 'complete' && (g.rounds?.length || 0) >= minRounds && g.winnerId)
+    .reverse(); // allGames is newest-first; play chronologically
+
+  for (const game of games) {
+    const winnerId = game.winnerId;
+    const losers = game.players.filter(p => p.id !== winnerId);
+    for (const loser of losers) {
+      const rW = ratings[winnerId] ?? startRating;
+      const rL = ratings[loser.id]  ?? startRating;
+      const eW = expected(rW, rL);
+      ratings[winnerId] = rW + k * (1 - eW);
+      ratings[loser.id] = rL + k * (0 - (1 - eW)); // eL = 1 - eW
+    }
+  }
+  return ratings;
+}
+
 function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onToggleView, onBack }) {
+  const [sortKey, setSortKey] = useState('winRate');
+  const [showEloInfo, setShowEloInfo] = useState(false);
+
+  const eloRatings = useMemo(() => computeEloRatings(allGames), [allGames]);
+
   const ranked = useMemo(() => {
-    return allPlayers.map(p => ({ ...p, stats: getStats(p.id, { minRounds: 3 }) }))
-      .filter(p => p.stats.played > 0)
-      .sort((a, b) => b.stats.winRate - a.stats.winRate || b.stats.wins - a.stats.wins);
-  }, [allPlayers, allGames]);
+    const arr = allPlayers.map(p => ({
+      ...p,
+      stats: getStats(p.id, { minRounds: 3 }),
+      elo: Math.round(eloRatings[p.id] ?? 1000),
+    })).filter(p => p.stats.played > 0);
+    if (sortKey === 'elo') return arr.sort((a, b) => b.elo - a.elo || b.stats.winRate - a.stats.winRate);
+    return arr.sort((a, b) => b.stats.winRate - a.stats.winRate || b.stats.wins - a.stats.wins);
+  }, [allPlayers, allGames, eloRatings, sortKey]);
+
+  const sortIndicator = (key) => sortKey === key ? <span style={{ color: C.red, marginLeft: 3 }}>↓</span> : null;
 
   return (
     <div className="screen" style={{ paddingTop: 28, paddingBottom: 40 }}>
@@ -2170,14 +2205,22 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {['#', 'Player', 'W', 'W%', 'Avg', 'Avg/R', 'GP', 'Strk', 'KR%', 'IK', '🐴/G', '🐴'].map(h => (
-                    <th key={h} style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: h === 'Player' ? 'left' : 'center', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center' }}>#</th>
+                  <th style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'left' }}>Player</th>
+                  <th style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center', whiteSpace: 'nowrap' }}>W</th>
+                  <th onClick={() => setSortKey('winRate')} style={{ color: sortKey === 'winRate' ? C.cream : C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap' }}>W%{sortIndicator('winRate')}</th>
+                  <th onClick={() => setSortKey('elo')} style={{ color: sortKey === 'elo' ? C.cream : C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Elo{sortIndicator('elo')}
+                    <span onClick={(e) => { e.stopPropagation(); setShowEloInfo(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 13, height: 13, borderRadius: '50%', border: `1px solid ${C.creamFaint}`, color: C.creamDim, fontSize: 9, marginLeft: 4, cursor: 'pointer', verticalAlign: 'middle', fontStyle: 'italic', fontFamily: 'serif' }}>i</span>
+                  </th>
+                  {['Avg', 'Avg/R', 'GP', 'Strk', 'KR%', 'IK', '🐴/G', '🐴'].map(h => (
+                    <th key={h} style={{ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {ranked.map((p, i) => (
-                  <tr key={p.id} style={{ borderBottom: `1px solid ${C.border}`, background: p.id === user.id ? 'rgba(212,43,43,.06)' : 'transparent' }}>
+                  <tr key={p.id} style={{ borderBottom: `1px solid ${C.border}`, background: p.id === user.id ? 'rgba(230,57,70,.06)' : 'transparent' }}>
                     <td style={{ padding: '10px 5px', textAlign: 'center' }}>{i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}</td>
                     <td style={{ padding: '10px 5px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: 16, marginRight: 6 }}>{p.emoji}</span>
@@ -2185,6 +2228,7 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
                     </td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.green }}>{p.stats.wins}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.blue }}>{p.stats.winRate}%</td>
+                    <td style={{ textAlign: 'center', padding: '10px 4px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: C.gold }}>{p.elo}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgScore}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{p.stats.avgRound}</td>
                     <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{p.stats.played}</td>
@@ -2202,6 +2246,57 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
       ) : (
         <div style={s.card({ padding: 16 })}>
           <ScoreChart allGames={allGames} allPlayers={allPlayers} />
+        </div>
+      )}
+
+      {/* Elo info modal */}
+      {showEloInfo && (
+        <div onClick={() => setShowEloInfo(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.panel, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderRadius: 14, border: `1px solid ${C.borderLight}`, padding: '22px 22px 18px', maxWidth: 360, width: '100%', maxHeight: '85vh', overflowY: 'auto', animation: 'slideUp .22s ease', boxShadow: '0 20px 60px rgba(0,0,0,.7)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="red-line" style={{ margin: 0 }} />
+                <div style={{ color: C.red, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>About Elo</div>
+              </div>
+              <button onClick={() => setShowEloInfo(false)} style={{ background: 'transparent', border: 'none', color: C.creamDim, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ color: C.cream, fontSize: 13, lineHeight: 1.55 }}>
+              <p style={{ marginTop: 0 }}>
+                Elo is a chess rating system that measures relative skill. Everyone starts at <strong style={{ color: C.gold }}>1000</strong>. Win → go up, lose → go down.
+              </p>
+              <p>
+                The twist: <strong>beating stronger players is worth more</strong>, and losing to weaker players costs more.
+              </p>
+              <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 12 }}>Example outcomes (K=16):</div>
+              <div style={{ background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 12 }}>
+                <div style={{ marginBottom: 4 }}>You at 1000, beat someone at <strong style={{ color: C.gold }}>1200</strong> → <strong>+12 pts</strong> <span style={{ color: C.creamDim }}>(you were the underdog)</span></div>
+                <div>You at 1000, beat someone at <strong style={{ color: C.gold }}>800</strong> → <strong>+4 pts</strong> <span style={{ color: C.creamDim }}>(you were favored)</span></div>
+              </div>
+              <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 8 }}>The math (underdog win):</div>
+              <pre style={{ background: 'rgba(0,0,0,.35)', borderRadius: 8, padding: '12px 14px', fontSize: 11, lineHeight: 1.6, color: C.cream, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', margin: '0 0 14px', whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+{`expected win % = 1 / (1 + 10^((opp − you)/400))
+              = 1 / (1 + 10^(200/400))
+              = 1 / (1 + 3.16)
+              ≈ 0.24   (24% chance)
+
+points gained = K × (1 − expected)
+              = 16 × (1 − 0.24)
+              ≈ 12 pts`}
+              </pre>
+              <p>
+                In Kedro we use <strong>pairwise Elo</strong>: each game counts as a head-to-head match between the winner and every loser. Winning a 5-player game = 4 mini-wins.
+              </p>
+              <p style={{ color: C.creamDim, fontSize: 12, marginBottom: 0 }}>
+                Only games with 3+ rounds count.
+              </p>
+            </div>
+            <button onClick={() => setShowEloInfo(false)} className="btn-press"
+              style={s.btn('outline', { width: '100%', marginTop: 16, padding: 11, fontSize: 13 })}>
+              Got it
+            </button>
+          </div>
         </div>
       )}
     </div>
