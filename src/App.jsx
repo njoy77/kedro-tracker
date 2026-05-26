@@ -15,6 +15,8 @@ const C = {
   // Solid surfaces for inputs and elements where blur hurts readability
   inputBg: '#13131a',
   ink: '#0c0c12',
+  // Near-opaque panel for modals and bottom sheets — content behind should NOT show through
+  panel: 'rgba(16, 16, 22, 0.96)',
   border:       'rgba(255, 255, 255, 0.06)',
   borderLight:  'rgba(255, 255, 255, 0.12)',
   red:      '#e63946',
@@ -1186,7 +1188,7 @@ function GameScreen({
         <div onClick={() => setShowTurnPicker(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: '22px 20px 18px', maxWidth: 340, width: '100%', animation: 'slideUp .22s ease' }}>
+            style={{ background: C.panel, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderRadius: 14, border: `1px solid ${C.borderLight}`, padding: '22px 20px 18px', maxWidth: 340, width: '100%', animation: 'slideUp .22s ease', boxShadow: '0 20px 60px rgba(0,0,0,.7)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <div className="red-line" style={{ margin: 0 }} />
               <div style={{ color: C.red, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Whose Turn?</div>
@@ -1391,12 +1393,16 @@ function GameScreen({
       {/* Score entry bottom sheet */}
       {showScoreSheet && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div onClick={onHideSheet} style={{ flex: 1, background: 'rgba(0,0,0,.65)' }} />
+          <div onClick={onHideSheet} style={{ flex: 1, background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
           <div style={{
-            background: C.surface, borderRadius: '18px 18px 0 0',
-            border: `1px solid ${C.border}`, borderBottom: 'none',
+            background: C.panel,
+            backdropFilter: 'blur(20px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+            borderRadius: '18px 18px 0 0',
+            border: `1px solid ${C.borderLight}`, borderBottom: 'none',
             padding: '20px 20px 40px', animation: 'slideUp .22s ease',
             maxHeight: '85vh', overflowY: 'auto',
+            boxShadow: '0 -20px 60px rgba(0,0,0,.7)',
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: C.borderLight, margin: '0 auto 20px' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -1508,7 +1514,7 @@ function GameScreen({
         <div onClick={() => setShowCheatSheet(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: '22px 22px 18px', maxWidth: 360, width: '100%', maxHeight: '85vh', overflowY: 'auto', animation: 'slideUp .22s ease' }}>
+            style={{ background: C.panel, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderRadius: 14, border: `1px solid ${C.borderLight}`, padding: '22px 22px 18px', maxWidth: 360, width: '100%', maxHeight: '85vh', overflowY: 'auto', animation: 'slideUp .22s ease', boxShadow: '0 20px 60px rgba(0,0,0,.7)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div className="red-line" style={{ margin: 0 }} />
