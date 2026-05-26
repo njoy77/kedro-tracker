@@ -5,13 +5,29 @@ import { LOGO_B64 } from './lib/logo';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
 
 const C = {
-  bg: '#0a0a0a', surface: '#111111', surface2: '#181818', surface3: '#1f1f1f',
-  border: '#2a2a2a', borderLight: '#3a3a3a',
-  red: '#d42b2b', redHover: '#e83535', redGlow: 'rgba(212,43,43,0.25)',
+  bg: '#0a0a0e',
+  bgGradFrom: '#15151c',
+  bgGradTo: '#08080c',
+  // Translucent glass surfaces — used by s.card() with backdrop-filter blur
+  surface:  'rgba(22, 22, 30, 0.55)',
+  surface2: 'rgba(28, 28, 38, 0.55)',
+  surface3: 'rgba(35, 35, 45, 0.55)',
+  // Solid surfaces for inputs and elements where blur hurts readability
+  inputBg: '#13131a',
+  ink: '#0c0c12',
+  border:       'rgba(255, 255, 255, 0.06)',
+  borderLight:  'rgba(255, 255, 255, 0.12)',
+  red:      '#e63946',
+  redHover: '#ff4d6d',
+  redDeep:  '#b81d2a',
+  redGlow:  'rgba(230, 57, 70, 0.35)',
   silver: '#c0c0c0', silverDim: '#888888',
-  cream: '#f0f0f0', creamDim: '#999999',
+  cream:     '#f5efe6',
+  creamDim:  'rgba(245, 239, 230, 0.55)',
+  creamFaint:'rgba(245, 239, 230, 0.28)',
   green: '#3dba6a', blue: '#4a9edd',
-  gold: '#f5c842',
+  gold:     '#f5c842',
+  goldDeep: '#d4a829',
   white: '#ffffff',
 };
 
@@ -131,29 +147,50 @@ function playNeigh() {
   } catch (e) {}
 }
 
+const GLASS_SHADOW = '0 10px 30px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.04) inset, 0 0 0 1px rgba(0,0,0,.4)';
+
 const s = {
   btn: (variant = 'red', extra = {}) => ({
-    padding: '11px 22px', borderRadius: 6, border: 'none', cursor: 'pointer',
+    padding: '12px 22px', borderRadius: 12, border: 'none', cursor: 'pointer',
     fontFamily: 'Barlow, sans-serif', fontSize: 13, fontWeight: 700,
-    transition: 'all .15s', letterSpacing: '.08em', textTransform: 'uppercase',
-    ...(variant === 'red'     ? { background: C.red, color: C.white } : {}),
-    ...(variant === 'outline' ? { background: 'transparent', color: C.silver, border: `1px solid ${C.borderLight}` } : {}),
+    transition: 'all .2s cubic-bezier(.4,0,.2,1)', letterSpacing: '.08em', textTransform: 'uppercase',
+    ...(variant === 'red' ? {
+      background: `linear-gradient(180deg, ${C.red}, ${C.redDeep})`, color: C.white,
+      boxShadow: `0 8px 24px ${C.redGlow}, 0 2px 0 rgba(0,0,0,.3) inset, 0 1px 0 rgba(255,255,255,.18) inset`,
+    } : {}),
+    ...(variant === 'outline' ? {
+      background: C.surface, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+      color: C.cream, border: `1px solid ${C.border}`,
+      boxShadow: GLASS_SHADOW,
+    } : {}),
     ...(variant === 'ghost'   ? { background: 'transparent', color: C.creamDim, padding: '8px 14px' } : {}),
-    ...(variant === 'danger'  ? { background: 'rgba(212,43,43,.15)', color: C.red, border: `1px solid rgba(212,43,43,.3)` } : {}),
-    ...(variant === 'gold'    ? { background: C.gold, color: '#000', fontWeight: 800 } : {}),
+    ...(variant === 'danger'  ? { background: 'rgba(230,57,70,.15)', color: C.red, border: `1px solid rgba(230,57,70,.3)` } : {}),
+    ...(variant === 'gold'    ? {
+      background: `linear-gradient(180deg, ${C.gold}, ${C.goldDeep})`, color: '#000', fontWeight: 800,
+      boxShadow: `0 8px 24px rgba(245,200,66,.30), 0 1px 0 rgba(255,255,255,.4) inset`,
+    } : {}),
     ...extra,
   }),
   card: (extra = {}) => ({
-    background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: '20px', ...extra,
+    background: C.surface,
+    backdropFilter: 'blur(20px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+    border: `1px solid ${C.border}`,
+    borderRadius: 14,
+    padding: '20px',
+    boxShadow: GLASS_SHADOW,
+    ...extra,
   }),
   input: (extra = {}) => ({
-    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+    background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10,
     color: C.cream, fontFamily: 'Barlow, sans-serif', fontSize: 15,
-    padding: '11px 14px', outline: 'none', width: '100%', boxSizing: 'border-box', ...extra,
+    padding: '12px 14px', outline: 'none', width: '100%', boxSizing: 'border-box',
+    transition: 'border-color .2s, box-shadow .2s',
+    ...extra,
   }),
-  label: { color: C.silverDim, fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6, display: 'block' },
-  h1: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0 },
-  h2: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0 },
+  label: { color: C.creamFaint, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 8, display: 'block' },
+  h1: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0, letterSpacing: '.03em' },
+  h2: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0, letterSpacing: '.03em' },
 };
 
 // ─── Helper Components ────────────────────────────────────────────────────────
@@ -233,8 +270,10 @@ export default function KedroApp() {
   const [roundInputs, setRoundInputs]       = useState({});
   const [roundError, setRoundError]         = useState('');
   const [knockedBy, setKnockedBy]           = useState(null);
-  const [knockResult, setKnockResult]       = useState(null); // 'correct' | 'incorrect' | null
+  const [knockResult, setKnockResult]       = useState(null); // 'correct' | 'incorrect' | 'tied' | null
   const [lastRoundDeltas, setLastRoundDeltas] = useState(null);
+  const [isSavingRound, setIsSavingRound]   = useState(false);
+  const isSavingRoundRef                    = useRef(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
   const [endConfirm, setEndConfirm]         = useState(false);
   const [editingRound, setEditingRound]     = useState(null);
@@ -391,11 +430,12 @@ export default function KedroApp() {
   }
 
   // ── Game logic ───────────────────────────────────────────────────────────────
-  async function startGame(players) {
+  async function startGame(players, firstPlayerIndex = 0) {
     const newSession = {
       id: uid(), startedAt: Date.now(), status: 'active',
       players: players.map(p => ({ id: p.id, username: p.username, emoji: p.emoji, total: 0 })),
       rounds: [],
+      currentTurnIndex: firstPlayerIndex,
     };
     await saveSession(newSession);
     setNgSelected([]); setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
@@ -404,38 +444,52 @@ export default function KedroApp() {
 
   async function addRound() {
     if (!session) return;
+    if (isSavingRoundRef.current) return;
     const missing = session.players.some(p => {
       if (p.id === knockedBy && knockResult === 'correct') return false;
       return roundInputs[p.id] === undefined || roundInputs[p.id] === '';
     });
     if (missing) { setRoundError('Enter a score for every player'); return; }
-    if (knockedBy && !knockResult) { setRoundError('Mark the knock as correct or incorrect'); return; }
+    if (knockedBy && !knockResult) { setRoundError('Mark the knock as correct, tied, or incorrect'); return; }
 
-    const roundScores = session.players.map(p => {
-      let score;
-      if (p.id === knockedBy) {
-        score = knockResult === 'correct' ? -10 : (parseInt(roundInputs[p.id]) || 0) + 10;
-      } else {
-        score = parseInt(roundInputs[p.id]) || 0;
-      }
-      return { playerId: p.id, score };
-    });
+    isSavingRoundRef.current = true;
+    setIsSavingRound(true);
+    try {
+      const roundScores = session.players.map(p => {
+        let score;
+        if (p.id === knockedBy) {
+          if (knockResult === 'correct')      score = -10;
+          else if (knockResult === 'tied')    score = parseInt(roundInputs[p.id]) || 0;
+          else                                score = (parseInt(roundInputs[p.id]) || 0) + 10;
+        } else {
+          score = parseInt(roundInputs[p.id]) || 0;
+        }
+        return { playerId: p.id, score };
+      });
 
-    const knockerWon = knockedBy ? knockResult === 'correct' : false;
-    const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon, inherentKnock };
-    const updated = {
-      ...session,
-      rounds: [...session.rounds, round],
-      players: session.players.map(p => {
-        const rs = roundScores.find(r => r.playerId === p.id);
-        return { ...p, total: p.total + rs.score };
-      }),
-    };
-    await saveSession(updated);
-    setLastRoundDeltas(roundScores);
-    setTimeout(() => setLastRoundDeltas(null), 2500);
-    setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError(''); setInherentKnock(null);
-    setShowScoreSheet(false);
+      const knockerWon = knockedBy ? knockResult === 'correct' : false;
+      const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon, knockResult, inherentKnock };
+      const nextTurnIndex = typeof session.currentTurnIndex === 'number'
+        ? (session.currentTurnIndex + 1) % session.players.length
+        : 0;
+      const updated = {
+        ...session,
+        rounds: [...session.rounds, round],
+        players: session.players.map(p => {
+          const rs = roundScores.find(r => r.playerId === p.id);
+          return { ...p, total: p.total + rs.score };
+        }),
+        currentTurnIndex: nextTurnIndex,
+      };
+      await saveSession(updated);
+      setLastRoundDeltas(roundScores);
+      setTimeout(() => setLastRoundDeltas(null), 2500);
+      setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError(''); setInherentKnock(null);
+      setShowScoreSheet(false);
+    } finally {
+      isSavingRoundRef.current = false;
+      setIsSavingRound(false);
+    }
   }
 
   async function editRound(roundIndex) {
@@ -449,7 +503,9 @@ export default function KedroApp() {
       let knockerWon = false;
       if (r.knockedBy) {
         const knockerScore = newScores.find(s => s.playerId === r.knockedBy)?.score;
-        knockerWon = knockerScore !== undefined && knockerScore === Math.min(...newScores.map(s => s.score));
+        const minScore = Math.min(...newScores.map(s => s.score));
+        const playersAtMin = newScores.filter(s => s.score === minScore).length;
+        knockerWon = knockerScore !== undefined && knockerScore === minScore && playersAtMin === 1;
       }
       return { ...r, scores: newScores, knockerWon };
     });
@@ -491,11 +547,18 @@ export default function KedroApp() {
     navigate('home', 'back');
   }
 
+  async function setCurrentTurn(index) {
+    if (!session) return;
+    if (index < 0 || index >= session.players.length) return;
+    await saveSession({ ...session, currentTurnIndex: index });
+  }
+
   async function rematch(players) {
     const newSession = {
       id: uid(), startedAt: Date.now(), status: 'active',
       players: players.map(p => ({ id: p.id, username: p.username, emoji: p.emoji, total: 0 })),
       rounds: [],
+      currentTurnIndex: 0,
     };
     await saveSession(newSession);
     setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
@@ -504,8 +567,13 @@ export default function KedroApp() {
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────────
-  function getStats(playerId) {
-    const pg = allGames.filter(g => g.status === 'complete' && g.players.find(p => p.id === playerId));
+  function getStats(playerId, opts = {}) {
+    const { minRounds = 0 } = opts;
+    const pg = allGames.filter(g =>
+      g.status === 'complete' &&
+      g.players.find(p => p.id === playerId) &&
+      (g.rounds?.length || 0) >= minRounds
+    );
     const wins = pg.filter(g => g.winnerId === playerId).length;
     const finalScores = pg.map(g => g.players.find(p => p.id === playerId)?.total).filter(x => x !== undefined);
     const roundScores = pg.flatMap(g =>
@@ -559,14 +627,14 @@ export default function KedroApp() {
 
   // ── CSS ──────────────────────────────────────────────────────────────────────
   const CSS = `
-    * { box-sizing: border-box; }
-    body { margin: 0; background: ${C.bg}; }
-    input:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 2px ${C.redGlow}; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: ${C.bg}; color: ${C.cream}; font-family: 'Barlow', system-ui, sans-serif; }
+    input:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px ${C.redGlow}; }
     input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     .btn-press:active { transform: scale(0.97) !important; }
-    .btn-red:hover  { background: ${C.redHover} !important; }
-    .btn-outline:hover { border-color: ${C.red} !important; color: ${C.red} !important; }
-    .player-tile:hover { border-color: ${C.red} !important; }
+    .btn-red:hover { filter: brightness(1.08); }
+    .btn-outline:hover { border-color: rgba(230,57,70,.5) !important; color: ${C.red} !important; }
+    .player-tile:hover { border-color: rgba(230,57,70,.4) !important; }
     .emoji-btn:hover { transform: scale(1.2); }
     @keyframes fadeIn      { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes slideInRight { from { opacity:0; transform:translateX(32px); } to { opacity:1; transform:translateX(0); } }
@@ -593,16 +661,18 @@ export default function KedroApp() {
   return (
     <>
       <style>{FONTS}{CSS}</style>
-      <div style={{ minHeight: '100vh', background: C.bg, color: C.cream, fontFamily: 'Barlow, sans-serif', position: 'relative' }}>
+      <div style={{
+        minHeight: '100vh',
+        background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.bgGradFrom} 0%, ${C.bg} 60%, ${C.bgGradTo} 100%)`,
+        color: C.cream, fontFamily: "'Barlow', system-ui, sans-serif", position: 'relative',
+      }}>
 
-        {/* Radial glow */}
-        <div style={{ position: 'fixed', inset: 0, backgroundImage: 'radial-gradient(ellipse at 15% 40%, rgba(212,43,43,.07) 0%, transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(212,43,43,.04) 0%, transparent 50%)', pointerEvents: 'none', zIndex: 0 }} />
-
-        {/* Card suit watermarks */}
+        {/* Atmospheric card suit watermarks */}
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-          {SUITS.map((suit, i) => (
-            <div key={suit} style={{ position: 'absolute', fontFamily: 'serif', fontSize: 150, userSelect: 'none', color: i % 2 === 0 ? 'rgba(212,43,43,.028)' : 'rgba(192,192,192,.022)', top: `${12 + i * 22}%`, left: i % 2 === 0 ? '3%' : '78%', transform: 'rotate(-12deg)' }}>{suit}</div>
-          ))}
+          <div style={{ position: 'absolute', top: '8%',     left: '-3%',   fontSize: 280, color: 'rgba(245,239,230,.025)', fontFamily: 'serif', lineHeight: 1 }}>♠</div>
+          <div style={{ position: 'absolute', top: '38%',    right: '-5%',  fontSize: 320, color: 'rgba(230,57,70,.04)',    fontFamily: 'serif', lineHeight: 1 }}>♥</div>
+          <div style={{ position: 'absolute', bottom: '8%',  left: '-2%',   fontSize: 260, color: 'rgba(230,57,70,.035)',   fontFamily: 'serif', lineHeight: 1 }}>♦</div>
+          <div style={{ position: 'absolute', bottom: '32%', right: '-3%',  fontSize: 240, color: 'rgba(245,239,230,.02)',  fontFamily: 'serif', lineHeight: 1 }}>♣</div>
         </div>
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 480, margin: '0 auto', ...pad }}>
@@ -650,10 +720,8 @@ export default function KedroApp() {
                   onToggle={p => setNgSelected(prev =>
                     prev.find(x => x.id === p.id) ? prev.filter(x => x.id !== p.id) : [...prev, p]
                   )}
-                  onStart={() => {
-                    let players = [...ngSelected];
-                    if (!players.find(p => p.id === user.id)) players = [user, ...players];
-                    if (players.length >= 2) startGame(players);
+                  onStart={(orderedPlayers, firstPlayerIndex) => {
+                    if (orderedPlayers.length >= 2) startGame(orderedPlayers, firstPlayerIndex);
                   }}
                   onBack={() => navigate('home', 'back')}
                 />
@@ -664,6 +732,7 @@ export default function KedroApp() {
                   session={session} user={user}
                   roundInputs={roundInputs} knockedBy={knockedBy} knockResult={knockResult}
                   roundError={roundError} lastRoundDeltas={lastRoundDeltas}
+                  isSavingRound={isSavingRound}
                   showScoreSheet={showScoreSheet} endConfirm={endConfirm}
                   editingRound={editingRound} editInputs={editInputs}
                   onInput={(id, val) => setRoundInputs(prev => ({ ...prev, [id]: val }))}
@@ -690,6 +759,7 @@ export default function KedroApp() {
                   onNeigh={id => { playNeigh(); setNeighCounts(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 })); }}
                   inherentKnock={inherentKnock}
                   onInherentKnock={id => setInherentKnock(prev => prev === id ? null : id)}
+                  onSetTurn={setCurrentTurn}
                 />
               )}
 
@@ -946,6 +1016,38 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
 function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }) {
   const others = allPlayers.filter(p => p.id !== user.id);
   const count = selected.length + 1;
+
+  // Seating order state — user is always included, kept in sync with `selected`.
+  const [order, setOrder] = useState([user]);
+  const [firstId, setFirstId] = useState(user.id);
+
+  useEffect(() => {
+    const desired = [user, ...selected];
+    const desiredIds = new Set(desired.map(p => p.id));
+    setOrder(prev => {
+      const kept = prev.filter(p => desiredIds.has(p.id));
+      const keptIds = new Set(kept.map(p => p.id));
+      const added = desired.filter(p => !keptIds.has(p.id));
+      return [...kept, ...added];
+    });
+    setFirstId(prev => desiredIds.has(prev) ? prev : user.id);
+  }, [selected, user]);
+
+  function move(idx, dir) {
+    setOrder(prev => {
+      const next = [...prev];
+      const swap = idx + dir;
+      if (swap < 0 || swap >= next.length) return prev;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  }
+
+  function handleStart() {
+    const firstIndex = Math.max(0, order.findIndex(p => p.id === firstId));
+    onStart(order, firstIndex);
+  }
+
   return (
     <div className="screen" style={{ paddingTop: 32, paddingBottom: 40 }}>
       <BackBtn onBack={onBack} />
@@ -984,10 +1086,37 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
         </>
       )}
 
+      {count >= 2 && (
+        <div style={{ marginTop: 22 }}>
+          <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Seating Order (Clockwise)</div>
+          <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 10, fontStyle: 'italic' }}>
+            Use arrows to set the order. Tap a player to mark who deals first 👉
+          </div>
+          {order.map((p, i) => {
+            const isFirst = p.id === firstId;
+            return (
+              <div key={p.id}
+                style={{ ...s.card({ padding: '10px 12px', marginBottom: 6, border: `1px solid ${isFirst ? C.gold : C.border}`, background: isFirst ? 'rgba(245,200,66,.07)' : C.surface2 }), display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 22, color: C.creamDim, fontSize: 12, textAlign: 'center' }}>{i + 1}</div>
+                <div style={{ fontSize: 22 }}>{p.emoji}</div>
+                <div onClick={() => setFirstId(p.id)} style={{ flex: 1, color: C.cream, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {p.username}{p.id === user.id ? ' (you)' : ''}
+                  {isFirst && <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>👉 first</span>}
+                </div>
+                <button onClick={() => move(i, -1)} disabled={i === 0}
+                  style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: i === 0 ? C.borderLight : C.cream, fontSize: 14, cursor: i === 0 ? 'default' : 'pointer' }}>↑</button>
+                <button onClick={() => move(i, 1)} disabled={i === order.length - 1}
+                  style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: i === order.length - 1 ? C.borderLight : C.cream, fontSize: 14, cursor: i === order.length - 1 ? 'default' : 'pointer' }}>↓</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, background: C.surface, color: C.creamDim, fontSize: 13, textAlign: 'center' }}>
         {count} player{count !== 1 ? 's' : ''} selected {count < 2 ? '— need at least 2' : '— ready!'}
       </div>
-      <button className="btn-red btn-press" onClick={onStart} disabled={count < 2}
+      <button className="btn-red btn-press" onClick={handleStart} disabled={count < 2}
         style={{ ...s.btn('red', { width: '100%', marginTop: 12, padding: 14, fontSize: 15, opacity: count < 2 ? 0.5 : 1 }) }}>
         Shuffle Up & Deal 🐴
       </button>
@@ -997,13 +1126,19 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
 
 function GameScreen({
   session, user, roundInputs, knockedBy, knockResult, roundError, lastRoundDeltas,
+  isSavingRound,
   showScoreSheet, endConfirm, editingRound, editInputs,
   onInput, onKnockedBy, onKnockResult, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
   onShowSheet, onHideSheet, onAbandon, onHome,
   onEditRound, onEditInput, onSaveEdit, onCancelEdit,
   neighCounts = {}, onNeigh,
   inherentKnock, onInherentKnock,
+  onSetTurn,
 }) {
+  const [showCheatSheet, setShowCheatSheet] = useState(false);
+  const [showTurnPicker, setShowTurnPicker] = useState(false);
+  const turnIndex = typeof session.currentTurnIndex === 'number' ? session.currentTurnIndex : 0;
+  const currentTurnPlayer = session.players[turnIndex];
   const sorted   = [...session.players].sort((a, b) => a.total - b.total);
   const leaderId = session.rounds.length > 0 ? sorted[0].id : null;
 
@@ -1020,7 +1155,7 @@ function GameScreen({
     <div className="screen" style={{ paddingTop: 24, paddingBottom: 110 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <button onClick={onHome} style={s.btn('ghost', { paddingLeft: 0, fontSize: 12 })}>← Home</button>
         <div style={{ textAlign: 'center' }}>
           <KedroLogo height={28} />
@@ -1028,8 +1163,56 @@ function GameScreen({
             Round {session.rounds.length + 1}
           </div>
         </div>
-        <div style={{ width: 60 }} />
+        <button onClick={() => setShowCheatSheet(true)} style={s.btn('ghost', { fontSize: 11, padding: '6px 10px' })}>
+          📖 Cheat
+        </button>
       </div>
+
+      {/* Current turn banner — tappable to change */}
+      {currentTurnPlayer && (
+        <div onClick={() => setShowTurnPicker(true)}
+          style={{ textAlign: 'center', marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(245,200,66,.08)', border: `1px solid rgba(245,200,66,.3)`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ color: C.gold, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' }}>Your turn:</span>
+          <span style={{ fontSize: 16 }}>{currentTurnPlayer.emoji}</span>
+          <span style={{ color: C.cream, fontSize: 14, fontWeight: 600 }}>
+            {currentTurnPlayer.username}{currentTurnPlayer.id === user?.id ? ' (you)' : ''}
+          </span>
+          <span style={{ color: C.creamDim, fontSize: 10, marginLeft: 4 }}>(tap to change)</span>
+        </div>
+      )}
+
+      {/* Turn picker modal */}
+      {showTurnPicker && (
+        <div onClick={() => setShowTurnPicker(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: '22px 20px 18px', maxWidth: 340, width: '100%', animation: 'slideUp .22s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <div className="red-line" style={{ margin: 0 }} />
+              <div style={{ color: C.red, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Whose Turn?</div>
+            </div>
+            {session.players.map((p, i) => {
+              const isTurnRow = i === turnIndex;
+              return (
+                <button key={p.id} onClick={() => { onSetTurn(i); setShowTurnPicker(false); }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 6, borderRadius: 8, cursor: 'pointer',
+                    border: `1px solid ${isTurnRow ? C.gold : C.border}`,
+                    background: isTurnRow ? 'rgba(245,200,66,.10)' : C.surface2,
+                    color: C.cream, fontSize: 14, fontFamily: 'Barlow, sans-serif', textAlign: 'left' }}>
+                  <span style={{ width: 20, color: C.creamDim, fontSize: 12, textAlign: 'center' }}>{i + 1}</span>
+                  <span style={{ fontSize: 22 }}>{p.emoji}</span>
+                  <span style={{ flex: 1 }}>{p.username}{p.id === user?.id ? ' (you)' : ''}</span>
+                  {isTurnRow && <span style={{ color: C.gold, fontSize: 13 }}>👉</span>}
+                </button>
+              );
+            })}
+            <button onClick={() => setShowTurnPicker(false)} className="btn-press"
+              style={s.btn('ghost', { width: '100%', marginTop: 8, fontSize: 12 })}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Scoreboard */}
       <div style={s.card({ padding: 0, overflow: 'hidden', marginBottom: 16 })}>
@@ -1043,6 +1226,7 @@ function GameScreen({
 
         {sorted.map((p, i) => {
           const isLeader = p.id === leaderId;
+          const isTurn   = currentTurnPlayer && p.id === currentTurnPlayer.id;
           const delta    = lastRoundDeltas?.find(d => d.playerId === p.id);
           const lastRound = session.rounds.length > 0
             ? session.rounds[session.rounds.length - 1].scores.find(s => s.playerId === p.id)
@@ -1052,7 +1236,8 @@ function GameScreen({
             <div key={p.id} style={{
               display: 'grid', gridTemplateColumns: '26px 1fr 56px 48px 52px', gap: 6,
               alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${C.border}`,
-              background: isLeader ? 'rgba(245,200,66,.05)' : 'transparent',
+              background: isTurn ? 'rgba(245,200,66,.10)' : (isLeader ? 'rgba(245,200,66,.05)' : 'transparent'),
+              borderLeft: isTurn ? `3px solid ${C.gold}` : '3px solid transparent',
               transition: 'background .4s',
             }}>
               <div style={{ fontSize: 15, textAlign: 'center' }}>
@@ -1066,7 +1251,10 @@ function GameScreen({
                   )}
                 </div>
                 <div>
-                  <div style={{ color: C.cream, fontSize: 14 }}>{p.username}{p.id === user?.id ? ' (you)' : ''}</div>
+                  <div style={{ color: C.cream, fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {p.username}{p.id === user?.id ? ' (you)' : ''}
+                    {isTurn && <span style={{ fontSize: 13 }}>👉</span>}
+                  </div>
                   {isLeader && session.rounds.length > 0 && (
                     <div style={{ fontSize: 10, color: C.gold, textTransform: 'uppercase', letterSpacing: '.06em' }}>Leading</div>
                   )}
@@ -1272,24 +1460,34 @@ function GameScreen({
                   {isKnocker && (
                     <div style={{ display: 'flex', gap: 6, marginLeft: 38, marginBottom: 14 }}>
                       <button onClick={() => onKnockResult(knockResult === 'correct' ? null : 'correct')} style={{
-                        flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
                         border: `1px solid ${knockResult === 'correct' ? C.green : C.border}`,
                         background: knockResult === 'correct' ? 'rgba(61,186,106,.2)' : 'transparent',
                         color: knockResult === 'correct' ? C.green : C.creamDim,
-                        fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
                         letterSpacing: '.04em', textTransform: 'uppercase',
                       }}>
-                        ✓ Correct (−10)
+                        ✓ Won (−10)
+                      </button>
+                      <button onClick={() => onKnockResult(knockResult === 'tied' ? null : 'tied')} style={{
+                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${knockResult === 'tied' ? C.gold : C.border}`,
+                        background: knockResult === 'tied' ? 'rgba(245,200,66,.2)' : 'transparent',
+                        color: knockResult === 'tied' ? C.gold : C.creamDim,
+                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                        letterSpacing: '.04em', textTransform: 'uppercase',
+                      }}>
+                        = Tied (±0)
                       </button>
                       <button onClick={() => onKnockResult(knockResult === 'incorrect' ? null : 'incorrect')} style={{
-                        flex: 1, padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
                         border: `1px solid ${knockResult === 'incorrect' ? C.red : C.border}`,
                         background: knockResult === 'incorrect' ? 'rgba(212,43,43,.2)' : 'transparent',
                         color: knockResult === 'incorrect' ? C.red : C.creamDim,
-                        fontSize: 11, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
+                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
                         letterSpacing: '.04em', textTransform: 'uppercase',
                       }}>
-                        ✗ Incorrect (+10)
+                        ✗ Lost (+10)
                       </button>
                     </div>
                   )}
@@ -1297,9 +1495,70 @@ function GameScreen({
               );
             })}
             {roundError && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{roundError}</div>}
-            <button className="btn-red btn-press" onClick={onAddRound}
-              style={{ ...s.btn('red', { width: '100%', marginTop: 4, padding: 14, fontSize: 15 }) }}>
-              Save Round →
+            <button className="btn-red btn-press" onClick={onAddRound} disabled={isSavingRound}
+              style={{ ...s.btn('red', { width: '100%', marginTop: 4, padding: 14, fontSize: 15, opacity: isSavingRound ? 0.5 : 1, cursor: isSavingRound ? 'wait' : 'pointer' }) }}>
+              {isSavingRound ? 'Saving…' : 'Save Round →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cheat sheet modal */}
+      {showCheatSheet && (
+        <div onClick={() => setShowCheatSheet(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: '22px 22px 18px', maxWidth: 360, width: '100%', maxHeight: '85vh', overflowY: 'auto', animation: 'slideUp .22s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="red-line" style={{ margin: 0 }} />
+                <div style={{ color: C.red, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                  Cheat Sheet
+                </div>
+              </div>
+              <button onClick={() => setShowCheatSheet(false)} style={{ background: 'transparent', border: 'none', color: C.creamDim, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Card Values</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 18 }}>
+              <tbody>
+                {[
+                  ['🟥 Red King', '−1'],
+                  ['🃏 Joker', '0'],
+                  ['Ace', '1'],
+                  ['2 – 10', 'face value'],
+                  ['Jack', '11'],
+                  ['Queen', '12'],
+                  ['⬛ Black King', '13'],
+                ].map(([label, val]) => (
+                  <tr key={label} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '7px 0', color: C.cream }}>{label}</td>
+                    <td style={{ padding: '7px 0', color: C.gold, textAlign: 'right', fontWeight: 700 }}>{val}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>Card Powers</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <tbody>
+                {[
+                  ['7 and 8', 'Look at your own'],
+                  ['8 and 9', "Look at someone else's"],
+                  ['J and Q', 'Blind swap'],
+                  ['K', 'Look and swap'],
+                ].map(([card, power]) => (
+                  <tr key={card} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '7px 0', color: C.red, fontWeight: 700, width: 70 }}>{card}</td>
+                    <td style={{ padding: '7px 0', color: C.cream }}>{power}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <button onClick={() => setShowCheatSheet(false)} className="btn-press"
+              style={s.btn('outline', { width: '100%', marginTop: 16, padding: 11, fontSize: 13 })}>
+              Got it
             </button>
           </div>
         </div>
@@ -1781,42 +2040,64 @@ function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwit
 // ─── Dashboard / Leaderboard ──────────────────────────────────────────────────
 
 function ScoreChart({ allGames, allPlayers }) {
-  const completed = [...allGames].filter(g => g.status === 'complete').reverse();
-  if (completed.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>No data yet. Go play some games.</div>;
+  // Chronological, completed, and at least 3 rounds — matches leaderboard table filter.
+  const completed = [...allGames].filter(g => g.status === 'complete' && (g.rounds?.length || 0) >= 3).reverse();
+  if (completed.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>No qualifying games yet (need 3+ rounds).</div>;
 
-  const COLORS = [C.red, C.gold, C.green, C.blue, C.silver, '#e87d7d', '#7de8b8'];
+  // 12 maximally distinct hues, ordered so adjacent colors in rotation contrast strongly.
+  const COLORS = [
+    '#ff4d4d', // vivid red
+    '#4ecdc4', // turquoise
+    '#ffd93d', // bright yellow
+    '#c566ff', // purple
+    '#6bcb77', // green
+    '#ff9f1c', // orange
+    '#45b7ff', // sky blue
+    '#ff6bcb', // magenta
+    '#a8e10c', // lime
+    '#ff7f50', // coral
+    '#00c9a7', // teal
+    '#b388ff', // lavender
+  ];
   const playerIds = allPlayers.map(p => p.id);
 
+  // For each player: walk their participated games chronologically, track cumulative win %.
+  // Colors are assigned by the player's index in allPlayers (stable across renders),
+  // then the series is sorted by current win % so legend/lines read top→bottom.
   const series = playerIds.map((pid, idx) => {
     const points = [];
+    let wins = 0, played = 0;
     completed.forEach((g, gi) => {
-      const pp = g.players.find(p => p.id === pid);
-      if (pp) points.push({ x: gi, y: pp.total });
+      if (!g.players.find(p => p.id === pid)) return;
+      played++;
+      if (g.winnerId === pid) wins++;
+      points.push({ x: gi, y: Math.round((wins / played) * 100) });
     });
     return { playerId: pid, color: COLORS[idx % COLORS.length], points, player: allPlayers.find(p => p.id === pid) };
-  }).filter(s => s.points.length >= 2);
+  })
+    .filter(s => s.points.length >= 2)
+    .sort((a, b) => b.points[b.points.length - 1].y - a.points[a.points.length - 1].y);
 
-  if (series.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>Need at least 2 games per player to chart.</div>;
+  if (series.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>Need at least 2 qualifying games per player to chart.</div>;
 
   const W = 340, H = 200, PAD = { top: 10, right: 10, bottom: 25, left: 35 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
-  const allY = series.flatMap(s => s.points.map(p => p.y));
-  const minY = Math.min(...allY), maxY = Math.max(...allY);
-  const rangeY = maxY - minY || 1;
   const maxX = completed.length - 1 || 1;
   const scaleX = (x) => PAD.left + (x / maxX) * chartW;
-  const scaleY = (y) => PAD.top + chartH - ((y - minY) / rangeY) * chartH;
+  const scaleY = (y) => PAD.top + chartH - (y / 100) * chartH;
 
   return (
     <div>
+      <div style={{ color: C.creamDim, fontSize: 11, textAlign: 'center', marginBottom: 8 }}>
+        Cumulative win % over time (games with 3+ rounds)
+      </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
-        {[0, 0.25, 0.5, 0.75, 1].map(frac => {
-          const y = PAD.top + chartH * (1 - frac);
-          const val = Math.round(minY + rangeY * frac);
-          return (<g key={frac}>
+        {[0, 25, 50, 75, 100].map(pct => {
+          const y = scaleY(pct);
+          return (<g key={pct}>
             <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke={C.border} strokeWidth="0.5" />
-            <text x={PAD.left - 4} y={y + 3} fill={C.creamDim} fontSize="8" textAnchor="end">{val}</text>
+            <text x={PAD.left - 4} y={y + 3} fill={C.creamDim} fontSize="8" textAnchor="end">{pct}%</text>
           </g>);
         })}
         {series.map(sr => (
@@ -1831,12 +2112,15 @@ function ScoreChart({ allGames, allPlayers }) {
         <text x={W - PAD.right} y={H - 4} fill={C.creamDim} fontSize="7" textAnchor="end">Game {completed.length}</text>
       </svg>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10, justifyContent: 'center' }}>
-        {series.map(sr => (
-          <div key={sr.playerId} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 10, height: 3, background: sr.color, borderRadius: 2 }} />
-            <span style={{ fontSize: 11, color: C.creamDim }}>{sr.player?.emoji} {sr.player?.username}</span>
-          </div>
-        ))}
+        {series.map(sr => {
+          const last = sr.points[sr.points.length - 1];
+          return (
+            <div key={sr.playerId} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 3, background: sr.color, borderRadius: 2 }} />
+              <span style={{ fontSize: 11, color: C.creamDim }}>{sr.player?.emoji} {sr.player?.username} <span style={{ color: sr.color, fontWeight: 700 }}>{last.y}%</span></span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1844,7 +2128,7 @@ function ScoreChart({ allGames, allPlayers }) {
 
 function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onToggleView, onBack }) {
   const ranked = useMemo(() => {
-    return allPlayers.map(p => ({ ...p, stats: getStats(p.id) }))
+    return allPlayers.map(p => ({ ...p, stats: getStats(p.id, { minRounds: 3 }) }))
       .filter(p => p.stats.played > 0)
       .sort((a, b) => b.stats.winRate - a.stats.winRate || b.stats.wins - a.stats.wins);
   }, [allPlayers, allGames]);
