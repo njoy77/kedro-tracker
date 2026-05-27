@@ -277,6 +277,7 @@ export default function KedroApp() {
   const [isSavingRound, setIsSavingRound]   = useState(false);
   const isSavingRoundRef                    = useRef(false);
   const isEndingGameRef                     = useRef(false);
+  const isAbandoningGameRef                 = useRef(false);
   const [showScoreSheet, setShowScoreSheet] = useState(false);
   const [endConfirm, setEndConfirm]         = useState(false);
   const [editingRound, setEditingRound]     = useState(null);
@@ -548,12 +549,18 @@ export default function KedroApp() {
 
   async function abandonGame() {
     if (!session) return;
-    const abandoned = { ...session, status: 'abandoned', endedAt: Date.now() };
-    const updatedGames = [abandoned, ...allGames];
-    await saveGames(updatedGames);
-    await db.del('kedro_session');
-    setSession(null); setAllGames(updatedGames);
-    navigate('home', 'back');
+    if (isAbandoningGameRef.current) return;
+    isAbandoningGameRef.current = true;
+    try {
+      const abandoned = { ...session, status: 'abandoned', endedAt: Date.now() };
+      const updatedGames = [abandoned, ...allGames];
+      await saveGames(updatedGames);
+      await db.del('kedro_session');
+      setSession(null); setAllGames(updatedGames);
+      navigate('home', 'back');
+    } finally {
+      isAbandoningGameRef.current = false;
+    }
   }
 
   async function setCurrentTurn(index) {
