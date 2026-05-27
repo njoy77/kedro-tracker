@@ -1232,25 +1232,20 @@ function GameScreen({
 
       {/* Scoreboard */}
       <div style={s.card({ padding: 0, overflow: 'hidden', marginBottom: 16 })}>
-        <div style={{ background: C.surface3, padding: '8px 16px', borderBottom: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '26px 1fr 56px 48px 52px', gap: 6, alignItems: 'center' }}>
+        <div style={{ background: C.surface3, padding: '8px 16px', borderBottom: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '26px 1fr 56px 52px', gap: 6, alignItems: 'center' }}>
           <div />
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', letterSpacing: '.08em' }}>Player</div>
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center' }}>Neigh</div>
-          <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'center' }}>{session.rounds.length > 0 ? 'Rnd' : ''}</div>
           <div style={{ fontSize: 10, color: C.creamDim, textTransform: 'uppercase', textAlign: 'right' }}>Total</div>
         </div>
 
         {sorted.map((p, i) => {
           const isLeader = p.id === leaderId;
           const isTurn   = currentTurnPlayer && p.id === currentTurnPlayer.id;
-          const delta    = lastRoundDeltas?.find(d => d.playerId === p.id);
-          const lastRound = session.rounds.length > 0
-            ? session.rounds[session.rounds.length - 1].scores.find(s => s.playerId === p.id)
-            : null;
           const neighCount = neighCounts[p.id] || 0;
           return (
             <div key={p.id} style={{
-              display: 'grid', gridTemplateColumns: '26px 1fr 56px 48px 52px', gap: 6,
+              display: 'grid', gridTemplateColumns: '26px 1fr 56px 52px', gap: 6,
               alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${C.border}`,
               background: isTurn ? 'rgba(245,200,66,.10)' : (isLeader ? 'rgba(245,200,66,.05)' : 'transparent'),
               borderLeft: isTurn ? `3px solid ${C.gold}` : '3px solid transparent',
@@ -1292,15 +1287,6 @@ function GameScreen({
                     <span style={{ color: C.red, fontSize: 12, fontWeight: 700, lineHeight: 1 }}>{neighCount}</span>
                   )}
                 </button>
-              </div>
-              <div style={{ textAlign: 'center', position: 'relative', minWidth: 48 }}>
-                {delta ? (
-                  <span key={`d-${session.rounds.length}`} style={{ color: delta.score < 0 ? C.green : delta.score === 0 ? C.creamDim : C.red, fontSize: 14, fontWeight: 700, animation: 'deltaFade 2.5s ease forwards', display: 'block' }}>
-                    {delta.score > 0 ? `+${delta.score}` : delta.score}
-                  </span>
-                ) : lastRound ? (
-                  <span style={{ color: C.creamDim, fontSize: 13 }}>{lastRound.score > 0 ? `+${lastRound.score}` : lastRound.score}</span>
-                ) : null}
               </div>
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, color: isLeader ? C.gold : C.cream, textAlign: 'right', lineHeight: 1 }}>
                 {p.total}
