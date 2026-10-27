@@ -4,3 +4,8 @@ dist/
 .env.local
 .claude/
 .DS_Store
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate

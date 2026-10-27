@@ -1,0 +1,10 @@
+{
+  "name": "@kedro/ios",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "open": "open Kedro.xcodeproj",
+    "build": "xcodebuild -project Kedro.xcodeproj -scheme Kedro -destination 'generic/platform=iOS Simulator' build",
+    "test": "xcodebuild -project Kedro.xcodeproj -scheme Kedro -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test"
+  }
+}
