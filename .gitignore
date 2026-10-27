@@ -12,3 +12,6 @@ DerivedData/
 .vercel
 .env*
 !.env.example
+
+# iOS local secrets
+apps/ios/Config/Secrets.xcconfig

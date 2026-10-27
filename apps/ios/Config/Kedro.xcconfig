@@ -1,0 +1,6 @@
+// Build settings for the Kedro app target.
+//
+// Supabase credentials live in Secrets.xcconfig, which is gitignored and generated from
+// Vercel by `bun run env:pull` (see Secrets.example.xcconfig for its keys).
+
+#include? "Secrets.xcconfig"
