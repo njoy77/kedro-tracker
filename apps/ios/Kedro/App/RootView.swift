@@ -1,25 +1,36 @@
 import SwiftUI
 
-enum AppTab: Hashable {
-    case games, leaderboard, players
-}
-
+/// Shows the splash while the saved session is restored, then sign-in or the main app.
 struct RootView: View {
-    @Environment(AppModel.self) private var appModel
+    @Environment(AuthStore.self) private var auth
+    @State private var minimumSplashElapsed = false
+
+    private var showsSplash: Bool {
+        !minimumSplashElapsed || auth.state == .loading
+    }
 
     var body: some View {
-        @Bindable var appModel = appModel
-
-        TabView(selection: $appModel.selectedTab) {
-            Tab("Games", systemImage: "suit.spade.fill", value: .games) {
-                GamesView()
+        ZStack {
+            if showsSplash {
+                SplashView()
+                    .transition(.opacity)
+            } else {
+                switch auth.state {
+                case .loading, .signedOut:
+                    SignInView()
+                        .transition(.opacity)
+                case .signedIn:
+                    MainTabView()
+                        .transition(.opacity)
+                }
             }
-            Tab("Leaderboard", systemImage: "trophy.fill", value: .leaderboard) {
-                LeaderboardView()
-            }
-            Tab("Players", systemImage: "person.2.fill", value: .players) {
-                PlayersView()
-            }
+        }
+        .animation(.smooth, value: showsSplash)
+        .animation(.smooth, value: auth.state)
+        .task { await auth.observeAuthChanges() }
+        .task {
+            try? await Task.sleep(for: .seconds(1.2))
+            minimumSplashElapsed = true
         }
     }
 }
@@ -27,4 +38,5 @@ struct RootView: View {
 #Preview {
     RootView()
         .environment(AppModel())
+        .environment(AuthStore())
 }

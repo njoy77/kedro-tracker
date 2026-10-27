@@ -12,6 +12,11 @@
     "build": "bun run --filter '@kedro/web' build",
     "typecheck": "bun run --filter '*' typecheck",
     "ios:open": "bun run --filter '@kedro/ios' open",
-    "ios:build": "bun run --filter '@kedro/ios' build"
+    "ios:build": "bun run --filter '@kedro/ios' build",
+    "env:pull": "bun scripts/env.ts pull",
+    "env:push": "bun scripts/env.ts push"
+  },
+  "devDependencies": {
+    "vercel": "65.4.0"
   }
 }
