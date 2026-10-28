@@ -4,14 +4,14 @@
 <dict>
 	<key>KedroAPIBaseURL</key>
 	<string>$(KEDRO_API_BASE_URL)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SupabaseURL</key>
+	<string>https://$(SUPABASE_HOST)</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string>BrandBackground</string>
 	</dict>
-	<key>SupabaseURL</key>
-	<string>https://$(SUPABASE_HOST)</string>
-	<key>SupabaseAnonKey</key>
-	<string>$(SUPABASE_ANON_KEY)</string>
 </dict>
 </plist>
