@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Shows the splash while the saved session is restored, then sign-in or the main app.
+/// Splash while the saved session is restored, then onboarding (first launch, or signed out
+/// without a guest profile), then the tabs.
 struct RootView: View {
+    @Environment(AppModel.self) private var app
     @Environment(AuthStore.self) private var auth
     @State private var minimumSplashElapsed = false
 
@@ -9,34 +11,41 @@ struct RootView: View {
         !minimumSplashElapsed || auth.state == .loading
     }
 
+    private var isSignedIn: Bool {
+        if case .signedIn = auth.state { true } else { false }
+    }
+
     var body: some View {
         ZStack {
             if showsSplash {
                 SplashView()
                     .transition(.opacity)
+            } else if app.needsOnboarding(isSignedIn: isSignedIn) {
+                OnboardingFlow()
+                    .transition(.opacity)
             } else {
-                switch auth.state {
-                case .loading, .signedOut:
-                    SignInView()
-                        .transition(.opacity)
-                case .signedIn:
-                    MainTabView()
-                        .transition(.opacity)
-                }
+                MainTabView()
+                    .transition(.opacity)
             }
         }
         .animation(.smooth, value: showsSplash)
-        .animation(.smooth, value: auth.state)
+        .animation(.smooth, value: app.needsOnboarding(isSignedIn: isSignedIn))
+        .toastHost(app.toasts)
         .task { await auth.observeAuthChanges() }
+        .task { await app.start() }
         .task {
             try? await Task.sleep(for: .seconds(1.2))
             minimumSplashElapsed = true
+        }
+        .onChange(of: auth.signedInUser, initial: true) { _, user in
+            if let user {
+                app.didSignIn(userID: user.id, displayName: user.displayName)
+            }
         }
     }
 }
 
 #Preview {
     RootView()
-        .environment(AppModel())
-        .environment(AuthStore())
+        .previewEnvironment()
 }

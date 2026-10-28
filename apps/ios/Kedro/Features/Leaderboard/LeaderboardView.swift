@@ -1,18 +1,19 @@
 import SwiftUI
 
+// STUB: owned by stats. Replace this file's contents; keep the type name and initializer.
+
+/// The Board tab: sortable leaderboard, records, Not Yet Ranked (design §12.4). Root of the Board tab's stack; don't add a NavigationStack.
 struct LeaderboardView: View {
     var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "No Rankings Yet",
-                systemImage: "trophy",
-                description: Text("Finish a game to see the leaderboard.")
-            )
-            .navigationTitle("Leaderboard")
-        }
+        ContentUnavailableView(
+            "Board",
+            systemImage: "list.number",
+            description: Text("Coming soon.")
+        )
+        .navigationTitle("Board")
     }
 }
 
 #Preview {
-    LeaderboardView()
+    NavigationStack { LeaderboardView() }.previewEnvironment()
 }

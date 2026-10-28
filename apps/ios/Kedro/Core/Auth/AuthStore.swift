@@ -30,6 +30,13 @@ final class AuthStore {
     }
     let client: SupabaseClient
 
+    /// The signed-in user's ID and first name, so the rest of the app needn't import Supabase.
+    var signedInUser: SignedInUser? {
+        guard case .signedIn(let user) = state else { return nil }
+        let name = user.userMetadata["given_name"]?.stringValue ?? user.userMetadata["full_name"]?.stringValue
+        return SignedInUser(id: user.id, displayName: name)
+    }
+
     @ObservationIgnored private var pendingNonce: AppleSignInNonce?
 
     init(client: SupabaseClient = AuthStore.makeClient()) {
@@ -108,7 +115,9 @@ final class AuthStore {
     #if DEBUG
     // MARK: Test user
 
-    private static let testUserID = UUID()
+    /// Fixed, and the same as the sample data's Noah, so demo data (`DemoDataSeeder`) shows up
+    /// as "You" and the local profile survives relaunches.
+    static let testUserID = PreviewData.noah.id.rawValue
 
     /// Signs in a local stand-in user without Apple or Supabase. Debug builds only, for working in
     /// the Simulator until Sign in with Apple is provisioned. The user has no Supabase session.
@@ -117,7 +126,7 @@ final class AuthStore {
         state = .signedIn(User(
             id: Self.testUserID,
             appMetadata: [:],
-            userMetadata: ["full_name": .string("Test User")],
+            userMetadata: ["full_name": .string("Noah"), "given_name": .string("Noah")],
             aud: "authenticated",
             email: "test@kedro.dev",
             createdAt: now,
@@ -130,4 +139,10 @@ final class AuthStore {
         let value = name.formatted()
         return value.isEmpty ? nil : value
     }
+}
+
+/// A signed-in account, as the rest of the app sees it.
+struct SignedInUser: Equatable {
+    let id: UUID
+    let displayName: String?
 }
