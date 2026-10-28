@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ambient Table v2</title>
+<meta name="description" content="Kedro iOS design tournament, round 2: Ambient Table re-expressed as After Hours. 22 frames, an adult visual system, and the Unfiltered and Clean voice.">
+<style>
+:root{
+  color-scheme: light dark;
+  --page:#E7E3DB; --pageInk:#111114; --pageInk2:#5C5A57; --pageCard:#F2EEE6; --pageLine:rgba(17,17,20,.12);
+  --sys:-apple-system,BlinkMacSystemFont,system-ui,"Helvetica Neue",Arial,sans-serif;
+  --serif:ui-serif,"New York","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --red:#C8102E;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--page:#060608;--pageInk:#EEE9DF;--pageInk2:#A19D96;--pageCard:#141418;--pageLine:rgba(238,233,223,.12)}
+}
+:root[data-theme="dark"]{--page:#060608;--pageInk:#EEE9DF;--pageInk2:#A19D96;--pageCard:#141418;--pageLine:rgba(238,233,223,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{font-family:var(--sys);background:var(--page);color:var(--pageInk);-webkit-font-smoothing:antialiased;line-height:1.35}
+.wrap{max-width:1880px;margin:0 auto;padding:48px 16px 96px}
+.intro{max-width:920px;margin:0 auto 40px}
+.kick{font:600 12px var(--sys);letter-spacing:.14em;text-transform:uppercase;color:var(--pageInk2)}
+.intro h1{font:500 clamp(34px,6vw,58px)/1.05 var(--serif);letter-spacing:-.015em;margin:10px 0 14px}
+.intro h1 i{color:var(--red)}
+.intro p{font-size:17px;color:var(--pageInk2);max-width:740px}
+.intro p+p{margin-top:10px}
+
+/* system sheet */
+.sys{max-width:1180px;margin:0 auto 64px;background:var(--pageCard);border:1px solid var(--pageLine);border-radius:14px;padding:24px}
+.sys h2{font:500 26px var(--serif);margin-bottom:4px}
+.sys>p{font-size:14px;color:var(--pageInk2);margin-bottom:18px}
+.sysg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:22px}
+.sysg h3{font:600 11px var(--sys);letter-spacing:.14em;text-transform:uppercase;color:var(--pageInk2);margin-bottom:10px}
+.sw{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.sw i{width:40px;height:28px;border-radius:4px;flex:none;box-shadow:inset 0 0 0 1px var(--pageLine)}
+.sw b{font-weight:600;min-width:96px}
+.sw code{font:12px var(--mono);color:var(--pageInk2)}
+.spec-type div{margin-bottom:10px}
+.spec-type small{display:block;font:12px var(--mono);color:var(--pageInk2)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(440px,100%),1fr));gap:60px 24px;justify-items:center}
+figure{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:100%;min-width:0}
+figure.wide{grid-column:1/-1}
+figcaption{width:min(393px,100%)}
+figure.wide figcaption{width:min(852px,100%)}
+figcaption>b{display:block;font:500 17px var(--serif)}
+figcaption>b em{font:600 12px var(--sys);letter-spacing:.1em;color:var(--red);margin-right:8px;font-style:normal;vertical-align:2px}
+figcaption span{display:block;font-size:13px;color:var(--pageInk2);margin-top:4px}
+.scx{max-width:100%;overflow-x:auto;padding:0 2px}
+
+/* phone */
+.phone{width:393px;height:852px;flex:none;position:relative;overflow:hidden;border-radius:56px;background:var(--bg);color:var(--ink);font-family:var(--sys);font-size:17px;
+  box-shadow:0 0 0 9px #0A0A0E,0 0 0 10.5px #3A3A40,0 30px 60px rgba(0,0,0,.3);margin:11px}
+.phone.land{width:852px;height:393px}
+@media (max-width:460px){.phone{zoom:.8}}
+@media (max-width:363px){.phone{zoom:.7}}
+@media (max-width:322px){.phone{zoom:.6}}
+@media (max-width:900px){.phone.land{zoom:.42}}
+
+.light{--bg:#F2EEE6;--surface:#FBF9F5;--sheet:#F7F4EE;--ink:#111114;--ink2:#5C5A57;--ink3:#8E8E93;--line:rgba(17,17,20,.10);--fill:rgba(17,17,20,.05);--fill2:rgba(17,17,20,.10);
+  --redF:#C8102E;--redT:#C8102E;--brass:#9C7A3C;--solid:#111114;--solidInk:#F2EEE6;--key:#FFFFFF;
+  --glass:rgba(251,249,245,.62);--glassEdge:rgba(255,255,255,.85);--glassShadow:0 8px 28px rgba(17,17,20,.12);--dim:rgba(17,17,20,.28)}
+.dark{--bg:#0A0A0E;--surface:#17171B;--sheet:#1E1E23;--ink:#EEE9DF;--ink2:#A19D96;--ink3:#6E6C69;--line:rgba(238,233,223,.10);--fill:rgba(238,233,223,.06);--fill2:rgba(238,233,223,.13);
+  --redF:#E0243B;--redT:#FF5A6A;--brass:#C9A86A;--solid:#EEE9DF;--solidInk:#0A0A0E;--key:#26262C;
+  --glass:rgba(34,34,40,.6);--glassEdge:rgba(255,255,255,.10);--glassShadow:0 8px 28px rgba(0,0,0,.55);--dim:rgba(0,0,0,.55)}
+
+.sb{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:4px 30px 0 50px;font-weight:600;font-size:17px;z-index:50}
+.sb svg{width:78px;height:14px}
+.di{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;background:#000;border-radius:20px;z-index:60}
+.hi{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:3px;background:var(--ink);z-index:70}
+.ct{position:absolute;top:54px;left:0;right:0;bottom:0;padding:0 20px;overflow:hidden}
+
+/* type */
+.disp{font:500 36px/1.08 var(--serif);letter-spacing:-.015em}
+.lt{font:500 34px/1.12 var(--serif);letter-spacing:-.01em}
+.t2{font:500 22px/1.2 var(--serif)}
+.vo{font:italic 400 19px/1.3 var(--serif)}
+.vo.s{font-size:16px}
+.vo.xs{font-size:14px}
+.lbl{font:600 11px/1.2 var(--sys);letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.tw{font:600 11px var(--sys);letter-spacing:.16em;text-transform:uppercase;font-stretch:expanded}
+.num{font-variant-numeric:tabular-nums}
+.tot{font:600 30px/1 var(--sys);font-variant-numeric:tabular-nums;font-stretch:condensed;letter-spacing:-.6px}
+.dl{font:500 15px var(--sys);font-variant-numeric:tabular-nums;color:var(--ink2);min-width:34px;text-align:right}
+.cap{font-size:13px;color:var(--ink2);line-height:1.35}
+.mono{font-family:var(--mono)}
+.wm{font:italic 700 44px/1 var(--serif);color:var(--redT);letter-spacing:-.01em}
+
+/* layout */
+.row{display:flex;align-items:center;gap:12px}
+.sp{flex:1;min-width:0}
+.card{background:var(--surface);border-radius:12px}
+.grp{background:var(--surface);border-radius:12px;overflow:hidden}
+.grp>.r{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);min-height:52px}
+.grp>.r:last-child{border-bottom:0}
+.sec{margin:20px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.hair{height:1px;background:var(--line)}
+
+/* controls */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border:1px solid var(--glassEdge);box-shadow:var(--glassShadow)}
+.gb{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;flex:none}
+.gb svg{width:20px;height:20px}
+.bar{display:flex;align-items:center;gap:8px;height:52px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:12px;font-size:17px;font-weight:600;width:100%}
+.btn.pri{background:var(--redF);color:#fff}
+.btn.solid{background:var(--solid);color:var(--solidInk)}
+.btn.line{box-shadow:inset 0 0 0 1px var(--ink3);color:var(--ink)}
+.btn.txt{color:var(--ink);height:44px}
+.btn svg{width:20px;height:20px}
+.btn.sm{height:36px;font-size:15px;border-radius:9px;width:auto;padding:0 14px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 10px;border-radius:14px;background:var(--fill);white-space:nowrap}
+.pill svg{width:14px;height:14px}
+.dot{width:7px;height:7px;border-radius:4px;background:var(--ink);flex:none}
+.dot.o{background:transparent;box-shadow:inset 0 0 0 1.4px var(--ink)}
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;font-weight:600;padding:6px 6px;border-radius:7px;color:var(--ink2);white-space:nowrap}
+.seg .on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.dark .seg .on{background:#3A3A42}
+.tog{width:51px;height:31px;border-radius:16px;background:var(--fill2);position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.tog.on{background:var(--solid)}
+.tog.on::after{left:22px;background:var(--bg)}
+.tag{font:600 10px var(--sys);letter-spacing:.1em;text-transform:uppercase;padding:3px 6px;border-radius:3px;background:var(--fill2);color:var(--ink2);white-space:nowrap}
+.you{font:700 10px var(--sys);letter-spacing:.1em;text-transform:uppercase;color:var(--redT)}
+
+/* outcome chips: form, glyph, word. Never color. */
+.oc{display:inline-flex;align-items:center;gap:5px;font:600 10.5px/1 var(--sys);letter-spacing:.1em;text-transform:uppercase;padding:5px 7px;border-radius:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.oc b{font-weight:700;font-size:12px;letter-spacing:0}
+.oc.land{background:var(--solid);color:var(--solidInk)}
+.oc.tie{box-shadow:inset 0 0 0 1.2px var(--ink);color:var(--ink)}
+.oc.bust{color:var(--ink);box-shadow:inset 0 0 0 1.2px var(--ink);background:repeating-linear-gradient(135deg,var(--fill2) 0 1.5px,transparent 1.5px 5px)}
+
+/* colours (avatars) */
+.av{width:40px;height:40px;border-radius:50%;flex:none;display:block;box-shadow:0 0 0 1px var(--line)}
+.av.s24{width:24px;height:24px}.av.s28{width:28px;height:28px}.av.s32{width:32px;height:32px}.av.s48{width:48px;height:48px}.av.s64{width:64px;height:64px}.av.s72{width:72px;height:72px}
+.gst{display:grid;place-items:center;background:transparent;box-shadow:inset 0 0 0 1px var(--ink3);font:500 17px var(--serif);color:var(--ink2)}
+.gst.s24{font-size:12px}.gst.s28{font-size:13px}.gst.s32{font-size:14px}.gst.s48{font-size:20px}
+.c-noah{--c1:#C8102E;--c2:#EEE9DF}.c-maya{--c1:#14342B;--c2:#EAE0CB}.c-leo{--c1:#1C2740;--c2:#EEE9DF}.c-priya{--c1:#111114;--c2:#C2A27A}
+.c-jules{--c1:#8E8E93;--c2:#111114}.c-dana{--c1:#C2A27A;--c2:#111114}.c-omar{--c1:#EEE9DF;--c2:#14342B}.c-bea{--c1:#3E2A40;--c2:#EAE0CB}
+.stack{display:flex}.stack>*{margin-left:-8px;box-shadow:0 0 0 2px var(--surface)}.stack>*:first-child{margin-left:0}
+
+/* standings */
+.st{display:flex;align-items:center;gap:12px;padding:10px 14px 10px 12px;border-bottom:1px solid var(--line);position:relative;min-height:62px}
+.st:last-child{border-bottom:0}
+.st .nm{flex:1;min-width:0}
+.st .nm b{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:600}
+.st .nm small{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);margin-top:3px;white-space:nowrap}
+.st .tot{min-width:52px;text-align:right}
+.st.me::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;background:var(--redF);border-radius:0 2px 2px 0}
+.cl{width:24px;height:28px;border-radius:3px;display:grid;place-items:center;font:500 16px var(--serif);background:var(--fill);color:var(--ink);flex:none}
+.cl.one{background:var(--solid);color:var(--solidInk)}
+.ls{width:16px;height:12px;color:var(--brass);flex:none}
+
+/* rail */
+.rail{display:flex;align-items:flex-end;gap:4px;height:16px}
+.rail i{flex:1;height:4px;background:var(--fill2);border-radius:1px}
+.rail i.d{background:var(--ink)}
+.rail i.c{height:10px;background:transparent;box-shadow:inset 0 0 0 1.2px var(--ink)}
+.rail .post{width:6px;height:16px;flex:none;background:repeating-linear-gradient(180deg,var(--ink) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--ink)}
+
+/* tab bar */
+.tabbar{position:absolute;left:16px;right:88px;bottom:24px;height:62px;border-radius:31px;display:flex;align-items:center;justify-content:space-around;padding:0 6px;z-index:40}
+.tabbar span{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:600;color:var(--ink2);padding:6px 12px;border-radius:24px}
+.tabbar span svg{width:22px;height:22px}
+.tabbar span.on{color:var(--ink);background:var(--fill2)}
+.srch{position:absolute;right:16px;bottom:24px;width:62px;height:62px;border-radius:31px;display:grid;place-items:center;z-index:40}
+.srch svg{width:22px;height:22px}
+
+/* sheets */
+.dimbg{position:absolute;inset:0;background:var(--dim);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet);border-radius:28px 28px 0 0;z-index:30;padding:8px 20px 0}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--fill2);margin:0 auto 10px}
+.toast{position:absolute;left:12px;right:12px;z-index:45;border-radius:22px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+
+/* keypad */
+.kp{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kp span{height:58px;border-radius:10px;background:var(--key);display:grid;place-items:center;font:400 26px var(--sys);box-shadow:0 1px 0 rgba(0,0,0,.12)}
+.kp span.f{background:var(--fill2);font-size:20px}
+.kp span.nx{background:var(--solid);color:var(--solidInk);font:600 17px var(--sys);grid-row:span 2;height:auto}
+.kp span.z{grid-column:span 3}
+.chips{display:flex;gap:6px;overflow:hidden}
+.chips span{flex:none;min-width:34px;height:40px;padding:0 6px;border-radius:6px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);display:grid;place-items:center;font:500 15px var(--serif)}
+.chips span.on{background:var(--solid);color:var(--solidInk);box-shadow:none}
+
+/* plates */
+.plate{background:var(--surface);border-radius:8px;padding:12px;position:relative;box-shadow:inset 0 0 0 1px var(--line)}
+.plate .g{position:absolute;top:10px;right:10px;font:600 10px var(--sys);letter-spacing:.1em;padding:2px 5px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--ink3);color:var(--ink2)}
+.plate .g.g1{box-shadow:none;background:var(--brass);color:#0A0A0E}
+.plate b{display:block;font:500 16px/1.2 var(--serif);padding-right:28px}
+.plate small{display:block;font-size:12px;color:var(--ink2);margin-top:4px;line-height:1.3}
+.plate.lock{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.plate.lock b{color:var(--ink2)}
+.prog{height:3px;background:var(--fill2);border-radius:2px;margin-top:8px}
+.prog i{display:block;height:3px;background:var(--ink);border-radius:2px}
+
+/* ledger */
+.ledger{max-width:1080px;margin:80px auto 0;background:var(--pageCard);border:1px solid var(--pageLine);border-radius:14px;padding:24px}
+.ledger h2{font:500 24px var(--serif);margin-bottom:4px}
+.ledger p{font-size:14px;color:var(--pageInk2);margin-bottom:14px}
+.ledger .tw2{overflow-x:auto}
+.ledger table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.ledger th,.ledger td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--pageLine);white-space:nowrap}
+.ledger th:first-child,.ledger td:first-child,.ledger th:nth-child(2),.ledger td:nth-child(2),.ledger th:nth-child(3),.ledger td:nth-child(3){text-align:left}
+.ledger td.k{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.ledger tfoot td{font-weight:700}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="cc"><circle cx="20" cy="20" r="20"/></clipPath>
+  </defs>
+  <symbol id="sbi" viewBox="0 0 78 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx=".7"/><rect x="4.5" y="6.5" width="3" height="7.5" rx=".7"/><rect x="9" y="4" width="3" height="10" rx=".7"/><rect x="13.5" y="1.5" width="3" height="12.5" rx=".7"/><path d="M29 4.2a9.6 9.6 0 0 1 13 0l-1.4 1.5a7.5 7.5 0 0 0-10.2 0zM31.6 7a6 6 0 0 1 7.8 0L38 8.5a4 4 0 0 0-5 0zM35.5 12.6l-1.8-1.9a2.6 2.6 0 0 1 3.6 0z"/><rect x="52.5" y=".8" width="22" height="12.4" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="54.5" y="2.8" width="18" height="8.4" rx="2"/><path d="M76 5v4c.9-.3 1.5-1.1 1.5-2s-.6-1.7-1.5-2z" opacity=".4"/></symbol>
+  <!-- colours patterns -->
+  <symbol id="p-hoops" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M0 7h40v6H0zM0 19h40v6H0zM0 31h40v6H0z"/></g></symbol>
+  <symbol id="p-quart" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M0 0h20v20H0zM20 20h20v20H20z"/></g></symbol>
+  <symbol id="p-chev" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M0 4l20 11 20-11v7L20 22 0 11zM0 20l20 11 20-11v7L20 38 0 27z"/></g></symbol>
+  <symbol id="p-sash" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M-2 31L31-2h10v6L6 41h-8z"/></g></symbol>
+  <symbol id="p-stripes" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M6 0h6v40H6zM17 0h6v40h-6zM28 0h6v40h-6z"/></g></symbol>
+  <symbol id="p-diam" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M20 1l6 9-6 9-6-9zM20 21l6 9-6 9-6-9zM4 11l6 9-6 9-6-9zM36 11l6 9-6 9-6-9z"/></g></symbol>
+  <symbol id="p-cross" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M-4 3L3-4l41 41-7 7zM37-4l7 7L3 44l-7-7z"/></g></symbol>
+  <symbol id="p-halved" viewBox="0 0 40 40"><g clip-path="url(#cc)"><rect width="40" height="40" style="fill:var(--c1)"/><path style="fill:var(--c2)" d="M20 0h20v40H20z"/></g></symbol>
+  <!-- crest -->
+  <symbol id="horse" viewBox="0 0 48 48"><path fill="currentColor" fill-rule="evenodd" d="M28 3l2.5 6.5C37 13 41.5 20 42.5 29L44 46H27c-.5-6-1.5-10.5-3.5-15-.7-1.6-1.1-3.4-1.9-4.4-1 3-3.6 6-7.1 7.2L10 35c-2.6.6-4.8-1.4-4.2-4l3.6-10c2-5.4 5.8-9.8 10.8-12.2l5.4-2.2zM16.3 17a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 1 0-2.5 0zM7.6 30.6a.75.75 0 1 0 1.5 0 .75.75 0 1 0-1.5 0z"/><path d="M31.2 10.4c4.6 3.4 7.6 9.4 8.4 17.6" fill="none" stroke="var(--crestCut,#0A0A0E)" stroke-width="1.1" stroke-linecap="round"/></symbol>
+  <symbol id="crest" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30.5" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width=".5" opacity=".6"/><use href="#horse" x="11" y="9" width="44" height="44"/></symbol>
+  <symbol id="shoe" viewBox="0 0 48 34"><path d="M12 5.5A14 14 0 1 0 36 5.5" fill="none" stroke="currentColor" stroke-width="6.5"/></symbol>
+  <!-- icons -->
+  <symbol id="i-chevd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-chevr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-chevl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-ell" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></symbol>
+  <symbol id="i-q" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9.3 9.2a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.2.9-1.2 1.7v.7"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+  <symbol id="i-peers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M7 11l10-4M7 13l10 4M19 8.2v7.6"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="3.5" r="1.4" fill="currentColor"/><circle cx="12" cy="20.5" r="1.4" fill="currentColor"/><circle cx="4.2" cy="8" r="1.4" fill="currentColor"/><circle cx="19.8" cy="8" r="1.4" fill="currentColor"/><circle cx="4.2" cy="16" r="1.4" fill="currentColor"/><circle cx="19.8" cy="16" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4.5a7.6 7.6 0 1 0 10 0" stroke-width="2.6"/><circle cx="5.6" cy="10" r=".8" fill="currentColor" stroke="none"/><circle cx="18.4" cy="10" r=".8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5.5c3-1 6-.8 8 1v13c-2-1.6-5-1.8-8-.8zM20 5.5c-3-1-6-.8-8 1v13c2-1.6 5-1.8 8-.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8.5 11V8.2a3.5 3.5 0 0 1 7 0V11"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 9h12M6 12h12M6 15h12"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 8l4-4 4 4M6 12v8h12v-8"/></symbol>
+  <symbol id="i-knock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 19.5h16M8 16c0-3.2 1.8-5 4-5s4 1.8 4 5"/><path d="M5.5 8l1.6 1.6M12 4.5v2.3M18.5 8l-1.6 1.6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6L5 10l4 4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-air" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7.8 16.2a6 6 0 1 1 8.4 0M5 19a10 10 0 1 1 14 0M10.6 13.4a2 2 0 1 1 2.8 0"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 11.5C4 7.4 7.6 4.5 12 4.5s8 2.9 8 7-3.6 7-8 7c-1 0-2-.1-2.9-.4L5 19.5l1.2-3.4C4.8 14.9 4 13.3 4 11.5z"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.9-.8-3-.8-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2-1.1 2.8-2.3.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-.9-2.5-3.8zM14.2 5.8c.6-.8 1.1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/></symbol>
+  <symbol id="i-flash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 3h8v4l-2 3v10h-4V10L8 7z"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 8h3.5L9 6h6l1.5 2H20v11H4z"/><circle cx="12" cy="13" r="3.2"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<header class="intro">
+  <div class="kick">Kedro iOS · Design tournament · Round 2 · Ambient Table</div>
+  <h1>After hours, the game lives <i>in the room.</i></h1>
+  <p>Round 1 read as a kids' game. This round re-expresses the same thesis (proximity joining, the Lock Screen and Island as the scoreboard, offline phone-to-phone sync) in an adult identity: onyx, bone, one red silk, a little brass, New York serif for the voice, and copy that swears where it lands. Every frame uses the default <b>Unfiltered</b> voice except F22, which shows a table in <b>Clean</b>.</p>
+  <p>Kedro is rated for mature audiences (frequent profanity). The numbers never swear: scores, rule lines, and the Changes log are plain, and commentary is set in serif italic around them.</p>
+</header>
+
+<section class="sys" aria-label="Visual system">
+  <h2>The After Hours system</h2>
+  <p>Built on the two colors Kedro already owns: the <code>BrandBackground</code> asset (#0A0A0E) and the red of the script wordmark. Serif speaks, sans counts.</p>
+  <div class="sysg">
+    <div>
+      <h3>Palette</h3>
+      <div class="sw"><i style="background:#0A0A0E"></i><b>Onyx</b><code>#0A0A0E · dark bg</code></div>
+      <div class="sw"><i style="background:#17171B"></i><b>Graphite</b><code>#17171B · dark surface</code></div>
+      <div class="sw"><i style="background:#F2EEE6"></i><b>Bone</b><code>#F2EEE6 · light bg</code></div>
+      <div class="sw"><i style="background:#FBF9F5"></i><b>Paper</b><code>#FBF9F5 · light surface</code></div>
+      <div class="sw"><i style="background:#111114"></i><b>Ink</b><code>#111114 / #EEE9DF</code></div>
+      <div class="sw"><i style="background:#8E8E93"></i><b>Pewter</b><code>#8E8E93 · hairlines</code></div>
+      <div class="sw"><i style="background:#C8102E"></i><b>Kedro Red</b><code>#C8102E / #E0243B</code></div>
+      <div class="sw"><i style="background:#9C7A3C"></i><b>Satin Brass</b><code>#9C7A3C / #C9A86A</code></div>
+    </div>
+    <div class="spec-type">
+      <h3>Type</h3>
+      <div style="font:500 34px/1.1 var(--serif)">Noah fucking wins.<small>Display · New York Medium 34–40</small></div>
+      <div style="font:italic 400 19px/1.3 var(--serif)">Fucked around, found out.<small>The voice · New York Italic 19</small></div>
+      <div style="font:600 30px/1 var(--sys);font-stretch:condensed;font-variant-numeric:tabular-nums">24 25 37 48 54<small>Totals · SF Pro Semibold Condensed, monospaced digits</small></div>
+      <div style="font:600 11px var(--sys);letter-spacing:.14em;text-transform:uppercase">Round 5 · Standings<small>Label · SF Pro Semibold 11, +12% tracking</small></div>
+      <div style="font:600 12px var(--sys);letter-spacing:.18em;text-transform:uppercase;font-stretch:expanded">Dubious Intent<small>Table word · SF Pro Expanded</small></div>
+    </div>
+    <div class="light" style="background:var(--bg);color:var(--ink);border-radius:10px;padding:14px;--crestCut:#F2EEE6">
+      <h3 style="color:var(--ink2)">Motifs</h3>
+      <div class="row" style="gap:16px;flex-wrap:wrap">
+        <svg viewBox="0 0 64 64" style="width:56px;height:56px"><use href="#crest"/></svg>
+        <svg viewBox="0 0 48 34" style="width:56px;height:40px;color:var(--brass)"><use href="#shoe"/><circle cx="10" cy="12.7" r="2.2" style="fill:var(--ink)"/><circle cx="14.1" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="24" cy="26.7" r="2.2" style="fill:var(--ink)"/><circle cx="33.9" cy="22.6" r="1.7" style="fill:var(--bg)"/><circle cx="38" cy="12.7" r="1.7" style="fill:var(--bg)"/></svg>
+        <span class="cl one">1</span><span class="cl">2</span>
+        <span class="row" style="gap:6px"><svg class="av s28 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><svg class="av s28 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><svg class="av s28 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><svg class="av s28 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><span class="av s28 gst">S</span></span>
+      </div>
+      <div class="rail" style="margin:14px 0 12px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i><span class="post"></span></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="oc land">↓ Landed <b>−10</b></span><span class="oc tie">= Dead heat</span><span class="oc bust">× Busted <b>+10</b></span></div>
+      <p class="cap" style="margin-top:10px">Crest, the shoe (first five meter), saddle-cloth ranks, Colours (silks), unregistered guest, the rail with its winning post, and outcomes by form: solid, outline, hatched. No green, and red never means bad.</p>
+    </div>
+  </div>
+</section>
+
+<main class="grid">
+
+<!-- F1 -->
+<figure id="f1">
+<div class="phone dark" style="--crestCut:#0A0A0E">
+  <div class="sb"><span>9:41</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct" style="padding:0 28px">
+    <div style="text-align:center;margin-top:34px"><svg viewBox="0 0 64 64" style="width:84px;height:84px;color:var(--ink)"><use href="#crest"/></svg></div>
+    <div class="wm" style="text-align:center;margin-top:10px">Kedro</div>
+    <div class="lbl" style="text-align:center;margin-top:8px">Cambio, for grown-ups</div>
+    <h1 class="disp" style="margin-top:44px">Cambio, scored properly.</h1>
+    <p class="vo" style="margin-top:10px;color:var(--ink2)">Kedro keeps score so nobody cooks the fucking books.</p>
+    <div style="margin-top:34px">
+      <div class="btn pri"><svg><use href="#i-table"/></svg>Join a table</div>
+      <div class="cap" style="text-align:center;margin:7px 0 14px">Someone's dealing? Get in.</div>
+      <div class="btn line">Play as a guest</div>
+      <div class="cap" style="text-align:center;margin:7px 0 14px">No account, no bullshit. Sign up later if you're any good.</div>
+      <div class="btn" style="background:#fff;color:#000;opacity:.42"><svg><use href="#i-apple"/></svg>Sign in with Apple<span class="tag" style="background:#000;color:#fff;margin-left:4px">Soon</span></div>
+    </div>
+    <div class="row" style="justify-content:center;gap:18px;margin-top:22px;font-size:14px;font-weight:600"><span>Learn Cambio in 4 min</span><span style="color:var(--ink3)">·</span><span>Got a claim code?</span></div>
+    <div class="cap" style="text-align:center;margin-top:12px;font-size:12px">Mature: frequent profanity. Clean is one tap away.</div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F1</em>First launch</b><span>No permission prompts and no carousel. There are three equal ways in: <b>Join a table</b> (the Local Network primer appears when you tap it), <b>Play as a guest</b> (a device-bound guest identity with a claim token), and Sign in with Apple, shown dimmed with "Soon" while the developer account is pending. The age rating is stated up front.</span></figcaption>
+</figure>
+
+<!-- F2 -->
+<figure id="f2">
+<div class="phone light">
+  <div class="sb"><span>9:41</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><div class="gb glass"><svg><use href="#i-chevl"/></svg></div><span class="sp"></span><span class="lbl">2 of 3</span></div>
+    <h1 class="lt" style="margin-top:8px">How filthy do you want it?</h1>
+    <p class="cap" style="font-size:15px;margin-top:8px">Same scores, same app. Just a different mouth on it.</p>
+
+    <div class="card" style="margin-top:20px;padding:16px;box-shadow:inset 0 0 0 1.5px var(--ink)">
+      <div class="row"><b style="font-size:17px">Unfiltered</b><span class="tag">Default</span><span class="sp"></span><span style="width:22px;height:22px;border-radius:11px;background:var(--solid);display:grid;place-items:center;color:var(--solidInk)"><svg style="width:14px;height:14px"><use href="#i-check"/></svg></span></div>
+      <div style="margin-top:12px"><span class="oc bust">× Busted <b>+10</b></span></div>
+      <p class="vo s" style="margin-top:8px">Priya knocked on 1. Sam had −1. Fucked around, found out.</p>
+      <div class="hair" style="margin:10px 0"></div>
+      <p class="vo s">Leo: 99. Dead fucking last.</p>
+    </div>
+    <div class="card" style="margin-top:10px;padding:16px;box-shadow:inset 0 0 0 1px var(--line)">
+      <div class="row"><b style="font-size:17px">Clean</b><span class="sp"></span><span style="width:22px;height:22px;border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--ink3)"></span></div>
+      <div style="margin-top:12px"><span class="oc bust">× Busted <b>+10</b></span></div>
+      <p class="vo s" style="margin-top:8px;color:var(--ink2)">Priya knocked on 1. Sam had −1. Messed around, found out.</p>
+      <div class="hair" style="margin:10px 0"></div>
+      <p class="vo s" style="color:var(--ink2)">Leo: 99. Dead last.</p>
+    </div>
+
+    <div class="grp" style="margin-top:14px"><div class="r"><div class="sp"><b style="font-size:16px;font-weight:600">Swear on my Lock Screen</b><div class="cap">Notifications and Live Activities. Turn it off if your boss reads over your shoulder.</div></div><span class="tog on"></span></div></div>
+    <p class="cap" style="margin:12px 2px 0">In a game, Kedro goes Clean if anyone at the table picks Clean. Nobody's told who.</p>
+    <div class="btn solid" style="position:absolute;left:20px;right:20px;bottom:62px;width:auto">Continue</div>
+    <p class="cap" style="position:absolute;left:20px;right:20px;bottom:30px;text-align:center;font-size:12px">Rated for mature audiences. Change it any time in Settings › Voice.</p>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F2</em>Onboarding: pick a voice</b><span>The choice shows real lines from the game, so nobody has to guess what "Unfiltered" means. Clean is a rewrite, not a bleep. <b>Swear on my Lock Screen</b> keeps a meeting-room phone safe even when the house voice is Unfiltered. Next comes registering your colours.</span></figcaption>
+</figure>
+
+<!-- F3 -->
+<figure id="f3">
+<div class="phone dark">
+  <div class="sb"><span>9:12</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><span class="sp"></span><div class="gb glass"><svg><use href="#i-plus"/></svg></div></div>
+    <h1 class="lt">Table</h1>
+
+    <div class="card" style="margin-top:14px;padding:14px 16px">
+      <div class="lbl">Since you last looked</div>
+      <p class="vo s" style="margin-top:6px">Noah climbed 3 spots. Maya's streak died at 4. Pour one out.</p>
+    </div>
+
+    <div class="sec"><span class="lbl">At your table</span><span class="cap">0.6 m</span></div>
+    <div class="card" style="padding:16px;box-shadow:inset 0 1px 0 var(--brass)">
+      <div class="row">
+        <div class="stack"><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><svg class="av s32 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg></div>
+        <span class="cap">Maya, Noah, Leo</span>
+      </div>
+      <div class="t2" style="margin-top:12px">Maya's table</div>
+      <div class="row" style="gap:8px;margin-top:4px"><span class="tw">Dubious Intent</span><span class="cap">· 8 rounds · Scorekeeper</span></div>
+      <div class="hair" style="margin:14px 0"></div>
+      <div class="row" style="align-items:flex-start">
+        <svg viewBox="0 0 48 34" style="width:48px;height:34px;color:var(--brass);flex:none"><use href="#shoe"/><circle cx="10" cy="12.7" r="2.2" style="fill:var(--ink)"/><circle cx="14.1" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="24" cy="26.7" r="2.2" style="fill:var(--ink)"/><circle cx="33.9" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="38" cy="12.7" r="1.7" style="fill:var(--surface)"/></svg>
+        <p class="vo s">Your 5th game. Win or lose, you're on the damn board after this.</p>
+      </div>
+      <div class="btn pri" style="margin-top:14px">Sit down</div>
+    </div>
+
+    <div class="sec"><span class="lbl">Other tables nearby</span></div>
+    <div class="grp"><div class="r">
+      <div class="stack"><svg class="av s28 c-jules" viewBox="0 0 40 40"><use href="#p-stripes"/></svg><svg class="av s28 c-dana" viewBox="0 0 40 40"><use href="#p-diam"/></svg><svg class="av s28 c-omar" viewBox="0 0 40 40"><use href="#p-cross"/></svg></div>
+      <div class="sp"><b style="font-size:16px;font-weight:600">Jules's table</b><div class="cap"><span class="tw" style="font-size:10px">Bad Decisions</span> · 7 m · Round 2</div></div>
+      <span class="btn line sm">Watch</span>
+    </div></div>
+  </div>
+  <div class="tabbar glass"><span class="on"><svg><use href="#i-table"/></svg>Table</span><span><svg><use href="#i-person"/></svg>You</span><span><svg><use href="#i-board"/></svg>Board</span><span><svg><use href="#i-book"/></svg>Learn</span></div>
+  <div class="srch glass"><svg><use href="#i-search"/></svg></div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F3</em>The Radar: a table is right here (Priya's phone)</b><span>The Table card is named by the faces seated and a spoken table word, and ranked <b>At your table</b> by UWB distance. The stakes strip uses the shoe: this game drives Priya's fifth nail. <b>Sit down</b> is one tap. The farther table, already in play, offers Watch. Local Network was asked for, with a one-line primer, the first time she tapped Join.</span></figcaption>
+</figure>
+
+<!-- F4 -->
+<figure id="f4">
+<div class="phone light">
+  <div class="sb"><span>9:13</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="toast glass" style="top:58px">
+    <svg class="av s32 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg>
+    <div class="sp" style="font-size:15px"><b>Priya's in.</b> <span style="color:var(--ink2)">Not your Priya?</span></div>
+    <span class="btn sm line" style="gap:6px">Remove <span class="num" style="color:var(--ink2)">4</span></span>
+  </div>
+  <div class="ct">
+    <div style="height:62px"></div>
+    <h1 class="lt">Thursday table</h1>
+    <div class="row" style="gap:8px;margin-top:4px"><span class="tw">Dubious Intent</span><span class="cap">· say it to join</span></div>
+
+    <div class="sec" style="margin-top:14px"><span class="lbl">Seats · 5 of 8</span><span class="cap">Drag to match the table</span></div>
+    <div class="grp" style="position:relative">
+      <div class="r" style="min-height:46px;padding:5px 10px"><svg style="width:18px;height:18px;color:var(--ink3)"><use href="#i-grip"/></svg><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Maya</b> <span class="you">You</span><div class="cap">Host · deals first</div></div><svg style="width:22px;height:22px;color:var(--ink2)"><use href="#i-ell"/></svg></div>
+      <div class="r" style="min-height:46px;padding:5px 10px"><svg style="width:18px;height:18px;color:var(--ink3)"><use href="#i-grip"/></svg><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Noah</b><div class="cap">Scorekeeper · 20 together</div></div><svg style="width:22px;height:22px;color:var(--ink2)"><use href="#i-ell"/></svg></div>
+      <div class="r" style="min-height:46px;padding:0;overflow:hidden;position:relative">
+        <div class="row" style="padding:5px 10px;width:100%;flex:none;transform:translateX(-80px)"><svg style="width:18px;height:18px;color:var(--ink3)"><use href="#i-grip"/></svg><svg class="av s32 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Leo</b><div class="cap">14 together</div></div></div>
+        <div style="position:absolute;right:0;top:0;bottom:0;display:flex"><span style="width:80px;background:var(--redF);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:600">Remove</span></div>
+      </div>
+      <div class="r" style="min-height:46px;padding:5px 10px"><svg style="width:18px;height:18px;color:var(--ink3)"><use href="#i-grip"/></svg><svg class="av s32 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Priya</b><div class="cap">Her 5th game · ranked after this</div></div><svg style="width:22px;height:22px;color:var(--ink2)"><use href="#i-ell"/></svg></div>
+      <div class="r" style="min-height:46px;padding:5px 10px"><svg style="width:18px;height:18px;color:var(--ink3)"><use href="#i-grip"/></svg><span class="av s32 gst">S</span><div class="sp"><b style="font-size:16px;font-weight:600">Sam</b><div class="cap">Guest · Noah enters for Sam</div></div><svg style="width:22px;height:22px;color:var(--ink2)"><use href="#i-ell"/></svg></div>
+    </div>
+    <div class="row" style="gap:8px;margin-top:8px"><span class="btn line sm" style="flex:1.3;white-space:nowrap;font-size:14px;padding:0 6px">+ Played with</span><span class="btn line sm" style="flex:1;white-space:nowrap;font-size:14px;padding:0 6px">+ Guest</span><span class="btn line sm" style="flex:1;white-space:nowrap;font-size:14px;padding:0 6px">Join code</span></div>
+
+    <div class="sec" style="margin-top:14px"><span class="lbl">Game</span></div>
+    <div class="grp">
+      <div class="r" style="min-height:42px;padding:6px 14px"><span class="sp" style="font-size:16px">Rounds</span><div class="seg" style="width:196px"><span>5</span><span class="on">8</span><span>10</span><span>Custom</span></div></div>
+      <div class="r" style="min-height:42px;padding:6px 14px"><span class="sp" style="font-size:16px">Scoring</span><div class="seg" style="width:226px"><span class="on">Scorekeeper</span><span>Everyone reports</span></div></div>
+      <div class="r" style="min-height:42px;padding:6px 14px"><div class="sp"><span style="font-size:16px">House voice</span><div class="cap" style="font-size:12px">Goes Clean if anyone seated prefers it</div></div><span style="color:var(--ink2);font-size:15px">Unfiltered</span><svg style="width:16px;height:16px;color:var(--ink3)"><use href="#i-chevr"/></svg></div>
+    </div>
+    <p class="vo xs" style="margin:10px 2px 0;color:var(--ink2)">Maya leads Noah 13–7. Tonight's as good a night as any to fix that shit.</p>
+    <div class="btn pri" style="position:absolute;left:20px;right:20px;bottom:24px;width:auto;height:50px">Deal · 5 players · 8 rounds</div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F4</em>The lobby is a List (Maya's phone)</b><span>Seat order matches the order around the table. That order drives knocker-first entry and the dealer rotation on a rematch. Every seat has a visible ⋯ menu, and the same actions are swipe actions (Leo, swiped to Remove) and VoiceOver actions. The game is set up for <b>8 rounds</b>; the Changes log later shows the extension to 10. The arrival toast gives a 5-second Remove.</span></figcaption>
+</figure>
+
+<!-- F5 -->
+<figure id="f5">
+<div class="phone light">
+  <div class="sb"><span>9:58</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar">
+      <div class="gb glass"><svg><use href="#i-chevd"/></svg></div>
+      <div class="sp" style="text-align:center"><div style="font:500 17px var(--serif)">Thursday table</div><div class="tw" style="font-size:9.5px;color:var(--ink2)">Dubious Intent</div></div>
+      <div class="gb glass"><svg><use href="#i-q"/></svg></div><div class="gb glass"><svg><use href="#i-ell"/></svg></div>
+    </div>
+    <div class="row" style="margin-top:8px"><b style="font-size:17px" class="num">Round 6 of 10</b><span class="sp"></span><span class="pill"><span class="dot"></span>Live</span></div>
+    <div class="rail" style="margin-top:10px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i><span class="post"></span></div>
+
+    <div class="card" style="margin-top:16px;padding:14px 16px">
+      <div class="row"><span class="lbl">Round 5</span><span class="sp"></span><span class="oc land">↓ Landed <b>−10</b></span></div>
+      <p class="vo" style="margin-top:8px">Noah knocked on 3 and fucking nailed it.</p>
+      <div class="row" style="margin-top:8px;align-items:flex-end"><p class="cap sp">Lowest other hand: Priya's 4. Hand ignored, flat −10.</p><span style="font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px">Why?</span></div>
+    </div>
+
+    <div class="sec"><span class="lbl">Standings</span><span class="lbl">Last round · Total</span></div>
+    <div class="grp">
+      <div class="st"><span class="cl one">1</span><svg class="av c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="nm"><b>Maya</b><small>Leads by 1</small></div><span class="dl">+6</span><svg class="ls" viewBox="0 0 48 34"><use href="#shoe"/></svg><span class="tot" style="min-width:36px">24</span></div>
+      <div class="st me"><span class="cl">2</span><svg class="av c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="nm"><b>Noah <span class="you">You</span></b><small><span class="oc land" style="padding:3px 5px;font-size:9px">↓ Landed</span>1 back</small></div><span class="dl">−10</span><span class="tot">25</span></div>
+      <div class="st"><span class="cl">3</span><svg class="av c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="nm"><b>Priya</b><small>13 back</small></div><span class="dl">+4</span><span class="tot">37</span></div>
+      <div class="st"><span class="cl">4</span><svg class="av c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="nm"><b>Leo</b><small>24 back</small></div><span class="dl">+9</span><span class="tot">48</span></div>
+      <div class="st"><span class="cl">5</span><span class="av gst">S</span><div class="nm"><b>Sam</b><small>Guest · 30 back</small></div><span class="dl">+11</span><span class="tot">54</span></div>
+    </div>
+  </div>
+  <div class="glass" style="position:absolute;left:12px;right:12px;bottom:22px;border-radius:30px;padding:12px 14px 12px;z-index:40">
+    <div class="row" style="justify-content:space-between"><b style="font-size:15px">Who knocked? <span style="font-weight:400;color:var(--ink2)">Hold a face.</span></b><span class="cap">Or skip it</span></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px">
+      <svg class="av s48 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><svg class="av s48 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><svg class="av s48 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><svg class="av s48 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><span class="av s48 gst">S</span>
+    </div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F5</em>Live game, light (Noah's phone, after Round 5 of 10)</b><span>The last-round card leads: an outcome chip by form, the voice line in serif italic, the plain rule line, and <b>Why?</b> for the calculator. Deltas are neutral signed numbers. The outcome chip appears only on the knocker's row. Totals sit on solid Paper, and glass is used only for the controls. To set the knocker you hold a face for half a second, so a stray touch does nothing.</span></figcaption>
+</figure>
+
+<!-- F6 -->
+<figure id="f6">
+<div class="phone dark">
+  <div class="sb"><span>10:03</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="toast glass" style="top:58px">
+    <svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg>
+    <div class="sp" style="font-size:14px;line-height:1.25"><b>You set Maya as the knocker.</b><br><span style="color:var(--ink2)">Other phones updated quietly.</span></div>
+    <span class="btn sm" style="background:var(--solid);color:var(--solidInk);gap:6px"><svg style="width:16px;height:16px"><use href="#i-undo"/></svg>Undo</span>
+    <svg viewBox="0 0 20 20" style="width:20px;height:20px;flex:none"><circle cx="10" cy="10" r="8" fill="none" stroke="var(--fill2)" stroke-width="2"/><circle cx="10" cy="10" r="8" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="40 51" transform="rotate(-90 10 10)"/></svg>
+  </div>
+  <div class="ct">
+    <div style="height:96px"></div>
+    <div class="row"><b style="font-size:17px" class="num">Round 6 of 10</b><span class="sp"></span><span class="pill"><svg><use href="#i-peers"/></svg>Offline · 5 phones in sync</span></div>
+    <div class="rail" style="margin-top:10px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i><span class="post"></span></div>
+    <p class="cap" style="margin-top:8px">No signal. Doesn't matter. All 5 phones are keeping score together.</p>
+
+    <div class="card" style="margin-top:14px;padding:14px 16px;box-shadow:inset 0 0 0 1px var(--ink3)">
+      <div class="row"><svg style="width:18px;height:18px"><use href="#i-knock"/></svg><span class="lbl" style="color:var(--ink)">Round 6 · Maya knocked</span></div>
+      <p class="vo" style="margin-top:8px">Maya knocked. Last turns, don't fuck it up.</p>
+    </div>
+    <div class="row" style="margin-top:10px;padding:0 4px;gap:8px"><span class="oc land" style="padding:3px 5px;font-size:9px">↓ R5</span><span class="cap sp" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Noah knocked on 3 and fucking nailed it.</span></div>
+
+    <div class="sec"><span class="lbl">Standings</span><span class="lbl">R5 · Total</span></div>
+    <div class="grp">
+      <div class="st"><span class="cl one">1</span><svg class="av c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="nm"><b>Maya</b><small><span class="tag">Knocked</span>Leads by 1</small></div><span class="dl">+6</span><svg class="ls" viewBox="0 0 48 34"><use href="#shoe"/></svg><span class="tot" style="min-width:36px">24</span></div>
+      <div class="st me"><span class="cl">2</span><svg class="av c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="nm"><b>Noah <span class="you">You</span></b><small>Scorekeeper · 1 back</small></div><span class="dl">−10</span><span class="tot">25</span></div>
+      <div class="st"><span class="cl">3</span><svg class="av c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="nm"><b>Priya</b><small>13 back</small></div><span class="dl">+4</span><span class="tot">37</span></div>
+      <div class="st"><span class="cl">4</span><svg class="av c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="nm"><b>Leo</b><small>24 back</small></div><span class="dl">+9</span><span class="tot">48</span></div>
+      <div class="st"><span class="cl">5</span><span class="av gst">S</span><div class="nm"><b>Sam</b><small>Guest · 30 back</small></div><span class="dl">+11</span><span class="tot">54</span></div>
+    </div>
+  </div>
+  <div class="glass" style="position:absolute;left:12px;right:12px;bottom:22px;border-radius:30px;padding:10px;z-index:40;display:flex;align-items:center;gap:10px">
+    <svg class="av s32 c-maya" viewBox="0 0 40 40" style="margin-left:4px"><use href="#p-quart"/></svg>
+    <div class="sp" style="font-size:14px;line-height:1.2"><b>Maya knocked</b><br><span style="color:var(--ink2)">Change</span></div>
+    <span class="btn pri" style="width:auto;padding:0 22px;height:48px;border-radius:24px">Enter hands</span>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F6</em>Live game, dark, offline (Round 6, knock just set)</b><span>Noah held Maya's face, so only his phone shows the 5-second Undo and gave a haptic. The other four phones and their Live Activities updated silently. There's no internet, and the pill says so in plain words: the phones are syncing to each other. The dock is now <b>Enter hands</b>, and the knocker is already filled in.</span></figcaption>
+</figure>
+
+<!-- F7 -->
+<figure id="f7">
+<div class="phone light">
+  <div class="sb"><span>10:05</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct"><div class="bar"><div class="gb glass"><svg><use href="#i-chevd"/></svg></div><span class="sp" style="text-align:center;font:500 17px var(--serif)">Thursday table</span><div class="gb glass"><svg><use href="#i-ell"/></svg></div></div></div>
+  <div class="dimbg"></div>
+  <div class="sheet" style="top:66px">
+    <div class="grab"></div>
+    <div class="row"><div class="sp"><div class="t2">Round 6</div><div class="cap" style="margin-top:2px">Maya knocked · <u>Change</u></div></div><span style="font-size:16px;color:var(--ink2)">Cancel</span></div>
+    <div class="grp" style="margin-top:12px">
+      <div class="r" style="min-height:44px;padding:6px 12px"><svg class="av s28 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="sp"><b style="font-size:15px;font-weight:600">Maya</b> <span class="tag">Knocker</span></div><span class="tot" style="font-size:22px;min-width:40px;text-align:right">2</span><span class="cap" style="width:16px;text-align:center">→</span><span class="tot" style="font-size:22px;min-width:34px;text-align:right;color:var(--ink2)">2</span></div>
+      <div class="r" style="min-height:44px;padding:6px 12px"><svg class="av s28 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="sp"><b style="font-size:15px;font-weight:600">Noah</b></div><span class="tot" style="font-size:22px;min-width:40px;text-align:right">5</span><span class="cap" style="width:16px;text-align:center">→</span><span class="tot" style="font-size:22px;min-width:34px;text-align:right;color:var(--ink2)">5</span></div>
+      <div class="r" style="min-height:44px;padding:6px 12px"><svg class="av s28 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="sp"><b style="font-size:15px;font-weight:600">Leo</b></div><span class="tot" style="font-size:22px;min-width:40px;text-align:right">7</span><span class="cap" style="width:16px;text-align:center">→</span><span class="tot" style="font-size:22px;min-width:34px;text-align:right;color:var(--ink2)">7</span></div>
+      <div class="r" style="min-height:44px;padding:6px 12px"><svg class="av s28 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="sp"><b style="font-size:15px;font-weight:600">Priya</b></div><span class="tot" style="font-size:22px;min-width:40px;text-align:right">2</span><span class="cap" style="width:16px;text-align:center">→</span><span class="tot" style="font-size:22px;min-width:34px;text-align:right;color:var(--ink2)">2</span></div>
+      <div class="r" style="min-height:48px;padding:6px 12px;box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:0 0 12px 12px"><span class="av s28 gst">S</span><div class="sp"><b style="font-size:15px;font-weight:600">Sam</b><div class="cap" style="font-size:11px">Auto-advances after two digits</div></div><span style="min-width:40px;height:30px;border-radius:5px;background:var(--fill);display:grid;place-items:center"><span style="width:2px;height:20px;background:var(--redF)"></span></span><span class="cap" style="width:16px;text-align:center">→</span><span class="tot" style="font-size:22px;min-width:34px;text-align:right;color:var(--ink3)">–</span></div>
+    </div>
+    <div class="card" style="margin-top:10px;padding:10px 14px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)">
+      <div class="row" style="gap:8px;align-items:flex-start"><span class="oc tie" style="margin-top:1px">= So far</span><p style="font-size:15px;line-height:1.3">Priya's on 2 too. Unless Sam goes lower, it's a dead heat and Maya keeps her 2.</p></div>
+    </div>
+    <div class="row" style="margin:12px 0 8px"><span class="lbl sp">Count cards</span><span class="tog" style="transform:scale(.8);transform-origin:right"></span></div>
+    <div class="kp">
+      <span>1</span><span>2</span><span>3</span><span class="f">⌫</span>
+      <span>4</span><span>5</span><span>6</span><span class="f">±</span>
+      <span>7</span><span>8</span><span>9</span><span class="nx">Next</span>
+      <span class="z">0</span>
+    </div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F7</em>Scorekeeper entry, knocker first</b><span>The knocker was set at the knock, so the sheet opens straight on hands. Rows run knocker first, then clockwise, so the plain rule line can call the result early. The keypad auto-advances after two digits, 0, −1 or −2, and a single digit takes Next. A 5-player round is about 12 taps. Count cards (A to JKR chips, with K♥ = −1) is one toggle away and on by default for newer players.</span></figcaption>
+</figure>
+
+<!-- F8 -->
+<figure id="f8">
+<div class="phone dark">
+  <div class="sb"><span>21:40</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct"><div class="bar"><div class="gb glass"><svg><use href="#i-chevd"/></svg></div><span class="sp" style="text-align:center;font:500 17px var(--serif)">Friday table</span><div class="gb glass"><svg><use href="#i-ell"/></svg></div></div></div>
+  <div class="dimbg"></div>
+  <div class="sheet" style="top:96px">
+    <div class="grab"></div>
+    <div class="row"><div class="sp"><div class="t2">Your hand</div><div class="cap" style="margin-top:2px">Round 3 · Leo knocked</div></div><span style="font-size:16px;color:var(--ink2)">Close</span></div>
+    <div class="row" style="gap:6px;margin-top:14px">
+      <div class="card" style="flex:1;padding:8px;text-align:center"><svg class="av s28 c-leo" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-chev"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px">Leo</div><div class="cap row" style="gap:3px;justify-content:center;font-size:11px"><svg style="width:12px;height:12px"><use href="#i-lock"/></svg>In</div></div>
+      <div class="card" style="flex:1;padding:8px;text-align:center"><svg class="av s28 c-maya" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-quart"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px">Maya</div><div class="cap row" style="gap:3px;justify-content:center;font-size:11px"><svg style="width:12px;height:12px"><use href="#i-lock"/></svg>In</div></div>
+      <div class="card" style="flex:1;padding:8px;text-align:center;box-shadow:inset 0 0 0 1.5px var(--ink)"><svg class="av s28 c-noah" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-hoops"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px">You</div><div class="cap" style="font-size:11px">Typing</div></div>
+      <div class="card" style="flex:1;padding:8px;text-align:center"><span class="av s28 gst" style="margin:0 auto">A</span><div style="font-size:12px;font-weight:600;margin-top:4px">Ava</div><div class="cap" style="font-size:11px">You report</div></div>
+    </div>
+    <p class="vo xs" style="margin-top:8px;color:var(--ink2);text-align:center">2 of 4 in. Your hand's in and hidden. No peeking, you animals.</p>
+    <div style="text-align:center;margin-top:10px"><span class="num" style="font:200 80px/1 var(--sys);letter-spacing:-2px">−1</span></div>
+    <p class="vo s" style="text-align:center;margin-top:2px">Red King. Minus one and a smug-ass grin.</p>
+    <div class="chips" style="margin-top:12px;justify-content:center;flex-wrap:wrap">
+      <span>A</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>J</span><span>Q</span><span>K♠</span><span class="on">K♥</span><span class="on">JKR</span>
+    </div>
+    <div class="cap" style="text-align:center;margin-top:6px">K♥ −1 + JKR 0 = −1</div>
+    <div class="card" style="margin-top:12px;padding:10px 14px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)"><p style="font-size:15px;line-height:1.3">If Leo had more than −1, his knock's busted. You'll all see at once.</p></div>
+    <div class="btn pri" style="margin-top:14px">Lock in −1</div>
+    <div class="cap" style="text-align:center;margin-top:8px">Hands stay sealed until everyone's in, then flip together on every phone.</div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F8</em>Self-report: sealed, then flipped together</b><span>Other people's hands show <b>In</b> with a lock and never the number, so nobody anchors on anyone else's value. The personal rule line explains the stakes without revealing anything. Ava is a guest, and Noah is her assigned reporter. When the last hand arrives, every phone flips at the same moment. The only nudge for a slow hand is one Live Activity alert after 20 s.</span></figcaption>
+</figure>
+
+<!-- F9 -->
+<figure id="f9">
+<div class="phone light">
+  <div class="sb"><span>9:59</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="sheet" style="top:58px;background:var(--bg)">
+    <div class="grab"></div>
+    <div class="row"><div class="sp"><div class="t2">History</div><div class="cap">Thursday table · after Round 5 of 10</div></div><span style="font-size:16px;font-weight:600">Done</span></div>
+    <div class="card" style="margin-top:12px;padding:6px 10px 4px">
+      <table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:15px">
+        <thead><tr style="font-size:11px;color:var(--ink2)"><th style="text-align:left;padding:6px 0;font-weight:600">RND</th>
+          <th><svg class="av s24 c-noah" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-hoops"/></svg></th><th><svg class="av s24 c-maya" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-quart"/></svg></th><th><svg class="av s24 c-leo" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-chev"/></svg></th><th><svg class="av s24 c-priya" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-sash"/></svg></th><th><span class="av s24 gst" style="margin:0 auto">S</span></th></tr></thead>
+        <tbody style="text-align:center">
+          <tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:7px 0">1</td><td>9</td><td><span class="oc land" style="padding:3px 5px;font-size:11px">↓ −10</span></td><td>12</td><td>7</td><td>15</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:7px 0">2 <span style="display:inline-block;width:6px;height:6px;border-radius:3px;background:var(--redF);vertical-align:2px" title="edited"></span></td><td>6</td><td>11</td><td><span class="oc tie" style="padding:3px 5px;font-size:11px">= 5</span></td><td>5</td><td>20</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:7px 0">3</td><td><span class="oc bust" style="padding:3px 5px;font-size:11px">× 18</span></td><td>4</td><td>14</td><td>10</td><td>9</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:7px 0">4</td><td>2</td><td>13</td><td>8</td><td><span class="oc bust" style="padding:3px 5px;font-size:11px">× 11</span></td><td>−1</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:7px 0">5</td><td><span class="oc land" style="padding:3px 5px;font-size:11px">↓ −10</span></td><td>6</td><td>9</td><td>4</td><td>11</td></tr>
+          <tr style="border-top:1.5px solid var(--ink);font-weight:700"><td style="text-align:left;padding:8px 0;font-size:11px;letter-spacing:.1em">TOTAL</td><td>25</td><td>24</td><td>48</td><td>37</td><td>54</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cap" style="margin:6px 2px 0">Cells show round scores. The knocker's cell carries the outcome. The red dot marks an edited round.</div>
+
+    <div class="sec"><span class="lbl">Changes · 9</span><span class="cap">Newest first</span></div>
+    <div class="grp">
+      <div class="r" style="align-items:flex-start;padding:10px 14px"><span class="cap num" style="width:34px;padding-top:2px">9:58</span><div class="sp" style="font-size:14px;line-height:1.3"><b>Noah</b> saved Round 5<div class="cap">Noah knocked on 3, lowest. ↓ Landed −10.</div></div></div>
+      <div class="r" style="align-items:flex-start;padding:10px 14px"><span class="cap num" style="width:34px;padding-top:2px">9:51</span><div class="sp" style="font-size:14px;line-height:1.3"><b>Maya</b> extended the game<div class="cap">Planned rounds 8 → 10</div></div></div>
+      <div class="r" style="align-items:flex-start;padding:10px 14px"><span class="cap num" style="width:34px;padding-top:2px">9:47</span><div class="sp" style="font-size:14px;line-height:1.3"><b>Priya</b> edited Round 2
+        <div style="margin-top:6px;padding:8px 10px;border-radius:6px;background:var(--fill);font-size:13px;line-height:1.45" class="num">Priya's hand&nbsp; 6 → 5<br>Leo's knock&nbsp; ↓ Landed −10 → = Dead heat (5)<br>Leo after R2&nbsp; 2 → 17 · now 39 (was 24)<br><span style="color:var(--ink2)">No one else changed.</span></div></div></div>
+      <div class="r" style="align-items:flex-start;padding:10px 14px"><span class="cap num" style="width:34px;padding-top:2px">9:45</span><div class="sp" style="font-size:14px;line-height:1.3"><b>Noah</b> saved Round 4<div class="cap">Priya knocked on 1, Sam had −1. × Busted +10.</div></div></div>
+      <div class="r" style="align-items:flex-start;padding:10px 14px"><span class="cap num" style="width:34px;padding-top:2px">9:12</span><div class="sp" style="font-size:14px;line-height:1.3"><b>Maya</b> dealt<div class="cap">8 rounds · Scorekeeper: Noah · House voice: Unfiltered</div></div></div>
+    </div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F9</em>History and Changes, one page</b><span>The score grid and the full Changes log scroll together, so a correction is never hidden behind a segment. Priya's edit to Round 2 spells out its downstream effect: Leo's clean knock became a dead heat and his total rose by 15. The log is plain on purpose, because the numbers never swear. The banner that announced the edit on every phone said "Shit happens, Leo." VoiceOver gets Knocks and Edited rounds rotors.</span></figcaption>
+</figure>
+
+<!-- F10 -->
+<figure id="f10">
+<div class="phone dark">
+  <div class="sb"><span>10:41</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><div class="gb glass"><svg><use href="#i-chevd"/></svg></div><span class="sp" style="text-align:center;font:500 17px var(--serif)">Thursday table</span><div class="gb glass"><svg><use href="#i-ell"/></svg></div></div>
+    <div class="rail" style="margin-top:10px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><span class="post"></span></div>
+  </div>
+  <div class="dimbg"></div>
+  <div class="sheet" style="top:120px">
+    <div class="grab"></div>
+    <div class="row" style="margin-top:6px"><span class="lbl">Round 10</span><span class="sp"></span><span class="oc bust">× Busted <b>+10</b></span></div>
+    <p class="vo" style="margin-top:8px">Maya knocked on 3, Sam had 2. What the hell was that?</p>
+    <p class="cap" style="margin-top:4px">Sam's 2 beat Maya's 3. Maya scores 3 + 10 = 13.</p>
+    <div class="hair" style="margin:18px 0"></div>
+    <h2 class="disp" style="font-size:34px">That was round 10.</h2>
+    <p class="vo" style="margin-top:6px;color:var(--ink2)">Lock it in, or fix your shit first.</p>
+    <div class="grp" style="margin-top:16px">
+      <div class="st" style="min-height:44px;padding:6px 12px"><span class="cl one">1</span><svg class="av s28 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="nm"><b style="font-size:15px">Noah <span class="you">You</span></b></div><span class="tot" style="font-size:22px">38</span></div>
+      <div class="st" style="min-height:44px;padding:6px 12px"><span class="cl">2</span><svg class="av s28 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="nm"><b style="font-size:15px">Priya</b></div><span class="tot" style="font-size:22px">56</span></div>
+      <div class="st" style="min-height:44px;padding:6px 12px"><span class="cl">3</span><svg class="av s28 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="nm"><b style="font-size:15px">Maya</b></div><span class="tot" style="font-size:22px">63</span></div>
+      <div class="st" style="min-height:44px;padding:6px 12px"><span class="cl">4</span><span class="av s28 gst">S</span><div class="nm"><b style="font-size:15px">Sam</b></div><span class="tot" style="font-size:22px">90</span></div>
+      <div class="st" style="min-height:44px;padding:6px 12px"><span class="cl">5</span><svg class="av s28 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="nm"><b style="font-size:15px">Leo</b></div><span class="tot" style="font-size:22px">99</span></div>
+    </div>
+    <div class="btn pri" style="margin-top:16px">Finish game</div>
+    <div class="row" style="gap:10px;margin-top:10px"><div class="btn line" style="height:46px;font-size:16px">Fix a round first</div><div class="btn line" style="height:46px;font-size:16px;width:150px">Add rounds</div></div>
+    <p class="cap" style="text-align:center;margin-top:12px">Anyone can finish, on any phone. If nobody touches anything for 15 minutes, it locks itself. Once it's locked, it's history.</p>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F10</em>The Finish gate</b><span>This replaces v1's 30-second countdown. After the last planned round, every phone stops at an explicit gate: <b>Finish game</b>, <b>Fix a round first</b>, or <b>Add rounds</b>. The idle fallback is 15 minutes, and both seal times come from the event log's clock, so offline phones agree on exactly when the game became permanent.</span></figcaption>
+</figure>
+
+<!-- F11 -->
+<figure id="f11">
+<div class="phone dark">
+  <div class="sb"><span>10:42</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="row" style="margin-top:10px"><span class="lbl sp">Thursday table · 10 rounds · Final</span><span style="font-size:16px;font-weight:600">Done</span></div>
+    <div style="position:relative;text-align:center;margin-top:12px">
+      <span style="position:absolute;left:95%;top:-6px;bottom:-6px;width:1px;background:var(--brass);opacity:.8"></span>
+      <svg class="av s48 c-noah" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-hoops"/></svg>
+      <h1 class="disp" style="margin-top:10px;font-size:38px">Noah fucking wins.</h1>
+    </div>
+    <div class="row" style="justify-content:center;gap:10px;margin-top:2px"><svg viewBox="0 0 48 34" style="width:30px;height:22px;color:var(--brass)"><use href="#shoe"/></svg><span class="num" style="font:200 76px/1 var(--sys);letter-spacing:-3px">38</span></div>
+    <p class="vo s" style="text-align:center;color:var(--ink2)">Fourth after Round 3, first at the post. Dark horse shit.</p>
+
+    <div class="grp" style="margin-top:14px">
+      <div class="st" style="min-height:40px;padding:5px 12px"><span class="cl">2</span><svg class="av s24 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="nm"><b style="font-size:15px">Priya</b></div><span class="dl">+18</span><span class="tot" style="font-size:20px">56</span></div>
+      <div class="st" style="min-height:40px;padding:5px 12px"><span class="cl">3</span><svg class="av s24 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="nm"><b style="font-size:15px">Maya</b></div><span class="dl">+25</span><span class="tot" style="font-size:20px">63</span></div>
+      <div class="st" style="min-height:40px;padding:5px 12px"><span class="cl">4</span><span class="av s24 gst">S</span><div class="nm"><b style="font-size:15px">Sam</b></div><span class="dl">+52</span><span class="tot" style="font-size:20px">90</span></div>
+      <div class="st" style="min-height:40px;padding:5px 12px;flex-wrap:wrap"><span class="cl">5</span><svg class="av s24 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="nm"><b style="font-size:15px">Leo</b></div><span class="dl">+61</span><span class="tot" style="font-size:20px">99</span>
+        <p class="vo xs" style="width:100%;padding:2px 0 4px 36px;color:var(--ink2)">Leo: 99. Dead fucking last. One off triple digits, which is honestly impressive.</p></div>
+    </div>
+
+    <div class="card" style="margin-top:10px;padding:10px 12px;display:flex;gap:10px;align-items:center">
+      <svg class="av s28 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg>
+      <p class="vo xs sp">Priya's on the board. #540 in the world. Respectable as hell.</p>
+      <svg viewBox="0 0 48 34" style="width:34px;height:24px;color:var(--brass);flex:none"><use href="#shoe"/><circle cx="10" cy="12.7" r="2.2" style="fill:var(--ink)"/><circle cx="14.1" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="24" cy="26.7" r="2.2" style="fill:var(--ink)"/><circle cx="33.9" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="38" cy="12.7" r="2.2" style="fill:var(--ink)"/></svg>
+    </div>
+    <div class="row" style="gap:8px;margin-top:8px">
+      <div class="plate" style="flex:1;padding:9px 10px"><span class="g">G2</span><b style="font-size:14px">Dark Horse</b><small>Unlocked tonight</small></div>
+      <div class="plate" style="flex:1;padding:9px 10px"><b style="font-size:14px" class="num">1,198 <span style="font:500 12px var(--sys);color:var(--ink2)">+14</span></b><small>Maya 13–8. Five more to level.</small></div>
+    </div>
+    <div class="row" style="gap:10px;margin-top:12px"><div class="btn pri" style="flex-direction:column;gap:0;height:56px"><span>Run it back</span><span style="font:italic 400 13px var(--serif);opacity:.85">You deal, don't fuck it up.</span></div><div class="btn line" style="width:56px;height:56px;flex:none" aria-label="Share"><svg><use href="#i-share"/></svg></div></div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F11</em>The finish</b><span>A photo-finish hairline sweeps the winner in, with no confetti. The winner gets roasted too, and so does last place, who also gets an exit. Two moments are public to the whole table: Priya's rating debut (game 5, the shoe full) and Noah's Dark Horse. The personal strip differs on each phone. <b>Run it back</b> rotates the deal one seat clockwise. Further down, the first-time notification ask reads: "No spam, no guilt-trip bullshit."</span></figcaption>
+</figure>
+
+<!-- F12 -->
+<figure id="f12">
+<div class="phone light">
+  <div class="sb"><span>10:43</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="dimbg" style="background:rgba(10,10,14,.6)"></div>
+  <div class="sheet" style="top:64px">
+    <div class="grab"></div>
+    <div class="row"><span class="av s48 gst">S</span><div class="sp"><div class="t2">Sam played as a guest.</div><div class="cap">Thursday table · tonight</div></div></div>
+    <p class="vo s" style="margin-top:12px">Give Sam their history. A 90, and a −1 they'll never shut up about.</p>
+    <div class="card" style="margin-top:14px;padding:18px;display:flex;flex-direction:column;align-items:center">
+      <svg viewBox="-2 -2 29 29" style="width:188px;height:188px;color:var(--ink);background:#fff;border-radius:6px" shape-rendering="crispEdges"><path fill="#111114" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM11 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM16 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM11 1h1v1h-1zM13 1h1v1h-1zM14 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM16 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM15 7h1v1h-1zM2 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM24 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM21 9h1v1h-1zM22 9h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM23 10h1v1h-1zM24 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM10 11h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM18 12h1v1h-1zM20 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM2 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM15 13h1v1h-1zM18 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM1 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM14 14h1v1h-1zM18 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM1 15h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM7 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM18 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM0 16h1v1h-1zM1 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM8 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM15 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM21 17h1v1h-1zM22 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM12 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM18 18h1v1h-1zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM8 21h1v1h-1zM9 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM21 21h1v1h-1zM22 21h1v1h-1zM24 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM21 22h1v1h-1zM24 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM10 23h1v1h-1zM12 23h1v1h-1zM15 23h1v1h-1zM19 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1z"/></svg>
+      <div class="mono" style="font-size:30px;font-weight:500;letter-spacing:.06em;margin-top:14px">HX7‑4QP</div>
+      <div class="cap">kedro.app/claim/HX74QP</div>
+    </div>
+    <div class="grp" style="margin-top:12px">
+      <div class="r" style="min-height:44px"><span class="sp" style="font-size:15px">1 game · 4th of 5 · 90</span><span class="cap">10 rounds</span></div>
+      <div class="r" style="min-height:44px"><span class="sp" style="font-size:15px">Red Royalty</span><span class="tag">G3</span></div>
+      <div class="r" style="min-height:44px"><span class="sp" style="font-size:15px">4 more games to the board</span><svg viewBox="0 0 48 34" style="width:44px;height:31px;color:var(--brass)"><use href="#shoe"/><circle cx="10" cy="12.7" r="2.2" style="fill:var(--ink)"/><circle cx="14.1" cy="22.6" r="1.7" style="fill:var(--surface)"/><circle cx="24" cy="26.7" r="1.7" style="fill:var(--surface)"/><circle cx="33.9" cy="22.6" r="1.7" style="fill:var(--surface)"/><circle cx="38" cy="12.7" r="1.7" style="fill:var(--surface)"/></svg></div>
+    </div>
+    <div class="row" style="gap:10px;margin-top:14px"><div class="btn solid"><svg><use href="#i-air"/></svg>AirDrop</div><div class="btn line"><svg><use href="#i-msg"/></svg>Message</div></div>
+    <p class="cap" style="margin-top:12px;text-align:center">Sam followed along on the App Clip, so their phone already holds a claim token. If Sam signs in on that phone, it's theirs with no code.</p>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F12</em>Guest hand-off: link or code</b><span>Handed over at the moment it matters most. The QR is a universal link, the code is in SF Mono so it can be read aloud, and AirDrop and Message use the share sheet. The preview sells Sam their own record, including the Red King round. The App Clip's stored claim token means Sam may never need the code at all.</span></figcaption>
+</figure>
+
+<!-- F13 -->
+<figure id="f13">
+<div class="phone light" style="--crestCut:#F2EEE6">
+  <div class="sb"><span>10:04</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="row" style="margin-top:10px"><svg viewBox="0 0 64 64" style="width:30px;height:30px"><use href="#crest"/></svg><span style="font:italic 700 22px var(--serif);color:var(--redT)">Kedro</span><span class="tag">App Clip</span><span class="sp"></span><div class="gb glass" style="width:36px;height:36px"><svg style="width:16px;height:16px"><use href="#i-x"/></svg></div></div>
+    <h1 class="lt" style="margin-top:22px">You're at Maya's table.</h1>
+    <div class="row" style="gap:8px;margin-top:6px"><span class="tw">Dubious Intent</span><span class="cap">· Round 6 of 10</span></div>
+    <p class="vo s" style="margin-top:12px;color:var(--ink2)">Phone, no app? Classic. This'll do.</p>
+
+    <div class="sec" style="margin-top:22px"><span class="lbl">Which one's you?</span></div>
+    <div class="grp">
+      <div class="r" style="opacity:.5"><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Maya</b><div class="cap">On a phone</div></div></div>
+      <div class="r" style="opacity:.5"><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Noah</b><div class="cap">On a phone</div></div></div>
+      <div class="r" style="opacity:.5"><svg class="av s32 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Leo</b><div class="cap">On a phone</div></div></div>
+      <div class="r" style="opacity:.5"><svg class="av s32 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="sp"><b style="font-size:16px;font-weight:600">Priya</b><div class="cap">On a phone</div></div></div>
+      <div class="r"><span class="av s32 gst">S</span><div class="sp"><b style="font-size:16px;font-weight:600">Sam</b><div class="cap">Guest seat · no phone yet · 54</div></div><span class="btn pri sm">That's me</span></div>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-size:15px;font-weight:600">Not on the list? I'm new here</div>
+    <p class="cap" style="margin-top:18px;text-align:center">No install, no account. You'll see the scores live and report your own hand, sealed. Needs internet.</p>
+  </div>
+  <div class="glass" style="position:absolute;left:12px;right:12px;bottom:22px;border-radius:22px;padding:12px 14px;display:flex;align-items:center;gap:12px;z-index:40">
+    <div style="width:44px;height:44px;border-radius:10px;background:#0A0A0E;display:grid;place-items:center;color:#EEE9DF;box-shadow:inset 0 0 0 1px #9C7A3C;--crestCut:#0A0A0E"><svg viewBox="0 0 64 64" style="width:36px;height:36px"><use href="#crest"/></svg></div>
+    <div class="sp" style="font-size:14px;line-height:1.25"><b>Kedro</b><br><span style="color:var(--ink2)">Keep your stats. Get the app.</span></div>
+    <span class="btn sm solid">Get</span>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F13</em>The App Clip (Sam's phone, no app)</b><span>Sam scans the table's QR. The rotating token means an old screenshot won't work. One tap on <b>That's me</b> binds the guest seat to this phone, and the change is logged. Sam now follows the live standings and reports their own sealed hand. A claim token is saved for later. The App Clip is online-only: if the bar has no signal, someone at the table scores Sam as before.</span></figcaption>
+</figure>
+
+<!-- F14 -->
+<figure id="f14">
+<div class="phone light">
+  <div class="sb"><span>11:20</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><span class="sp"></span><div class="gb glass"><svg><use href="#i-share"/></svg></div><div class="gb glass"><svg><use href="#i-ell"/></svg></div></div>
+    <div class="row" style="gap:16px;align-items:center">
+      <svg class="av s72 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg>
+      <div class="sp"><h1 class="lt">Noah</h1><div class="num" style="font-size:15px;margin-top:2px"><b>Rating 1,198</b> <span style="color:var(--ink2)">· +14 last game</span></div><div class="cap num">Global #212 · Played with #3 · <u>How rating works</u></div></div>
+    </div>
+    <div class="row" style="gap:8px;margin-top:16px">
+      <div class="card" style="flex:1;padding:10px 12px"><div class="lbl">Streak</div><div class="tot" style="margin-top:4px">1</div></div>
+      <div class="card" style="flex:1;padding:10px 12px"><div class="lbl">Win rate</div><div class="tot" style="margin-top:4px">38%</div></div>
+      <div class="card" style="flex:1;padding:10px 12px"><div class="lbl">Landed</div><div class="tot" style="margin-top:4px">53%</div></div>
+    </div>
+    <div class="card" style="margin-top:8px;padding:12px 14px;display:flex;gap:12px;align-items:center;box-shadow:inset 0 0 0 1px var(--ink)">
+      <svg class="av s48 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg>
+      <div class="sp"><div class="lbl">Nemesis · Maya</div><p class="vo s" style="margin-top:2px">Your personal fucking problem.</p><div class="cap">Finished ahead of you 13 times</div></div>
+      <svg style="width:16px;height:16px;color:var(--ink3)"><use href="#i-chevr"/></svg>
+    </div>
+    <div class="grp" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)"><div class="cap">Games</div><b class="num">21</b></div>
+      <div style="padding:8px 14px;border-bottom:1px solid var(--line)"><div class="cap">Wins</div><b class="num">8</b></div>
+      <div style="padding:8px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)"><div class="cap">Best · worst game</div><b class="num">22 · 97</b></div>
+      <div style="padding:8px 14px;border-bottom:1px solid var(--line)"><div class="cap">Avg per game · round</div><b class="num">58.4 · 6.5</b></div>
+      <div style="padding:8px 14px;border-right:1px solid var(--line)"><div class="cap">Longest streak</div><b class="num">3</b></div>
+      <div style="padding:8px 14px"><div class="cap">Knock rate</div><b class="num">20% <span style="font-weight:400;color:var(--ink2);font-size:13px">38 of 189</span></b></div>
+    </div>
+    <div class="card" style="margin-top:8px;padding:10px 14px">
+      <div class="row"><span class="lbl sp">Knock outcomes</span><span class="cap num">38 knocks</span></div>
+      <div style="display:flex;height:12px;margin-top:8px;gap:2px"><i style="flex:20;background:var(--solid)"></i><i style="flex:6;box-shadow:inset 0 0 0 1.2px var(--ink)"></i><i style="flex:12;box-shadow:inset 0 0 0 1.2px var(--ink);background:repeating-linear-gradient(135deg,var(--fill2) 0 1.5px,transparent 1.5px 5px)"></i></div>
+      <div class="row cap num" style="margin-top:6px;justify-content:space-between"><span>↓ Landed 20</span><span>= Dead heat 6</span><span>× Busted 12</span></div>
+    </div>
+    <div class="sec" style="margin-top:12px"><span class="lbl">Games</span><span class="cap">Rating change</span></div>
+    <div class="grp">
+      <div class="r" style="min-height:42px"><span class="cl one" style="width:22px;height:24px;font-size:14px">1</span><span class="sp" style="font-size:15px">Thursday table <span class="cap">· tonight · 38</span></span><b class="num" style="font-size:15px">+14</b></div>
+      <div class="r" style="min-height:42px"><span class="cl" style="width:22px;height:24px;font-size:14px">3</span><span class="sp" style="font-size:15px">Leo's flat <span class="cap">· Tue · 61</span></span><b class="num" style="font-size:15px">−6</b></div>
+    </div>
+  </div>
+  <div class="tabbar glass"><span><svg><use href="#i-table"/></svg>Table</span><span class="on"><svg><use href="#i-person"/></svg>You</span><span><svg><use href="#i-board"/></svg>Board</span><span><svg><use href="#i-book"/></svg>Learn</span></div>
+  <div class="srch glass"><svg><use href="#i-search"/></svg></div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F14</em>Profile</b><span>The profile is public. It shows the rating with its last change, both ranks, and a link to <b>How rating works</b>. Every PRD 5.1 stat is on this screen, each with an info popover holding its definition. Knock outcomes are shown by form, not color. Every game in history shows its rating change. The nemesis card is where the voice gets personal, aimed at the rivalry and never the person.</span></figcaption>
+</figure>
+
+<!-- F15 -->
+<figure id="f15">
+<div class="phone dark">
+  <div class="sb"><span>11:22</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><div class="gb glass"><svg><use href="#i-chevl"/></svg></div><span class="sp" style="text-align:center;font-weight:600">Head-to-head</span><div style="width:44px"></div></div>
+    <div class="row" style="justify-content:center;gap:22px;margin-top:20px">
+      <div style="text-align:center"><svg class="av s64 c-noah" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-hoops"/></svg><div style="font:500 17px var(--serif);margin-top:6px">Noah</div></div>
+      <div style="text-align:center"><div class="num" style="font:200 60px/1 var(--sys);letter-spacing:-2px">8<span style="color:var(--ink3);margin:0 6px">–</span>13</div><div class="lbl" style="margin-top:6px">Finished ahead</div></div>
+      <div style="text-align:center"><svg class="av s64 c-maya" viewBox="0 0 40 40" style="margin:0 auto;transform:scaleX(-1)"><use href="#p-quart"/></svg><div style="font:500 17px var(--serif);margin-top:6px"><b style="font-weight:600">Maya</b></div></div>
+    </div>
+    <div style="text-align:center;margin-top:6px"><span class="tag">Maya leads</span></div>
+    <p class="vo" style="text-align:center;margin-top:16px">Maya's finished ahead of you 13 times. Thirteen. Jesus.</p>
+    <div class="card" style="margin-top:14px;padding:12px 14px;display:flex;gap:10px;align-items:center">
+      <div class="sp"><div class="lbl">Gap to level</div><p class="vo s" style="margin-top:2px">Five more finishes ahead of her and it's level. Get to work.</p></div>
+    </div>
+    <div class="grp" style="margin-top:10px">
+      <div class="r" style="min-height:44px"><span class="sp cap" style="font-size:15px;color:var(--ink)">Games together</span><b class="num">21</b></div>
+      <div class="r" style="min-height:44px"><span class="sp cap" style="font-size:15px;color:var(--ink)">Wins in shared games</span><b class="num">6 · 9</b></div>
+      <div class="r" style="min-height:44px"><span class="sp cap" style="font-size:15px;color:var(--ink)">Avg final score together</span><b class="num">57.9 · 52.3</b></div>
+      <div class="r" style="min-height:58px;display:block;padding:10px 14px"><div class="cap" style="font-size:15px;color:var(--ink)">Knocks when facing each other</div>
+        <div class="row num" style="margin-top:6px;gap:6px;font-size:12px"><span style="width:44px;color:var(--ink2)">Noah</span><span class="oc land" style="padding:3px 5px">↓ 16</span><span class="oc tie" style="padding:3px 5px">= 4</span><span class="oc bust" style="padding:3px 5px">× 9</span></div>
+        <div class="row num" style="margin-top:4px;gap:6px;font-size:12px"><span style="width:44px;color:var(--ink2)">Maya</span><span class="oc land" style="padding:3px 5px">↓ 18</span><span class="oc tie" style="padding:3px 5px">= 3</span><span class="oc bust" style="padding:3px 5px">× 7</span></div></div>
+      <div class="r" style="min-height:44px"><span class="sp cap" style="font-size:15px;color:var(--ink)">Last 5 · newest right</span><span class="row" style="gap:4px;font-size:11px;font-weight:700"><span class="tag">M</span><span class="tag">M</span><span class="tag">N</span><span class="tag">M</span><span class="tag" style="background:var(--solid);color:var(--solidInk)">N</span></span></div>
+      <div class="r" style="min-height:44px"><span class="sp cap" style="font-size:15px;color:var(--ink)">Biggest margin</span><span class="num" style="font-size:15px">Maya by 41 · Oct 2</span></div>
+    </div>
+    <div class="btn pri" style="position:absolute;left:20px;right:20px;bottom:30px;width:auto">Play again with Maya</div>
+  </div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F15</em>Head-to-head</b><span>Everything PRD 5.2 asks for: games together, finished ahead (the headline), wins in shared games, and knock outcomes when facing each other. The roast is about the record. <b>Gap to level</b> turns 8–13 into a near-term goal, and <b>Play again with Maya</b> opens a lobby with her already seated.</span></figcaption>
+</figure>
+
+<!-- F16 -->
+<figure id="f16">
+<div class="phone light">
+  <div class="sb"><span>11:24</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div style="height:52px"></div>
+    <h1 class="lt">Board</h1>
+    <div class="seg" style="margin-top:12px"><span class="on">Played with</span><span>Global</span></div>
+    <div class="row" style="gap:16px;margin-top:10px;font-size:15px;font-weight:600"><span style="border-bottom:2px solid var(--ink);padding-bottom:4px">Rating</span><span style="color:var(--ink2);padding-bottom:4px">Records</span><span class="sp"></span><span class="cap" style="font-weight:400"><u>How rating works</u></span></div>
+    <div class="card" style="margin-top:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:inset 0 1px 0 var(--brass)">
+      <svg class="av s32 c-dana" viewBox="0 0 40 40"><use href="#p-diam"/></svg>
+      <div class="sp"><div class="lbl">Close race</div><p class="vo xs" style="margin-top:2px">Dana's 7 behind you. One shit game and she's past.</p></div>
+    </div>
+    <div class="grp" style="margin-top:10px">
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl one">1</span><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><div class="nm"><b style="font-size:16px">Maya</b></div><span class="dl">−3</span><span class="tot num" style="font-size:22px;min-width:60px">1,236</span></div>
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl">2</span><svg class="av s32 c-jules" viewBox="0 0 40 40"><use href="#p-stripes"/></svg><div class="nm"><b style="font-size:16px">Jules</b></div><span class="dl">+5</span><span class="tot num" style="font-size:22px;min-width:60px">1,214</span></div>
+      <div class="st me" style="min-height:48px;padding:6px 12px"><span class="cl">3</span><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><div class="nm"><b style="font-size:16px">Noah <span class="you">You</span></b></div><span class="dl">+14</span><span class="tot num" style="font-size:22px;min-width:60px">1,198</span></div>
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl">4</span><svg class="av s32 c-dana" viewBox="0 0 40 40"><use href="#p-diam"/></svg><div class="nm"><b style="font-size:16px">Dana</b></div><span class="dl">0</span><span class="tot num" style="font-size:22px;min-width:60px">1,191</span></div>
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl">5</span><svg class="av s32 c-omar" viewBox="0 0 40 40"><use href="#p-cross"/></svg><div class="nm"><b style="font-size:16px">Omar</b></div><span class="dl">−8</span><span class="tot num" style="font-size:22px;min-width:60px">1,140</span></div>
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl">6</span><svg class="av s32 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg><div class="nm"><b style="font-size:16px">Leo</b></div><span class="dl">−11</span><span class="tot num" style="font-size:22px;min-width:60px">1,102</span></div>
+      <div class="st" style="min-height:48px;padding:6px 12px"><span class="cl">7</span><svg class="av s32 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg><div class="nm"><b style="font-size:16px">Priya</b><small><span class="tag">Debut</span>tonight</small></div><span class="tot num" style="font-size:22px;min-width:60px">1,061</span></div>
+    </div>
+    <div class="sec"><span class="lbl">Community · not ranked yet</span></div>
+    <div class="grp">
+      <div class="r" style="min-height:44px"><svg class="av s28 c-bea" viewBox="0 0 40 40"><use href="#p-halved"/></svg><span class="sp" style="font-size:15px;font-weight:600">Bea</span><span class="cap">3 of 5</span><svg viewBox="0 0 48 34" style="width:30px;height:21px;color:var(--brass)"><use href="#shoe"/><circle cx="10" cy="12.7" r="2.2" style="fill:var(--ink)"/><circle cx="14.1" cy="22.6" r="2.2" style="fill:var(--ink)"/><circle cx="24" cy="26.7" r="2.2" style="fill:var(--ink)"/><circle cx="33.9" cy="22.6" r="1.7" style="fill:var(--surface)"/><circle cx="38" cy="12.7" r="1.7" style="fill:var(--surface)"/></svg></div>
+    </div>
+  </div>
+  <div class="tabbar glass"><span><svg><use href="#i-table"/></svg>Table</span><span><svg><use href="#i-person"/></svg>You</span><span class="on"><svg><use href="#i-board"/></svg>Board</span><span><svg><use href="#i-book"/></svg>Learn</span></div>
+  <div class="srch glass"><svg><use href="#i-search"/></svg></div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F16</em>The Board: one rank, and Records kept separate</b><span>The official order comes from Kedro Rating only, a conservative OpenSkill estimate. The lenses are gone. <b>Records</b> is its own segment of category boards, each with its own ordinal, so a rank badge never sits out of order. Close races (within 15 points) make the board personal. Priya's debut appears the night she hits five. Players under five sit in the Community with the shoe and no number. Unclaimed guests aren't listed.</span></figcaption>
+</figure>
+
+<!-- F17 -->
+<figure id="f17">
+<div class="phone dark">
+  <div class="sb"><span>11:26</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><div class="gb glass"><svg><use href="#i-chevl"/></svg></div></div>
+    <h1 class="lt">Achievements</h1>
+    <div class="cap" style="margin-top:4px">9 of 26 · race grades G3, G2, G1 · 4 secret</div>
+
+    <div class="plate" style="margin-top:16px;padding:18px;box-shadow:inset 0 0 0 1px var(--ink3)">
+      <span class="g" style="top:16px;right:16px">G2</span>
+      <div class="lbl">New tonight</div>
+      <b style="font-size:26px;margin-top:6px">Dark Horse</b>
+      <p class="vo s" style="margin-top:8px">Bottom half after Round 3, won anyway. Nobody saw that shit coming.</p>
+      <div class="hair" style="margin:12px 0"></div>
+      <div class="cap">Win after sitting in the bottom half of the standings after Round 3 or later. Thursday table · 4th → 1st · 18% of players.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div class="plate"><span class="g">G3</span><b>Cold-Blooded</b><small>Knocked, landed it, didn't blink. Psycho.</small></div>
+      <div class="plate"><span class="g">G3</span><b>Fucked Around, Found Out</b><small>Knocked and got beaten. +10 for the audacity.</small></div>
+      <div class="plate"><span class="g">G2</span><b>Treble</b><small>Three on the bounce. Insufferable.</small></div>
+      <div class="plate"><span class="g">G3</span><b>Red Royalty</b><small>Ended a round under zero.</small></div>
+      <div class="plate lock"><span class="g">G2</span><b>Lifer</b><small class="num">21 of 50 games</small><div class="prog"><i style="width:42%"></i></div></div>
+      <div class="plate lock"><span class="g">G2</span><b>Serial Knocker</b><small>Best: 2 clean knocks in a game</small><div class="prog"><i style="width:66%"></i></div></div>
+      <div class="plate lock"><span class="g g1">G1</span><b>Unbeaten Run</b><small class="num">Best run: 3 of 5</small><div class="prog"><i style="width:60%"></i></div></div>
+      <div class="plate lock"><span class="g">G2</span><b>??</b><small>Secret. Pray you never get this one.</small></div>
+    </div>
+  </div>
+  <div class="tabbar glass"><span><svg><use href="#i-table"/></svg>Table</span><span class="on"><svg><use href="#i-person"/></svg>You</span><span><svg><use href="#i-board"/></svg>Board</span><span><svg><use href="#i-book"/></svg>Learn</span></div>
+  <div class="srch glass"><svg><use href="#i-search"/></svg></div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F17</em>Achievements as engraved plates</b><span>Tiers borrow racing's race grades, with G1 struck in brass. These are plates, not cartoon medals or rosettes. The names are meant to be screenshotted. Every plate has the plain rule underneath, and a Clean name where needed: "Found Out" for viewers who chose Clean. Locked plates show progress.</span></figcaption>
+</figure>
+
+<!-- F18 -->
+<figure id="f18">
+<div class="phone light">
+  <div class="sb"><span>18:05</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div style="height:52px"></div>
+    <h1 class="lt">Learn</h1>
+    <div class="card" style="margin-top:12px;padding:14px 16px">
+      <div class="row"><b class="sp" style="font:500 19px var(--serif)">Learn Cambio in 4 minutes</b><span class="cap num">3 of 5</span></div>
+      <div class="rail" style="margin-top:10px"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
+      <div class="cap" style="margin-top:10px"><b style="color:var(--ink)">Card values ✓</b> Red King is −1. Black King is 13. Yes, really.</div>
+      <div class="cap" style="margin-top:4px"><b style="color:var(--ink)">Next: Power cards</b> · then Sticking, The knock</div>
+    </div>
+
+    <div class="card" style="margin-top:10px;padding:14px 16px">
+      <div class="row"><span class="lbl sp">Knock calculator</span><svg style="width:18px;height:18px;color:var(--ink2)"><use href="#i-knock"/></svg></div>
+      <div class="row" style="margin-top:12px"><span class="sp" style="font-size:15px">Your hand</span><b class="tot" style="font-size:24px">4</b></div>
+      <div style="height:4px;background:var(--fill2);border-radius:2px;margin:8px 0 2px;position:relative"><i style="position:absolute;left:0;width:22%;height:4px;background:var(--ink);border-radius:2px"></i><span style="position:absolute;left:22%;top:-12px;width:28px;height:28px;margin-left:-14px;border-radius:14px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25)"></span></div>
+      <div class="row" style="margin-top:16px"><span class="sp" style="font-size:15px">Lowest other hand</span><b class="tot" style="font-size:24px">4</b></div>
+      <div style="height:4px;background:var(--fill2);border-radius:2px;margin:8px 0 2px;position:relative"><i style="position:absolute;left:0;width:22%;height:4px;background:var(--ink);border-radius:2px"></i><span style="position:absolute;left:22%;top:-12px;width:28px;height:28px;margin-left:-14px;border-radius:14px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25)"></span></div>
+      <div class="row" style="margin-top:16px;gap:10px;align-items:flex-start"><span class="oc tie">= Dead heat</span><p style="font-size:15px;line-height:1.3">You tied the lowest hand, so you score your hand: 4.</p></div>
+      <div class="row" style="margin-top:12px;gap:6px">
+        <div style="flex:1;text-align:center;padding:8px 4px;border-radius:6px;background:var(--fill)"><div class="cap">Knock on 3</div><span class="oc land" style="margin-top:4px">↓ <b>−10</b></span></div>
+        <div style="flex:1;text-align:center;padding:8px 4px;border-radius:6px;box-shadow:inset 0 0 0 1.5px var(--ink)"><div class="cap">Knock on 4</div><span class="oc tie" style="margin-top:4px">= <b>4</b></span></div>
+        <div style="flex:1;text-align:center;padding:8px 4px;border-radius:6px;background:var(--fill)"><div class="cap">Knock on 5</div><span class="oc bust" style="margin-top:4px">× <b>15</b></span></div>
+      </div>
+      <p class="vo xs" style="margin-top:12px;color:var(--ink2)">Knock on 3 and you're a genius. On 4 it's a coin toss with your mates. On 5, you're a cautionary tale.</p>
+    </div>
+
+    <div class="grp" style="margin-top:10px">
+      <div class="r"><div class="sp"><b style="font-size:16px;font-weight:600">Score this round</b><div class="cap">Drill on the same card chips as real entry</div></div><svg style="width:16px;height:16px;color:var(--ink3)"><use href="#i-chevr"/></svg></div>
+      <div class="r"><div class="sp"><b style="font-size:16px;font-weight:600">Rulebook</b><div class="cap">The full canonical rules, searchable</div></div><svg style="width:16px;height:16px;color:var(--ink3)"><use href="#i-chevr"/></svg></div>
+    </div>
+  </div>
+  <div class="tabbar glass"><span><svg><use href="#i-table"/></svg>Table</span><span><svg><use href="#i-person"/></svg>You</span><span><svg><use href="#i-board"/></svg>Board</span><span class="on"><svg><use href="#i-book"/></svg>Learn</span></div>
+  <div class="srch glass"><svg><use href="#i-search"/></svg></div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F18</em>Learn, and the knock calculator</b><span>The calculator is also what <b>Why?</b> opens, prefilled with a real round's hands. Drag your hand against the lowest other hand and the outcome changes by form and word. Learn copy is warmer than game copy, because nobody gets roasted for learning. The scoring drill uses the same Count cards chips as real entry.</span></figcaption>
+</figure>
+
+<!-- F19 -->
+<figure id="f19">
+<div class="phone dark" style="background:radial-gradient(120% 70% at 30% 10%,#26262E 0%,#0A0A0E 60%),#0A0A0E;--crestCut:#141418">
+  <div class="sb" style="color:#EEE9DF"><span></span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct" style="color:#EEE9DF">
+    <div style="text-align:center;margin-top:18px;font-size:17px;font-weight:600;opacity:.85">Thursday 27 October</div>
+    <div class="num" style="text-align:center;font:600 92px/1 var(--sys);letter-spacing:-2px;margin-top:2px;font-stretch:condensed">10:12</div>
+
+    <div style="margin-top:22px;border-radius:24px;padding:14px 14px 12px;background:rgba(22,22,26,.78);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px)">
+      <div class="row" style="gap:8px"><svg viewBox="0 0 64 64" style="width:22px;height:22px"><use href="#crest"/></svg><span style="font:500 15px var(--serif)">Thursday table</span><span class="sp"></span><span class="num" style="font-size:13px;font-weight:600">R7 of 10</span></div>
+      <div class="rail" style="margin-top:8px;height:12px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c" style="height:8px"></i><i></i><i></i><i></i><span class="post" style="height:12px"></span></div>
+      <div style="margin-top:8px;font-size:14px" class="num">
+        <div class="row" style="gap:8px;height:24px"><span class="cl one" style="width:18px;height:20px;font-size:12px">1</span><span class="sp">Maya</span><span style="color:#A19D96;width:30px;text-align:right">+2</span><b style="width:30px;text-align:right">26</b></div>
+        <div class="row" style="gap:8px;height:24px"><span class="cl" style="width:18px;height:20px;font-size:12px">2</span><span class="sp">Noah</span><span style="color:#A19D96;width:30px;text-align:right">+5</span><b style="width:30px;text-align:right">30</b></div>
+        <div class="row" style="gap:8px;height:24px;position:relative"><span style="position:absolute;left:-8px;top:4px;bottom:4px;width:3px;background:#E0243B;border-radius:2px"></span><span class="cl" style="width:18px;height:20px;font-size:12px">3</span><span class="sp">Priya <span class="you" style="color:#FF5A6A">You</span></span><span style="color:#A19D96;width:30px;text-align:right">+2</span><b style="width:30px;text-align:right">39</b></div>
+        <div class="row" style="gap:8px;height:24px"><span class="cl" style="width:18px;height:20px;font-size:12px">4</span><span class="sp">Leo</span><span style="color:#A19D96;width:30px;text-align:right">+7</span><b style="width:30px;text-align:right">55</b></div>
+        <div class="row" style="gap:8px;height:24px"><span class="cl" style="width:18px;height:20px;font-size:12px">5</span><span class="sp">Sam</span><span style="color:#A19D96;width:30px;text-align:right">+8</span><b style="width:30px;text-align:right">62</b></div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px;align-items:flex-start"><span class="oc tie" style="flex:none">= R6</span><span class="vo xs">Dead heat. Maya keeps her 2. Bold move, shit payoff.</span></div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <span style="flex:1;height:38px;border-radius:19px;background:rgba(238,233,223,.12);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px"><svg style="width:17px;height:17px"><use href="#i-knock"/></svg>I knocked</span>
+        <span style="flex:1;height:38px;border-radius:19px;background:rgba(238,233,223,.12);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px">Open</span>
+      </div>
+    </div>
+
+    <div class="lbl" style="margin:18px 4px 6px;color:#A19D96">After one tap on "I knocked"</div>
+    <div style="border-radius:20px;padding:10px;background:rgba(22,22,26,.78);display:flex;gap:8px;align-items:center">
+      <span style="flex:1;height:38px;border-radius:19px;background:#EEE9DF;color:#0A0A0E;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px">Tap again: you knocked</span>
+      <span class="num" style="width:38px;height:38px;border-radius:19px;box-shadow:inset 0 0 0 1.5px rgba(238,233,223,.4);display:grid;place-items:center;font-size:14px;font-weight:600">4</span>
+    </div>
+
+    <div class="lbl" style="margin:16px 4px 6px;color:#A19D96">Locked and offline (expected)</div>
+    <div style="border-radius:20px;padding:12px 14px;background:rgba(22,22,26,.6);opacity:.7;display:flex;gap:10px;align-items:center">
+      <svg viewBox="0 0 64 64" style="width:22px;height:22px;flex:none"><use href="#crest"/></svg>
+      <div class="sp" style="font-size:13px;line-height:1.3"><b>Thursday table · R5 of 10</b><br>Last updated 9:42. Open Kedro to catch up.</div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:44px;left:46px;width:50px;height:50px;border-radius:25px;background:rgba(40,40,46,.7);display:grid;place-items:center;color:#EEE9DF"><svg style="width:22px;height:22px"><use href="#i-flash"/></svg></div>
+  <div style="position:absolute;bottom:44px;right:46px;width:50px;height:50px;border-radius:25px;background:rgba(40,40,46,.7);display:grid;place-items:center;color:#EEE9DF"><svg style="width:22px;height:22px"><use href="#i-cam"/></svg></div>
+  <div class="hi" style="background:#EEE9DF"></div>
+</div>
+<figcaption><b><em>F19</em>Lock Screen Live Activity (Priya's phone)</b><span>The phone lies locked on the table and still works as a scoreboard. Updates arrive silently over a per-game push channel. <b>I knocked</b> only ever sets you, and it takes two taps (inset). With no internet and the screen locked, the activity simply goes stale and says so. There's no background Bluetooth state link anymore. StandBy shows this same presentation, scaled up by the system.</span></figcaption>
+</figure>
+
+<!-- F20 -->
+<figure id="f20">
+<div class="phone dark" style="background:linear-gradient(180deg,#1A1A20 0%,#0A0A0E 70%);--crestCut:#0A0A0E">
+  <div class="sb" style="color:#EEE9DF;padding-left:46px"><span>10:13</span><svg><use href="#sbi"/></svg></div>
+  <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:146px;height:37px;background:#000;border-radius:20px;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:0 9px;color:#EEE9DF">
+    <span class="cl" style="width:20px;height:22px;font-size:13px;background:#EEE9DF;color:#0A0A0E">2</span><span class="num" style="font-size:13px;font-weight:600">R7/10</span>
+  </div>
+  <div class="ct" style="color:#EEE9DF">
+    <div class="lbl" style="margin:10px 4px 6px;color:#A19D96">Expanded · long press</div>
+    <div style="background:#000;border-radius:40px;padding:16px 20px 14px">
+      <div class="row num" style="gap:0;font-size:14px;justify-content:space-between">
+        <div style="text-align:center"><svg class="av s28 c-maya" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-quart"/></svg><b style="display:block;font-size:18px;margin-top:4px">26</b><span style="font-size:11px;color:#A19D96">Maya</span></div>
+        <div style="text-align:center"><svg class="av s28 c-noah" viewBox="0 0 40 40" style="margin:0 auto;box-shadow:0 0 0 2px #000,0 0 0 3.5px #FF5A6A"><use href="#p-hoops"/></svg><b style="display:block;font-size:18px;margin-top:4px">30</b><span style="font-size:11px;color:#FF5A6A">You</span></div>
+        <div style="text-align:center"><svg class="av s28 c-priya" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-sash"/></svg><b style="display:block;font-size:18px;margin-top:4px">39</b><span style="font-size:11px;color:#A19D96">Priya</span></div>
+        <div style="text-align:center"><svg class="av s28 c-leo" viewBox="0 0 40 40" style="margin:0 auto"><use href="#p-chev"/></svg><b style="display:block;font-size:18px;margin-top:4px">55</b><span style="font-size:11px;color:#A19D96">Leo</span></div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:10px;align-items:flex-start"><span class="oc tie" style="flex:none">= R6</span><span style="font-size:13px;color:#A19D96">Maya knocked with 2 and tied Priya's 2. Maya scores 2.</span></div>
+    </div>
+
+    <div style="margin-top:20px;border-radius:22px;padding:14px 16px;background:#17171B">
+      <div class="row"><span class="lbl sp" style="color:#A19D96">Rival</span><span class="cap">Thu</span></div>
+      <div class="row" style="margin-top:8px;gap:12px"><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><span class="num" style="font:200 38px/1 var(--sys)">8<span style="color:#6E6C69"> – </span>13</span><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><span class="sp"></span><span class="row" style="gap:3px"><i style="width:8px;height:8px;border:1px solid #A19D96"></i><i style="width:8px;height:8px;border:1px solid #A19D96"></i><i style="width:8px;height:8px;background:#EEE9DF"></i><i style="width:8px;height:8px;border:1px solid #A19D96"></i><i style="width:8px;height:8px;background:#EEE9DF"></i></span></div>
+      <p class="vo xs" style="margin-top:8px">Maya 13, you 8. She's living in your head rent-free.</p>
+    </div>
+    <div class="row" style="gap:16px;margin-top:16px;align-items:stretch">
+      <div style="flex:1;border-radius:22px;padding:14px;background:#17171B;aspect-ratio:1">
+        <div class="lbl" style="color:#A19D96">Board</div>
+        <div class="num" style="font:600 34px/1 var(--sys);margin-top:10px;font-stretch:condensed">#212</div>
+        <div class="num" style="font-size:13px;color:#A19D96;margin-top:4px">1,198 · +14</div>
+        <svg viewBox="0 0 48 34" style="width:34px;height:24px;color:#C9A86A;margin-top:12px"><use href="#shoe"/></svg>
+      </div>
+      <div style="flex:1;border-radius:22px;padding:14px;background:#17171B;aspect-ratio:1">
+        <div class="lbl" style="color:#A19D96">Close race</div>
+        <svg class="av s28 c-dana" viewBox="0 0 40 40" style="margin-top:8px"><use href="#p-diam"/></svg>
+        <p class="vo xs" style="margin-top:6px;font-size:13.5px">Dana's 7 behind you. One shit game and she's past.</p>
+      </div>
+    </div>
+    <div class="row" style="margin-top:20px;justify-content:space-around">
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:15px;background:#0A0A0E;box-shadow:inset 0 0 0 1px #9C7A3C,0 0 0 1px rgba(255,255,255,.08);display:grid;place-items:center;color:#EEE9DF;margin:0 auto"><svg viewBox="0 0 64 64" style="width:50px;height:50px"><use href="#crest"/></svg></div><div style="font-size:12px;margin-top:5px">Kedro</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:31px;background:rgba(238,233,223,.14);display:grid;place-items:center;margin:0 auto"><svg style="width:26px;height:26px"><use href="#i-table"/></svg></div><div style="font-size:12px;margin-top:5px">Start a table</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:15px;background:#2A2A30;margin:0 auto"></div><div style="font-size:12px;margin-top:5px;color:#A19D96">Messages</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:15px;background:#2A2A30;margin:0 auto"></div><div style="font-size:12px;margin-top:5px;color:#A19D96">Camera</div></div>
+    </div>
+  </div>
+  <div class="hi" style="background:#EEE9DF"></div>
+</div>
+<figcaption><b><em>F20</em>Island, widgets, Control, icon (Noah's Home Screen)</b><span>The compact Island shows your saddle-cloth rank and round. Expanded shows the top four and the last round in plain words. The widgets are the reasons to come back: Rival, Board, and Close race, each with a short voice line. <b>Start a table</b> is a ControlWidget, so it also works from Control Center and the Action button. The app icon is the bone crest on onyx inside a satin-brass ring.</span></figcaption>
+</figure>
+
+<!-- F21 -->
+<figure id="f21" class="wide">
+<div class="scx">
+<div class="phone land dark">
+  <div style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:37px;height:126px;background:#000;border-radius:20px;z-index:60"></div>
+  <div style="position:absolute;inset:0;padding:22px 52px 26px 76px;display:flex;flex-direction:column">
+    <div class="row">
+      <span style="font:500 22px var(--serif)">Thursday table</span><span class="tw" style="color:var(--ink2)">Dubious Intent</span><span class="sp"></span>
+      <b class="num" style="font-size:16px">Round 6 of 10</b>
+      <div class="rail" style="width:200px"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i><span class="post"></span></div>
+      <span class="pill"><span class="dot"></span>Live</span>
+    </div>
+    <div style="flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:14px">
+      <div style="padding:10px 14px;border-right:1px solid var(--line)"><div class="row" style="gap:8px"><span class="cl one">1</span><svg class="av s32 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg></div><div style="font-size:17px;font-weight:600;margin-top:8px">Maya</div><div class="row" style="gap:6px;align-items:baseline"><span class="num" style="font:600 92px/1 var(--sys);font-stretch:condensed;letter-spacing:-3px">24</span><svg class="ls" viewBox="0 0 48 34" style="width:22px;height:16px"><use href="#shoe"/></svg></div><div class="dl" style="text-align:left">+6</div></div>
+      <div style="padding:10px 14px;border-right:1px solid var(--line);position:relative"><span style="position:absolute;left:0;top:10px;width:3px;height:40px;background:var(--redF)"></span><div class="row" style="gap:8px"><span class="cl">2</span><svg class="av s32 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg></div><div style="font-size:17px;font-weight:600;margin-top:8px">Noah</div><span class="num" style="font:600 92px/1 var(--sys);font-stretch:condensed;letter-spacing:-3px">25</span><div class="dl" style="text-align:left">−10</div></div>
+      <div style="padding:10px 14px;border-right:1px solid var(--line)"><div class="row" style="gap:8px"><span class="cl">4</span><svg class="av s32 c-leo" viewBox="0 0 40 40"><use href="#p-chev"/></svg></div><div style="font-size:17px;font-weight:600;margin-top:8px">Leo</div><span class="num" style="font:600 92px/1 var(--sys);font-stretch:condensed;letter-spacing:-3px">48</span><div class="dl" style="text-align:left">+9</div></div>
+      <div style="padding:10px 14px;border-right:1px solid var(--line)"><div class="row" style="gap:8px"><span class="cl">3</span><svg class="av s32 c-priya" viewBox="0 0 40 40"><use href="#p-sash"/></svg></div><div style="font-size:17px;font-weight:600;margin-top:8px">Priya</div><span class="num" style="font:600 92px/1 var(--sys);font-stretch:condensed;letter-spacing:-3px">37</span><div class="dl" style="text-align:left">+4</div></div>
+      <div style="padding:10px 14px"><div class="row" style="gap:8px"><span class="cl">5</span><span class="av s32 gst">S</span></div><div style="font-size:17px;font-weight:600;margin-top:8px">Sam</div><span class="num" style="font:600 92px/1 var(--sys);font-stretch:condensed;letter-spacing:-3px">54</span><div class="dl" style="text-align:left">+11</div></div>
+    </div>
+    <div class="row" style="gap:12px;border-top:1px solid var(--line);padding-top:12px"><span class="oc land">↓ R5 · Landed <b>−10</b></span><span class="vo" style="font-size:20px">Noah knocked on 3 and fucking nailed it.</span><span class="sp"></span><span class="cap">Lowest other hand: Priya's 4</span></div>
+  </div>
+  <div class="hi" style="width:200px"></div>
+</div>
+</div>
+<figcaption><b><em>F21</em>Landscape table display (852 × 393, the phone in the middle of the table)</b><span>Rotate the phone in the live game and it becomes the shared scoreboard, in seat order around the table so everyone finds their own column. Huge condensed totals, rank cloths, neutral deltas, and the last round in the house voice. It's a SwiftUI layout chosen by orientation. StandBy, by contrast, is the system's own scaled-up Live Activity.</span></figcaption>
+</figure>
+
+<!-- F22 -->
+<figure id="f22">
+<div class="phone light">
+  <div class="sb"><span>9:13</span><svg><use href="#sbi"/></svg></div><div class="di"></div>
+  <div class="ct">
+    <div class="bar"><span style="font-size:24px">Cancel</span><span class="sp"></span><div class="gb glass" style="width:52px;height:52px;border-radius:26px"><svg style="width:26px;height:26px"><use href="#i-ell"/></svg></div></div>
+    <h1 style="font:500 50px/1.05 var(--serif);margin-top:6px">Seats</h1>
+    <div class="card" style="margin-top:12px;padding:14px 16px;box-shadow:inset 0 0 0 1px var(--line)">
+      <div class="lbl" style="font-size:18px">House voice: Clean</div>
+      <p class="vo" style="font-size:27px;line-height:1.25;margin-top:6px">Maya leads Noah 13–7. Tonight's as good a night as any to fix that.</p>
+    </div>
+    <div class="grp" style="margin-top:12px">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+        <div class="row"><svg class="av s48 c-maya" viewBox="0 0 40 40"><use href="#p-quart"/></svg><b style="font-size:42px;font-weight:600">Maya</b></div>
+        <div style="font-size:26px;color:var(--ink2);margin-top:4px">Host · You</div>
+        <div class="btn line" style="margin-top:10px;height:60px;font-size:24px">Seat options</div>
+      </div>
+      <div style="padding:14px 16px">
+        <div class="row"><svg class="av s48 c-noah" viewBox="0 0 40 40"><use href="#p-hoops"/></svg><b style="font-size:42px;font-weight:600">Noah</b></div>
+        <div style="font-size:26px;color:var(--ink2);margin-top:4px">Scorekeeper</div>
+        <div class="btn line" style="margin-top:10px;height:60px;font-size:24px">Seat options</div>
+      </div>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(transparent,var(--bg) 40%);z-index:30"></div>
+  <div class="btn pri" style="position:absolute;left:20px;right:20px;bottom:30px;width:auto;height:72px;font-size:30px;z-index:31">Deal</div>
+  <div class="hi"></div>
+</div>
+<figcaption><b><em>F22</em>The lobby at AX5, House voice Clean</b><span>At the largest accessibility size, each seat stacks and its ⋯ menu becomes a full-width <b>Seat options</b> button. Reorder is available from that menu (Move up, Move down) as well as by drag. Deal stays pinned. This table went Clean because someone seated prefers it, and nobody is told who. Every in-game line on every phone is now the Clean rewrite, and the attitude survives.</span></figcaption>
+</figure>
+
+</main>
+
+<section class="ledger">
+  <h2>Sample game ledger: Thursday table</h2>
+  <p>Hand value → round score for the game used in every frame. The knocker's hand is underlined. Each knock follows PRD 2.6: −10 if strictly lowest, the hand if tied, hand + 10 if beaten. The game was set up for <b>8 rounds</b> (F4) and Maya extended it to 10 after Round 4 (F9). Round 2 shows the values after Priya's correction (her hand 6 → 5), which turned Leo's landed knock into a dead heat (Leo 2 → 17 after Round 2).</p>
+  <div class="tw2">
+  <table>
+    <thead><tr><th>Round</th><th>Knocker</th><th>Outcome</th><th>Noah</th><th>Maya</th><th>Leo</th><th>Priya</th><th>Sam (guest)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Maya</td><td>↓ Landed −10</td><td>9</td><td class="k">3 → −10</td><td>12</td><td>7</td><td>15</td></tr>
+      <tr><td>2 (edited)</td><td>Leo</td><td>= Dead heat</td><td>6</td><td>11</td><td class="k">5 → 5</td><td>5</td><td>20</td></tr>
+      <tr><td>3</td><td>Noah</td><td>× Busted +10</td><td class="k">8 → 18</td><td>4</td><td>14</td><td>10</td><td>9</td></tr>
+      <tr><td>4</td><td>Priya</td><td>× Busted +10</td><td>2</td><td>13</td><td>8</td><td class="k">1 → 11</td><td>−1</td></tr>
+      <tr><td>After R4</td><td></td><td>extended 8 → 10</td><td>35</td><td>18</td><td>39</td><td>33</td><td>43</td></tr>
+      <tr><td>5</td><td>Noah</td><td>↓ Landed −10</td><td class="k">3 → −10</td><td>6</td><td>9</td><td>4</td><td>11</td></tr>
+      <tr><td>After R5 (F5, F6, F21)</td><td></td><td></td><td>25</td><td>24</td><td>48</td><td>37</td><td>54</td></tr>
+      <tr><td>6 (F7)</td><td>Maya</td><td>= Dead heat</td><td>5</td><td class="k">2 → 2</td><td>7</td><td>2</td><td>8</td></tr>
+      <tr><td>After R6 (F19, F20)</td><td></td><td></td><td>30</td><td>26</td><td>55</td><td>39</td><td>62</td></tr>
+      <tr><td>7</td><td>Leo</td><td>× Busted +10</td><td>4</td><td>9</td><td class="k">6 → 16</td><td>12</td><td>3</td></tr>
+      <tr><td>8</td><td>Noah</td><td>↓ Landed −10</td><td class="k">1 → −10</td><td>10</td><td>13</td><td>6</td><td>7</td></tr>
+      <tr><td>9</td><td>Priya</td><td>↓ Landed −10</td><td>8</td><td>5</td><td>4</td><td class="k">0 → −10</td><td>16</td></tr>
+      <tr><td>10 (F10)</td><td>Maya</td><td>× Busted +10</td><td>6</td><td class="k">3 → 13</td><td>11</td><td>9</td><td>2</td></tr>
+    </tbody>
+    <tfoot><tr><td>Final (F11)</td><td></td><td></td><td>38 · 1st</td><td>63 · 3rd</td><td>99 · 5th</td><td>56 · 2nd</td><td>90 · 4th</td></tr></tfoot>
+  </table>
+  </div>
+  <p style="margin-top:14px;margin-bottom:0">After Round 3 the standings were Maya 5, Priya 22, Leo 31, Noah 33, Sam 44, so Noah was 4th of 5 (bottom half) and his win earns Dark Horse. Sam's −1 in Round 4 earns Red Royalty. Self-report example (F8, a separate Friday table): Leo knocks with 5 and Noah reports −1 (K♥ + JKR), so Leo's knock is busted and Leo scores 15.</p>
+</section>
+</div>
+</body>
+</html>

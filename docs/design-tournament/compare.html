@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kedro Design Tournament</title>
+<style>
+  :root {
+    --bg: #111113; --panel: #1b1b1f; --ink: #f2f0ea; --ink2: #9a978f; --rule: #2c2c31; --accent: #b8323a; --gold: #c9a45c;
+    --col: 440px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+  h1 { margin: 0; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .controls label { display: flex; gap: 6px; align-items: center; padding: 5px 10px; border: 1px solid var(--rule); border-radius: 999px; cursor: pointer; color: var(--ink2); user-select: none; }
+  .controls label:has(input:checked) { color: var(--ink); border-color: var(--ink2); }
+  .controls input { accent-color: var(--accent); margin: 0; }
+  select, button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 5px 8px; }
+  .board { flex: 1; display: flex; gap: 12px; padding: 12px 16px; overflow-x: auto; min-height: 0; }
+  .col { flex: 0 0 var(--col); display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+  .col[hidden] { display: none; }
+  .col.winner { border-color: var(--gold); }
+  .meta { padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  .meta .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .meta strong { font-size: 15px; }
+  .score { font-variant-numeric: tabular-nums; color: var(--ink2); white-space: nowrap; }
+  .winner .score { color: var(--gold); }
+  .meta p { margin: 4px 0 0; color: var(--ink2); font-size: 12px; }
+  .meta a { color: var(--ink2); font-size: 12px; margin-right: 10px; }
+  iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+  @media (max-width: 600px) { :root { --col: calc(100vw - 32px); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kedro design tournament</h1>
+  <div class="controls" id="toggles"></div>
+  <div class="controls">
+    <select id="version" aria-label="Version">
+      <option value="v2">v2: adult redesign (final)</option>
+      <option value="v1">v1: round 1</option>
+    </select>
+    <select id="width" aria-label="Column width">
+      <option value="440">Narrow columns</option>
+      <option value="640">Medium columns</option>
+      <option value="900">Wide columns</option>
+    </select>
+  </div>
+</header>
+<main class="board" id="board"></main>
+<script>
+  const ENTRIES = [
+    { key: 'table-first', name: 'Table First', r1: 49.67, r2: 61.5, thesis: 'The app nearly disappears during play. Speed, glanceability, HIG restraint.', winner: true },
+    { key: 'rivalry', name: 'Rivalry Engine', r1: 48.0, r2: 56.83, thesis: 'Competition and story are the product. The between-games return loop.' },
+    { key: 'ambient', name: 'Ambient Table', r1: 47.67, r2: 56.5, thesis: 'Proximity joining, Live Activities, widgets. The game lives across the device.' },
+    { key: 'playful', name: 'Horse Play', r1: 46.5, r2: 52.5, thesis: 'Brand-forward craft, celebration, and teaching new players.' },
+  ];
+  const board = document.getElementById('board');
+  const toggles = document.getElementById('toggles');
+  const version = document.getElementById('version');
+  const width = document.getElementById('width');
+
+  const files = (key, v) => v === 'v2'
+    ? { mock: `${key}/mockups-v2.html`, spec: `${key}/spec-v2.md` }
+    : { mock: `${key}/mockups.html`, spec: `${key}/spec.md` };
+
+  for (const e of ENTRIES) {
+    const col = document.createElement('section');
+    col.className = 'col' + (e.winner ? ' winner' : '');
+    col.dataset.key = e.key;
+    col.innerHTML = `
+      <div class="meta">
+        <div class="top"><strong>${e.winner ? '🏆 ' : ''}${e.name}</strong>
+          <span class="score">R1 ${e.r1}/60 · Final ${e.r2}/70</span></div>
+        <p>${e.thesis}</p>
+        <p><a class="open" target="_blank">Open mockups ↗</a><a class="spec" target="_blank">Spec ↗</a></p>
+      </div>
+      <iframe loading="lazy" title="${e.name} mockups"></iframe>`;
+    board.appendChild(col);
+
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" checked value="${e.key}"> ${e.name}`;
+    label.querySelector('input').addEventListener('change', ev => { col.hidden = !ev.target.checked; });
+    toggles.appendChild(label);
+  }
+
+  function load() {
+    for (const col of board.children) {
+      const f = files(col.dataset.key, version.value);
+      col.querySelector('iframe').src = f.mock;
+      col.querySelector('.open').href = f.mock;
+      col.querySelector('.spec').href = f.spec;
+    }
+  }
+  version.addEventListener('change', load);
+  width.addEventListener('change', () => document.documentElement.style.setProperty('--col', width.value + 'px'));
+  load();
+</script>
+</body>
+</html>
