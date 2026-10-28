@@ -96,8 +96,35 @@ final class AuthStore {
     }
 
     func signOut() async throws {
+        #if DEBUG
+        if case .signedIn(let user) = state, user.id == Self.testUserID {
+            state = .signedOut
+            return
+        }
+        #endif
         try await client.auth.signOut()
     }
+
+    #if DEBUG
+    // MARK: Test user
+
+    private static let testUserID = UUID()
+
+    /// Signs in a local stand-in user without Apple or Supabase. Debug builds only, for working in
+    /// the Simulator until Sign in with Apple is provisioned. The user has no Supabase session.
+    func signInAsTestUser() {
+        let now = Date.now
+        state = .signedIn(User(
+            id: Self.testUserID,
+            appMetadata: [:],
+            userMetadata: ["full_name": .string("Test User")],
+            aud: "authenticated",
+            email: "test@kedro.dev",
+            createdAt: now,
+            updatedAt: now
+        ))
+    }
+    #endif
 
     private static func formatted(_ name: PersonNameComponents) -> String? {
         let value = name.formatted()

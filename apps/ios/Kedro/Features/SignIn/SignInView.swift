@@ -36,6 +36,15 @@ struct SignInView: View {
                     ProgressView()
                 }
             }
+
+            #if DEBUG
+            Button("Continue as Test User") {
+                auth.signInAsTestUser()
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .disabled(isSigningIn)
+            #endif
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 16)
