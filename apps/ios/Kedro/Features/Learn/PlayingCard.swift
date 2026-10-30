@@ -147,6 +147,8 @@ struct HandView: View {
     let name: String
     let cards: [PlayingCard]
     var isKnocker = false
+    /// The knocker went out with all four cards (an inherent knock).
+    var wentOut = false
     var showsTotal = true
     var cardWidth: CGFloat = 40
 
@@ -155,15 +157,19 @@ struct HandView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name.uppercased()).kedroFont(.headline).foregroundStyle(.cream)
                 if isKnocker {
-                    Label("knocked", systemImage: "hand.raised.fill")
+                    Label(wentOut ? "went out" : "knocked", systemImage: "hand.raised.fill")
                         .font(.caption)
                         .foregroundStyle(.kedroRed)
                 }
             }
             .frame(width: 76, alignment: .leading)
-            HStack(spacing: -cardWidth * 0.25) {
-                ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
-                    PlayingCardView(card: card, width: cardWidth)
+            if cards.isEmpty {
+                Text("No cards left").font(.callout).foregroundStyle(.silverDim)
+            } else {
+                HStack(spacing: -cardWidth * 0.25) {
+                    ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
+                        PlayingCardView(card: card, width: cardWidth)
+                    }
                 }
             }
             Spacer(minLength: 4)

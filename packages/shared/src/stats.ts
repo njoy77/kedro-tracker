@@ -159,9 +159,16 @@ export type PlayerStats = {
   /** Landed knocks ÷ knocks; null with no knocks. */
   knockSuccess: number | null
   bestGame: number | null
+  /** The game of `bestGame` (the earliest, when tied). */
+  bestGameId: UUID | null
+  bestGameAtMs: number | null
   worstGame: number | null
   currentWinStreak: number
   longestWinStreak: number
+  /** When the longest streak was first reached (its last win), for "whoever got there first". */
+  longestWinStreakAtMs: number | null
+  /** The most recent finished game. */
+  lastPlayedMs: number | null
 }
 
 export function statsRowsFromProjection(projection: FinishedGameProjection): StatsRow[] {
@@ -199,9 +206,15 @@ export function aggregateStats(rows: readonly StatsRow[]): Map<Subject, PlayerSt
     const knocks = sum((row) => row.knocks)
     const knocksLanded = sum((row) => row.knocksLanded)
     let longest = 0, run = 0
+    let longestAtMs: number | null = null
+    let best: StatsRow | null = null
     for (const row of games) {
       run = row.isWinner ? run + 1 : 0
-      longest = Math.max(longest, run)
+      if (run > longest) {
+        longest = run
+        longestAtMs = row.finishedAtMs
+      }
+      if (!best || row.total < best.total) best = row
     }
     let current = 0
     for (let index = games.length - 1; index >= 0 && games[index].isWinner; index--) current += 1
@@ -220,10 +233,14 @@ export function aggregateStats(rows: readonly StatsRow[]): Map<Subject, PlayerSt
       knocksFailed: sum((row) => row.knocksFailed),
       knockRate: roundsPlayed === 0 ? 0 : knocks / roundsPlayed,
       knockSuccess: knocks === 0 ? null : knocksLanded / knocks,
-      bestGame: gamesPlayed === 0 ? null : Math.min(...games.map((row) => row.total)),
+      bestGame: best?.total ?? null,
+      bestGameId: best?.gameId ?? null,
+      bestGameAtMs: best?.finishedAtMs ?? null,
       worstGame: gamesPlayed === 0 ? null : Math.max(...games.map((row) => row.total)),
       currentWinStreak: current,
       longestWinStreak: longest,
+      longestWinStreakAtMs: longestAtMs,
+      lastPlayedMs: games.at(-1)?.finishedAtMs ?? null,
     })
   }
   return result

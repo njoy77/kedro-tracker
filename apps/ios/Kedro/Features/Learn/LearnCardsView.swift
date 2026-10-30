@@ -179,6 +179,7 @@ private struct StickingCard: View {
             LearnCardText(heading: "Stick It", lines: [
                 "When anyone discards a card, anyone holding the same rank can slap theirs on top right away. One less card in your grid.",
                 "Get it wrong and the table handles it under the physical rules. Whatever you end up holding counts in your hand.",
+                "Stick all four and you've gone out: your hand is 0, and you knock automatically when your turn comes.",
             ])
             HStack(spacing: 18) {
                 VStack(spacing: 6) {
@@ -209,6 +210,13 @@ private struct KnockingCard: View {
             Text("Everyone else always scores their own hand.")
                 .font(.callout)
                 .foregroundStyle(.silver)
+            Text("Went Out")
+                .kedroFont(.headline)
+                .foregroundStyle(.cream)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, 4)
+            outcomeRow(.landed, "Strictly lowest", "Played all four cards and everyone else is above 0: −10.")
+            outcomeRow(.noPenalty, "Tied or beaten", "Someone matched or beat your 0: you score 0. Going out never takes the +10.")
         }
     }
 
@@ -226,7 +234,7 @@ private struct KnockingCard: View {
 
 // MARK: - Quiz
 
-/// The knock-gamble quiz: three rounds, cards face up; pick what the knocker scores.
+/// The knock-gamble quiz: a few rounds, cards face up; pick what the knocker scores.
 struct KnockQuiz: View {
     var scenarios: [KnockScenario] = KnockScenario.quiz
     var onFinish: () -> Void
@@ -261,7 +269,7 @@ struct KnockQuiz: View {
                     .accessibilityAddTraits(.isHeader)
                 VStack(spacing: 10) {
                     ForEach(Array(scenario.players.enumerated()), id: \.offset) { offset, player in
-                        HandView(name: player.name, cards: player.cards, isKnocker: offset == scenario.knockerIndex)
+                        HandView(name: player.name, cards: player.cards, isKnocker: offset == scenario.knockerIndex, wentOut: scenario.inherent)
                     }
                 }
                 HStack(spacing: 10) {

@@ -1,8 +1,13 @@
-// GET /v1/leaderboard (PRD §5.3, design §12.4). Ranking rules live in packages/shared
-// (buildLeaderboard); this gathers the scope's stats and ratings and attaches profiles.
+// GET /v1/leaderboard and GET /v1/records (PRD §5.3, design §12.4). Ranking rules live in
+// packages/shared (buildLeaderboard, buildRecords); this gathers the scope's stats and ratings and
+// attaches profiles.
 
 import {
   buildLeaderboard,
+  buildRecords,
+  isoSeconds,
+  RECORD_KINDS,
+  DEFAULT_RECORDS_LIMIT,
   RATING_START,
   displayRating,
   type LeaderboardEntry,
@@ -13,7 +18,10 @@ import {
   type NotYetRankedEntry,
   type NotYetRankedRow,
   type PlayerProfileResponse,
+  type PlayerStats,
   type PlayerSummary,
+  type RecordRow,
+  type RecordsResponse,
   type UUID,
 } from '@kedro/shared'
 import { notFound } from '../http.ts'
@@ -22,6 +30,7 @@ import { toSummary, type PlayersService } from './players.ts'
 
 export const DEFAULT_LEADERBOARD_LIMIT = 100
 export const MAX_LEADERBOARD_LIMIT = 500
+export const MAX_RECORDS_LIMIT = 100
 
 export class LeaderboardService {
   constructor(
@@ -34,9 +43,7 @@ export class LeaderboardService {
     { scope, sort, limit = DEFAULT_LEADERBOARD_LIMIT }: { scope: LeaderboardScope; sort: LeaderboardSort; limit?: number },
   ): Promise<LeaderboardResponse> {
     const cap = Math.min(Math.max(1, limit), MAX_LEADERBOARD_LIMIT)
-    const hidden = await this.players.hiddenFrom(caller)
-    const scopeIds = scope === 'playedWith' ? [caller, ...(await this.store.playedWith(caller)).map((row) => row.playerId)] : undefined
-    const stats = (await this.store.playerStats(scopeIds)).filter((entry) => !hidden.has(entry.subject.slice(2)))
+    const stats = await this.scopeStats(caller, scope)
     const ratings = await this.store.ratings(stats.map((entry) => entry.subject))
     const built = buildLeaderboard({ stats, ratings, sort })
 
@@ -67,6 +74,46 @@ export class LeaderboardService {
     const mine = rows.find((row) => row.isMe) ?? notYetRanked.find((row) => row.isMe)
     if (mine) response.me = mine
     return response
+  }
+
+  /** GET /v1/records: each record's top holders among the same people the scope's board ranks. */
+  async records(caller: UUID, { scope, limit = DEFAULT_RECORDS_LIMIT }: { scope: LeaderboardScope; limit?: number }): Promise<RecordsResponse> {
+    const cap = Math.min(Math.max(1, limit), MAX_RECORDS_LIMIT)
+    const stats = await this.scopeStats(caller, scope)
+    const built = RECORD_KINDS.map((kind) => ({ kind, entries: buildRecords(stats, kind, cap) }))
+
+    const entries = built.flatMap(({ entries: list }) => list)
+    const ids = [...new Set(entries.map((entry) => entry.subject.slice(2)))]
+    const profiles = new Map((await this.store.getPlayers(ids)).map((row) => [row.id, row]))
+    const gameIds = entries.flatMap((entry) => (entry.gameId ? [entry.gameId] : []))
+    const games = new Map((await this.store.finishedGames(gameIds)).map((row) => [row.gameId, row]))
+    const gamesPlayed = new Map(stats.map((entry) => [entry.subject, entry.gamesPlayed]))
+
+    const me = `p:${caller}`
+    const records = built.map(({ kind, entries: list }) => ({
+      kind,
+      rows: list.flatMap((entry): RecordRow[] => {
+        const profile = profiles.get(entry.subject.slice(2))
+        if (!profile) return []
+        const row: RecordRow = {
+          rank: entry.rank,
+          player: toSummary(profile, gamesPlayed.get(entry.subject) ?? 0),
+          value: entry.value,
+          isMe: entry.subject === me,
+        }
+        const game = entry.gameId ? games.get(entry.gameId) : undefined
+        if (game) row.game = { gameId: game.gameId, tableWord: game.tableWord, finishedAt: isoSeconds(game.finishedAtMs) }
+        return [row]
+      }),
+    }))
+    return { scope, records }
+  }
+
+  /** Lifetime stats of a scope's players (global: everyone; played with: you and your people), minus blocks. */
+  private async scopeStats(caller: UUID, scope: LeaderboardScope): Promise<PlayerStats[]> {
+    const hidden = await this.players.hiddenFrom(caller)
+    const scopeIds = scope === 'playedWith' ? [caller, ...(await this.store.playedWith(caller)).map((row) => row.playerId)] : undefined
+    return (await this.store.playerStats(scopeIds)).filter((entry) => !hidden.has(entry.subject.slice(2)))
   }
 
   /**

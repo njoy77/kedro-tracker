@@ -245,28 +245,25 @@ struct LiveTableView: View {
             Button {
                 sheet = .dealer
             } label: {
-                VStack(spacing: 1) {
-                    Text(Literal.roundOf(state.progress.currentRound, state.config.plannedRounds))
-                        .kedroFont(.label)
-                        .foregroundStyle(.cream)
-                    if let dealer = state.currentDealer {
-                        Text(Literal.deals(word: state.config.tableWord, dealer: state.name(of: dealer)))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.silver)
-                    }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                TableToolbarTitle(
+                    round: Literal.roundOf(state.progress.currentRound, state.config.plannedRounds),
+                    word: state.config.tableWord,
+                    dealer: state.currentDealer.map { state.name(of: $0) }
+                )
             }
             .buttonStyle(.plain)
             .disabled(!session.canEdit)
             .accessibilityHint(session.canEdit ? TableText.text("button.changeDealer") : "")
         }
+        // Three buttons at most, so the metadata line keeps the table word and dealer readable on a
+        // 6.1" phone: End Game takes Rules' place for anyone who can end the game (Rules moves to
+        // the top of More).
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button(TableText.text("button.rules"), systemImage: "questionmark") { sheet = .rules }
             Button(TableText.text("button.history"), systemImage: "clock.arrow.circlepath") { sheet = .history(.scores) }
             if session.canEdit {
                 Button(Literal.text("button.endGame"), systemImage: "flag.checkered") { isEndingGame = true }
+            } else {
+                Button(TableText.text("button.rules"), systemImage: "questionmark") { sheet = .rules }
             }
             moreMenu
         }
@@ -274,6 +271,9 @@ struct LiveTableView: View {
 
     private var moreMenu: some View {
         Menu {
+            if session.canEdit {
+                Button(TableText.text("button.rules"), systemImage: "questionmark.circle") { sheet = .rules }
+            }
             // Seats stay open until Round 1 (and a guest's late phone can take over its seat any
             // time), so the rotating QR stays reachable after Deal for App Clip guests and phones
             // that can't see the table (design §5.9 rows 5, 8 and 10).

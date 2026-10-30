@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Score a Round (design §13.1): practice rounds with synthetic players and cards face up,
-/// covering landed, tied and failed. Add up each hand, call the knock, see the round scores.
+/// covering landed, tied, failed and going out with all four cards. Add up each hand, call the knock, see the round scores.
 /// Nothing is logged. At the end, the same rounds can go through the real Round sheet in
 /// practice mode.
 struct ScoreRoundDrill: View {
@@ -54,7 +54,7 @@ struct ScoreRoundDrill: View {
         Text("Cards are face up. Type each player's total.").foregroundStyle(.silver)
         ForEach(Array(scenario.players.enumerated()), id: \.offset) { offset, player in
             VStack(alignment: .leading, spacing: 8) {
-                HandView(name: player.name, cards: player.cards, isKnocker: offset == scenario.knockerIndex, showsTotal: false)
+                HandView(name: player.name, cards: player.cards, isKnocker: offset == scenario.knockerIndex, wentOut: scenario.inherent, showsTotal: false)
                 HStack {
                     TextField("Hand", value: handBinding(player.name), format: .number)
                         .keyboardType(.numbersAndPunctuation)
@@ -76,7 +76,7 @@ struct ScoreRoundDrill: View {
             .padding(12)
             .background(.surfaceRaised, in: .rect(cornerRadius: 16))
         }
-        Text("Red Kings are −1, black Kings 13, Jokers 0.").font(.footnote).foregroundStyle(.silverDim)
+        Text("Red Kings are −1, black Kings 13, Jokers 0. No cards left is 0.").font(.footnote).foregroundStyle(.silverDim)
         Button(checked ? "Call the Knock" : "Check") {
             if checked { step = .knock } else { checked = true }
         }
@@ -86,7 +86,7 @@ struct ScoreRoundDrill: View {
 
     @ViewBuilder
     private func knockStep(_ scenario: KnockScenario) -> some View {
-        Text("\(scenario.knocker.name) Knocked on \(ScoreFormat.string(scenario.knocker.hand))")
+        Text(scenario.inherent ? "\(scenario.knocker.name) Went Out" : "\(scenario.knocker.name) Knocked on \(ScoreFormat.string(scenario.knocker.hand))")
             .kedroFont(.display)
             .foregroundStyle(.cream)
             .accessibilityAddTraits(.isHeader)
@@ -102,6 +102,11 @@ struct ScoreRoundDrill: View {
         }
         .padding(14)
         .background(.surfaceRaised, in: .rect(cornerRadius: 16))
+        if scenario.inherent {
+            Text("\(scenario.knocker.name) stuck all four cards, so the knock was automatic.")
+                .font(.callout)
+                .foregroundStyle(.silver)
+        }
         Text("What does \(scenario.knocker.name) score?").font(.headline).foregroundStyle(.cream)
         HStack(spacing: 10) {
             ForEach(scenario.choices, id: \.self) { choice in
@@ -155,7 +160,7 @@ struct ScoreRoundDrill: View {
     private var finished: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("That's Every Knock").kedroFont(.display).foregroundStyle(.cream)
-            Text("Landed, tied and failed. Kedro does this math for you at every real table.")
+            Text("Landed, tied, failed, and going out with all four cards. Kedro does this math for you at every real table.")
                 .foregroundStyle(.cream)
             Button("Try the Real Round Sheet") {
                 Task { practice = try? await PracticeTable.make(from: scenarios.first ?? .landed) }
@@ -237,6 +242,12 @@ private struct PracticeRoundSheet: View {
         RoundSheet(session: table.session)
             .overlay { PracticeWatermark() }
     }
+}
+
+#Preview("Went out, beaten") {
+    NavigationStack { ScoreRoundDrill(scenarios: [.wentOutBeaten]) }
+        .previewEnvironment()
+        .preferredColorScheme(.dark)
 }
 
 #Preview {

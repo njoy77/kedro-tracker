@@ -43,7 +43,14 @@ struct KnockCalculatorView: View {
             }
 
             Section {
-                Text("Strictly lowest: −10 flat. Tied for lowest: the hand. Beaten: the hand + 10. Everyone else scores their hand.")
+                Toggle(TableText.text("label.inherentKnock"), isOn: $calculator.inherent)
+                    .tint(.kedroRed)
+            } footer: {
+                Text(TableText.text("label.inherentKnockHint"))
+            }
+
+            Section {
+                Text("Strictly lowest: −10 flat. Tied for lowest: the hand. Beaten: the hand + 10. Went out with all four cards: −10 if strictly lowest, otherwise 0, never +10. Everyone else scores their hand.")
                     .font(.footnote)
                     .foregroundStyle(.silver)
                 NavigationLink(value: AppRoute.rules) { Label("All the Rules", systemImage: "book") }
@@ -52,6 +59,13 @@ struct KnockCalculatorView: View {
         .navigationTitle("Knock Calculator")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("Examples", systemImage: "list.bullet") {
+                    ForEach(KnockCalculator.examples, id: \.title) { example in
+                        Button(example.title) { calculator = example.calculator }
+                    }
+                }
+            }
             if prefill != nil {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Reset") { load(force: true) }
@@ -64,11 +78,11 @@ struct KnockCalculatorView: View {
     @ViewBuilder
     private var resultSection: some View {
         Section {
-            if let outcome = calculator.outcome, let verdict = calculator.verdict, let knocker = calculator.knockerEntry {
+            if let outcome = calculator.outcome, let verdict = calculator.verdict, let knockLine = calculator.knockLine {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 10) {
                         OutcomeBadge(outcome: outcome)
-                        Text("\(knocker.name) knocked on \(ScoreFormat.string(knocker.hand)).")
+                        Text(knockLine)
                             .font(.subheadline)
                             .foregroundStyle(.silver)
                     }
@@ -147,6 +161,11 @@ private struct HandEntryRow: View {
 
 #Preview("Example") {
     NavigationStack { KnockCalculatorView(prefill: nil).appRouteDestinations() }
+        .previewEnvironment()
+}
+
+#Preview("Went out, beaten") {
+    NavigationStack { KnockCalculatorView(prefill: Round(number: 1, hands: [PreviewData.noahSeat: 0, PreviewData.anaSeat: -2, PreviewData.benSeat: 9], knocker: PreviewData.noahSeat, isInherent: true)).appRouteDestinations() }
         .previewEnvironment()
 }
 

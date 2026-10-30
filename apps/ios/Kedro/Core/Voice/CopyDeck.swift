@@ -73,6 +73,7 @@ nonisolated struct CopyDeck: Sendable {
 /// same line (design §4.1). Each case lists its variant IDs.
 nonisolated enum VoiceMoment: String, Sendable, CaseIterable {
     case knockLanded, knockLandedLow, knockTied, knockFailed, knockFailedBig, knockFailedByOne
+    case wentOutLanded, wentOutBeaten
     case beatTheKnocker, redKing, bothRedKings, hugeHand, liveKnock
     case learnerFailedKnock, learnerBigHand, learnerTiedKnock
     case dealerLine
@@ -85,6 +86,8 @@ nonisolated enum VoiceMoment: String, Sendable, CaseIterable {
         case .knockFailed: ["K-06", "K-07"]
         case .knockFailedBig: ["K-08"]
         case .knockFailedByOne: ["K-09"]
+        case .wentOutLanded: ["K-24", "K-25"]
+        case .wentOutBeaten: ["K-26", "K-27"]
         case .beatTheKnocker: ["K-10"]
         case .redKing: ["K-12"]
         case .bothRedKings: ["K-13"]

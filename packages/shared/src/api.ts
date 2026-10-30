@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { avatarSchema, handleSchema, seatIdSchema, uuidSchema, type Avatar } from './domain.ts'
 import type { UUID } from './ids.ts'
 import type { LeaderboardScope, LeaderboardSort } from './leaderboard.ts'
+import type { RecordKind } from './records.ts'
 import type { HLC } from './hlc.ts'
 import type { OperationType } from './operations.ts'
 import type { TauntCheckReason } from './taunts.ts'
@@ -320,6 +321,27 @@ export type LeaderboardResponse = {
   notYetRankedCount: number
   /** The caller's own row wherever it is (pinned row), if they have played. */
   me?: LeaderboardRow | NotYetRankedRow
+}
+
+// MARK: Records
+
+/**
+ * GET /v1/records?scope=global|playedWith[&limit=]: every record's top holders (default 25 each)
+ * over the scope's players, computed from every finished game on the server (design §12.4).
+ */
+export type RecordRow = {
+  /** Competition ranking: ties share a number. */
+  rank: number
+  player: PlayerSummary
+  value: number
+  isMe: boolean
+  /** Where the record was set (best game only). */
+  game?: { gameId: UUID; tableWord: string; finishedAt: string }
+}
+
+export type RecordsResponse = {
+  scope: LeaderboardScope
+  records: { kind: RecordKind; rows: RecordRow[] }[]
 }
 
 // MARK: Health

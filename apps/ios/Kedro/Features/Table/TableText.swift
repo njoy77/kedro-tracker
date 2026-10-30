@@ -17,6 +17,7 @@ nonisolated enum TableText {
         .literal("button.rules", "Toolbar", "Rules"),
         .literal("button.history", "Toolbar", "History"),
         .literal("button.more", "Toolbar", "More"),
+        .literal("label.dealer", "Toolbar metadata, narrow", "{name} DEALS"),
         .literal("button.tableDisplay", "Menu", "Table Display"),
         .literal("button.exitTableDisplay", "Menu", "Exit Table Display"),
         .literal("button.handOff", "Menu", "Hand Off Scorekeeping"),

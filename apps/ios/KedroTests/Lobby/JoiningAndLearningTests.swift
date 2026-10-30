@@ -150,7 +150,7 @@ struct LearningTests {
         #expect(PlayingCard.joker.value == 0)
     }
 
-    @Test("The drill covers landed, tied and failed")
+    @Test("The drill covers landed, tied, failed and going out")
     func drillOutcomes() {
         #expect(KnockScenario.landed.outcome == .landed)
         #expect(KnockScenario.landed.knockerScore == -10)
@@ -158,8 +158,17 @@ struct LearningTests {
         #expect(KnockScenario.tied.knockerScore == 4)
         #expect(KnockScenario.failed.outcome == .failed)
         #expect(KnockScenario.failed.knockerScore == 16)
-        // The drill teaches regular knocks; inherent knocks (no penalty) aren't in Learn yet.
-        #expect(Set(KnockScenario.drill.compactMap(\.outcome)) == [.landed, .tied, .failed])
+        #expect(KnockScenario.wentOut.outcome == .landed)
+        #expect(KnockScenario.wentOut.knockerScore == -10)
+        #expect(KnockScenario.wentOutBeaten.outcome == .noPenalty)
+        #expect(KnockScenario.wentOutBeaten.knockerScore == 0, "going out never takes the +10")
+        #expect(KnockScenario.wentOutBeaten.choices == [-10, 0, 10])
+        #expect(KnockScenario.wentOutBeaten.verdict == "No penalty: 0.")
+        #expect(Set(KnockScenario.drill.compactMap(\.outcome)) == [.landed, .tied, .failed, .noPenalty])
+        #expect(KnockScenario.drill.contains { $0.inherent } && KnockScenario.quiz.contains { $0.inherent })
+        for scenario in KnockScenario.drill + KnockScenario.quiz where scenario.inherent {
+            #expect(scenario.knocker.cards.isEmpty && scenario.knocker.hand == 0)
+        }
         for scenario in KnockScenario.drill + KnockScenario.quiz {
             #expect(scenario.choices.contains(scenario.knockerScore))
             #expect(!scenario.explanation.isEmpty)
@@ -179,6 +188,43 @@ struct LearningTests {
         let tied = KnockCalculator.make([("A", 4), ("B", 4), ("C", 9)], knockerIndex: 0)
         #expect(tied.entries.map { tied.scores[$0.id] } == [4, 4, 9])
         #expect(tied.verdict == "Tied: 4.")
+    }
+
+    @Test("The Knock Calculator scores inherent knocks: −10 if lowest alone, otherwise 0, never +10")
+    func calculatorInherent() throws {
+        // The PRD's inherent examples: A 0, B 3 → −10; A 0, B 0 → 0; A 0, B −2 → 0.
+        let outcomes = [3, 0, -2].map { other in
+            KnockCalculator.make([("A", 0), ("B", other), ("C", 9)], knockerIndex: 0, inherent: true)
+        }
+        #expect(outcomes.map(\.outcome) == [.landed, .tied, .noPenalty])
+        #expect(outcomes.map { $0.scores[$0.knocker] } == [-10, 0, 0])
+        #expect(outcomes[2].verdict == "No penalty: 0.")
+        #expect(outcomes[2].knockLine == "A went out with all four cards.")
+        #expect(outcomes.allSatisfy { $0.explanation?.contains("all four cards") == true })
+
+        // Turning it on zeroes the knocker's hand; another hand or another knocker turns it off.
+        var calculator = KnockCalculator.example // Noah 6, Ana 3, Ben 9
+        calculator.inherent = true
+        #expect(calculator.knockerEntry?.hand == 0)
+        #expect(calculator.outcome == .landed, "Noah's 0 now beats Ana's 3")
+        let index = try #require(calculator.entries.firstIndex { $0.id == calculator.knocker })
+        calculator.entries[index].hand = 5
+        #expect(!calculator.inherent)
+        calculator.inherent = true
+        calculator.knocker = calculator.entries[1].id
+        #expect(!calculator.inherent)
+
+        // Every example in the menu is a valid round, and they cover every outcome.
+        #expect(Set(KnockCalculator.examples.compactMap(\.calculator.outcome)) == Set(KnockOutcome.allCases))
+    }
+
+    @Test("Prefilling from an inherent round keeps it inherent")
+    func prefillInherent() {
+        let seats = [PreviewData.noahSeat, PreviewData.anaSeat, PreviewData.benSeat]
+        let round = Round(number: 1, hands: [seats[0]: 0, seats[1]: -2, seats[2]: 9], knocker: seats[0], isInherent: true)
+        let calculator = KnockCalculator(round: round, order: seats) { _ in nil }
+        #expect(calculator.inherent)
+        #expect(calculator.outcome == .noPenalty)
     }
 
     @Test("The calculator prefills from a round in seat order")
@@ -210,5 +256,7 @@ struct LearningTests {
         #expect(redKing.flatMap(\.rules).contains { $0.id == "values.redKing" })
         #expect(RulesContent.search("zzzz").isEmpty)
         #expect(RulesContent.search("Sticking").first?.rules.count == 2)
+        let inherent = RulesContent.search("went out").flatMap(\.rules).map(\.id)
+        #expect(inherent.contains("knocking.inherent") && inherent.contains("scoring.inherent"))
     }
 }

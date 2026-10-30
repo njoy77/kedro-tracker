@@ -13,14 +13,16 @@ nonisolated struct KnockScenario: Hashable, Sendable, Identifiable {
     var id: String
     var players: [Player]
     var knockerIndex: Int
+    /// The knocker went out with all four cards (an inherent knock): no cards left, hand 0.
+    var inherent = false
 
     var knocker: Player { players[knockerIndex] }
 
     private var hands: [String: Int] { Dictionary(uniqueKeysWithValues: players.map { ($0.name, $0.hand) }) }
 
-    var outcome: KnockOutcome? { Scoring.knockOutcome(hands: hands, knocker: knocker.name) }
+    var outcome: KnockOutcome? { Scoring.knockOutcome(hands: hands, knocker: knocker.name, inherent: inherent) }
 
-    var scores: [String: Int] { Scoring.roundScores(hands: hands, knocker: knocker.name) }
+    var scores: [String: Int] { Scoring.roundScores(hands: hands, knocker: knocker.name, inherent: inherent) }
 
     var knockerScore: Int { scores[knocker.name] ?? knocker.hand }
 
@@ -37,7 +39,7 @@ nonisolated struct KnockScenario: Hashable, Sendable, Identifiable {
 
     /// Why (literal), reusing the Knock Calculator's wording.
     var explanation: String {
-        KnockCalculator.make(players.map { ($0.name, $0.hand) }, knockerIndex: knockerIndex).explanation ?? ""
+        KnockCalculator.make(players.map { ($0.name, $0.hand) }, knockerIndex: knockerIndex, inherent: inherent).explanation ?? ""
     }
 }
 
@@ -69,6 +71,20 @@ extension KnockScenario {
         Player(name: "Dev", cards: [.card(.number(8), .spades), .card(.number(7), .diamonds)]),
     ], knockerIndex: 0)
 
-    static let drill: [KnockScenario] = [.landed, .tied, .failed, .redKing]
-    static let quiz: [KnockScenario] = [.failed, .landed, .tied]
+    /// Ana stuck all four cards: going out on 0 with everyone higher lands the −10.
+    static let wentOut = KnockScenario(id: "wentOut", players: [
+        Player(name: "Ana", cards: []),
+        Player(name: "Ben", cards: [.card(.number(2), .spades), .card(.number(3), .hearts)]),
+        Player(name: "Cleo", cards: [.card(.ace, .clubs), .joker]),
+    ], knockerIndex: 0, inherent: true)
+
+    /// Ben went out, but a red King went lower: no −10, and never the +10 either.
+    static let wentOutBeaten = KnockScenario(id: "wentOutBeaten", players: [
+        Player(name: "Ana", cards: [.card(.number(5), .hearts), .card(.number(3), .clubs)]),
+        Player(name: "Ben", cards: []),
+        Player(name: "Cleo", cards: [.card(.king, .diamonds), .joker]),
+    ], knockerIndex: 1, inherent: true)
+
+    static let drill: [KnockScenario] = [.landed, .tied, .failed, .wentOutBeaten, .redKing]
+    static let quiz: [KnockScenario] = [.failed, .landed, .tied, .wentOut]
 }

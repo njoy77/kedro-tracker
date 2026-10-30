@@ -6,12 +6,18 @@ struct RecordBoardView: View {
     let scope: LeaderboardScope
 
     @Environment(AppModel.self) private var app
+    @State private var server = ServerStats.shared
 
     private var stats: StatsModel { .shared(for: app.store) }
     private var viewer: PlayerRef? { app.profile?.identity }
 
+    /// The server's records when loaded (every game, every claimed guest); this phone's offline.
+    private var entries: [RecordEntry] {
+        server.records(kind, scope: scope) ?? stats.snapshot.records(kind, scope: scope, viewer: viewer)
+    }
+
     var body: some View {
-        let entries = stats.snapshot.records(kind, scope: scope, viewer: viewer)
+        let entries = entries
         List {
             Section {
                 ForEach(entries) { entry in
@@ -40,6 +46,8 @@ struct RecordBoardView: View {
         .navigationTitle(kind.label)
         .navigationBarTitleDisplayMode(.inline)
         .task { await stats.follow(app.store, viewer: viewer) }
+        .task { await server.loadRecords(scope, api: app.api) }
+        .refreshable { await server.loadRecords(scope, api: app.api, force: true) }
     }
 
     static let limit = 25

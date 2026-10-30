@@ -129,6 +129,29 @@ struct TableVoiceTests {
         #expect(TableVoice.roast(for: r2, in: state, viewer: nil, viewerIsLearner: false)?.ids == VoiceMoment.knockTied.variantIDs)
     }
 
+    @Test("Going out gets its own roast: landed −10, and beaten with no penalty ahead of the red King lines")
+    func inherentRoasts() throws {
+        var game = TestGame()
+        game.setUp()
+        func inherent(_ number: Int, _ hands: [Int]) -> Round {
+            Round(number: number, hands: game.round(number, hands, knocker: 0).hands, knocker: game.seat(0), isInherent: true)
+        }
+        game.add(.roundRecorded(.init(round: inherent(1, [0, 3, 7]))))
+        game.add(.roundRecorded(.init(round: inherent(2, [0, -2, 7]))))
+        game.add(.roundRecorded(.init(round: inherent(3, [0, 0, 7]))))
+        let state = game.state
+        let picks = state.rounds.map { TableVoice.roast(for: $0, in: state, viewer: nil, viewerIsLearner: false) }
+        #expect(picks.map { $0?.ids } == [VoiceMoment.wentOutLanded.variantIDs, VoiceMoment.wentOutBeaten.variantIDs, VoiceMoment.knockTied.variantIDs])
+
+        // Every level fills in the names and the hand that beat it.
+        let beaten = try #require(picks[1])
+        for level in LanguageLevel.allCases {
+            let line = beaten.render(Voice(level: level), gameID: state.gameID, round: 2)
+            #expect(!line.contains("{"), "\(level): \(line)")
+        }
+        #expect(Voice(level: .clean).line("K-26", beaten.args) == "P0 went out on nothing and P1 still had \u{2212}2. Robbed.")
+    }
+
     @Test("Banter: a tie at the top")
     func tieAtTop() throws {
         var game = TestGame(players: 3)
