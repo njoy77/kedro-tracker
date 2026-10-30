@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The Kedro App Clip (design §5.8): opened from the table's rotating QR or an AirDrop of
-/// `https://kedro.app/t/{gameID}?k={token}` on an iPhone without Kedro.
+/// `https://playkedro.com/t/{gameID}?k={token}` on an iPhone without Kedro.
 @main
 struct KedroClipApp: App {
     @State private var model = ClipModel()

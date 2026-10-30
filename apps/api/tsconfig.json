@@ -6,6 +6,7 @@
     ]
   },
   "include": [
+    "index.ts",
     "src",
     "test",
     "../../scripts/import-legacy.ts"

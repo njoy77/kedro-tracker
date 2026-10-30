@@ -1,12 +1,14 @@
 // Sync environment variables between the Vercel project and each app's local secrets file.
 //
 //   bun run env:pull [--environment development|preview|production]
-//   bun run env:push KEY=value [KEY=value ...] [--environment ...] [--sensitive]
-//   bun run env:push --file path/to/.env [--environment ...] [--sensitive]
+//   bun run env:push KEY=value [KEY=value ...] [--environment ...] [--sensitive] [--project web|api]
+//   bun run env:push --file path/to/.env [--environment ...] [--sensitive] [--project web|api]
 //   bun run env:push KEY            (reads the value from stdin)
 //
-// Vercel is the source of truth. `pull` regenerates the files listed in TARGETS;
-// `push` uploads values to Vercel and then pulls so local files match.
+// Vercel is the source of truth, in two projects (PROJECTS): kedro-tracker (the web app, and the
+// Supabase URL and anon key every app uses) and kedro-api (the API's server-only keys, production
+// only). `pull` regenerates the files listed in TARGETS; `push` uploads values to one project
+// (`--project`, default web) and then pulls so local files match.
 
 import { existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -15,40 +17,47 @@ import { join } from 'node:path'
 
 type Env = Record<string, string>
 
+const PROJECTS = { web: 'kedro-tracker', api: 'kedro-api' } as const
+type Project = keyof typeof PROJECTS
+
 type Target = {
   file: string
   format: 'dotenv' | 'xcconfig'
-  /** Values to write, derived from the pulled Vercel variables. */
-  values: (env: Env) => Env
+  /** Values to write, derived from each project's pulled Vercel variables. */
+  values: (env: Record<Project, Env>) => Env
 }
 
 const ROOT = join(import.meta.dir, '..')
 const ENVIRONMENTS = ['development', 'preview', 'production'] as const
+
+/** The API's server-only keys (apps/api/src/config.ts), kept in the kedro-api project. */
+const API_KEYS = ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'KEDRO_CLIP_SECRET', 'KEDRO_LINK_SIGNING_KEY', 'KEDRO_PUBLIC_URL']
 
 // Add a target, or a key to an existing one, when an app needs a new secret.
 const TARGETS: Target[] = [
   {
     file: 'apps/web/.env.local',
     format: 'dotenv',
-    values: (env) => pick(env, (key) => key.startsWith('VITE_')),
+    values: ({ web }) => pick(web, (key) => key.startsWith('VITE_')),
   },
   {
     file: 'apps/ios/Config/Secrets.xcconfig',
     format: 'xcconfig',
-    values: (env) => ({
-      SUPABASE_HOST: new URL(required(env, 'VITE_SUPABASE_URL')).host,
-      SUPABASE_ANON_KEY: required(env, 'VITE_SUPABASE_ANON_KEY'),
+    values: ({ web }) => ({
+      SUPABASE_HOST: new URL(required(web, 'VITE_SUPABASE_URL')).host,
+      SUPABASE_ANON_KEY: required(web, 'VITE_SUPABASE_ANON_KEY'),
     }),
   },
   {
-    // The API (apps/api/src/config.ts). The service-role key and JWT secret are optional here so
-    // pulling works before they exist; without the service-role key the API runs on memory.
+    // The API (apps/api/src/config.ts). Its own keys are production-only secrets in kedro-api,
+    // which Vercel never hands back, so a development pull has none of them and the API runs on
+    // memory (`bun run dev:seed` still reads the web data with the anon key).
     file: 'apps/api/.env.local',
     format: 'dotenv',
-    values: (env) => ({
-      SUPABASE_URL: required(env, 'VITE_SUPABASE_URL'),
-      SUPABASE_ANON_KEY: required(env, 'VITE_SUPABASE_ANON_KEY'),
-      ...pick(env, (key) => key === 'SUPABASE_SERVICE_ROLE_KEY' || key === 'SUPABASE_JWT_SECRET' || key === 'KEDRO_CLIP_SECRET'),
+    values: ({ web, api }) => ({
+      SUPABASE_URL: required(web, 'VITE_SUPABASE_URL'),
+      SUPABASE_ANON_KEY: required(web, 'VITE_SUPABASE_ANON_KEY'),
+      ...pick(api, (key) => API_KEYS.includes(key) && api[key] !== ''),
     }),
   },
 ]
@@ -56,7 +65,14 @@ const TARGETS: Target[] = [
 // MARK: Commands
 
 async function pull(environment: string) {
-  const env = await pullFromVercel(environment)
+  const env = { web: await pullFromVercel(environment, 'web').catch((error: Error) => fail(error.message)), api: {} as Env }
+  try {
+    env.api = await pullFromVercel(environment, 'api')
+  } catch (error) {
+    // Before kedro-api exists (or without access to it), the other apps still get their keys.
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`! Skipped ${PROJECTS.api}: ${message.match(/^Error: .*$/m)?.[0].slice(7) ?? message}`)
+  }
   for (const target of TARGETS) {
     const values = target.values(env)
     await Bun.write(join(ROOT, target.file), render(target, values, environment))
@@ -64,7 +80,7 @@ async function pull(environment: string) {
   }
 }
 
-async function push(entries: Env, environments: string[], sensitive: boolean) {
+async function push(entries: Env, environments: string[], sensitive: boolean, project: Project) {
   if (Object.keys(entries).length === 0) fail('Nothing to push. Pass KEY=value pairs or --file <path>.')
   if (sensitive && environments.includes('development')) {
     fail('Vercel does not allow sensitive variables in development. Pass --environment preview,production.')
@@ -72,11 +88,11 @@ async function push(entries: Env, environments: string[], sensitive: boolean) {
 
   for (const [key, value] of Object.entries(entries)) {
     await vercel(
-      ['env', 'add', key, '--environment', environments.join(','), '--force', '--yes',
+      ['env', 'add', key, '--environment', environments.join(','), '--project', PROJECTS[project], '--force', '--yes',
         sensitive ? '--sensitive' : '--no-sensitive'],
       value,
-    )
-    console.log(`✓ ${key} → ${environments.join(', ')}`)
+    ).catch((error: Error) => fail(error.message))
+    console.log(`✓ ${key} → ${PROJECTS[project]} (${environments.join(', ')})`)
   }
 
   if (!sensitive) await pull('development')
@@ -84,11 +100,11 @@ async function push(entries: Env, environments: string[], sensitive: boolean) {
 
 // MARK: Vercel
 
-async function pullFromVercel(environment: string): Promise<Env> {
+async function pullFromVercel(environment: string, project: Project): Promise<Env> {
   const dir = await mkdtemp(join(tmpdir(), 'kedro-env-'))
   const file = join(dir, '.env')
   try {
-    await vercel(['env', 'pull', file, `--environment=${environment}`, '--yes'])
+    await vercel(['env', 'pull', file, `--environment=${environment}`, '--project', PROJECTS[project], '--yes'])
     return parseDotenv(await Bun.file(file).text())
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -106,7 +122,7 @@ async function vercel(args: string[], stdin?: string) {
     stderr: 'pipe',
   })
   const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()])
-  if (code !== 0) fail(`vercel ${args.slice(0, 2).join(' ')} failed:\n${stderr.trim()}`)
+  if (code !== 0) throw new Error(`vercel ${args.slice(0, 2).join(' ')} failed:\n${stderr.trim()}`)
 }
 
 // MARK: Files
@@ -170,7 +186,7 @@ async function readEntries(args: string[]): Promise<Env> {
 // MARK: Main
 
 const [command, ...rest] = process.argv.slice(2)
-const flags = { environment: undefined as string | undefined, file: undefined as string | undefined, sensitive: false }
+const flags = { environment: undefined as string | undefined, file: undefined as string | undefined, sensitive: false, project: 'web' as string }
 const positional: string[] = []
 for (let i = 0; i < rest.length; i++) {
   const arg = rest[i]
@@ -179,13 +195,18 @@ for (let i = 0; i < rest.length; i++) {
   if (flag === '--environment' || flag === '-e') flags.environment = next()
   else if (flag === '--file') flags.file = next()
   else if (flag === '--sensitive') flags.sensitive = true
+  else if (flag === '--project') flags.project = next()
   else positional.push(arg)
 }
 
-const environments = (flags.environment ?? ENVIRONMENTS.join(',')).split(',')
+// The API's keys are production-only unless --environment says otherwise (previews must never
+// write to the production database).
+const environments = (flags.environment ?? (flags.project === 'api' ? 'production' : ENVIRONMENTS.join(','))).split(',')
 for (const environment of environments) {
   if (!ENVIRONMENTS.includes(environment as (typeof ENVIRONMENTS)[number])) fail(`Unknown environment "${environment}".`)
 }
+
+if (!(flags.project in PROJECTS)) fail(`Unknown project "${flags.project}". Use ${Object.keys(PROJECTS).join(' or ')}.`)
 
 if (command === 'pull') {
   if (environments.length > 1 && flags.environment) fail('env:pull takes a single --environment.')
@@ -193,7 +214,7 @@ if (command === 'pull') {
 } else if (command === 'push') {
   const entries = flags.file ? parseDotenv(await Bun.file(flags.file).text()) : {}
   Object.assign(entries, await readEntries(positional))
-  await push(entries, environments, flags.sensitive)
+  await push(entries, environments, flags.sensitive, flags.project as Project)
 } else {
   fail('Usage: bun scripts/env.ts <pull|push> [options]')
 }

@@ -2,9 +2,9 @@ import CryptoKit
 import Foundation
 
 /// A link into a table (design §5.8, §5.9):
-/// - `https://kedro.app/t/{gameID}?k={token}`: the rotating QR / AirDrop invite. Opens the app if
+/// - `https://playkedro.com/t/{gameID}?k={token}`: the rotating QR / AirDrop invite. Opens the app if
 ///   installed (universal link), otherwise the App Clip.
-/// - `https://kedro.app/s/{gameID}?host={name}&word={word}`: "saved you a seat" (§5.5, N-01). The
+/// - `https://playkedro.com/s/{gameID}?host={name}&word={word}`: "saved you a seat" (§5.5, N-01). The
 ///   push's tap target; carries the host and table word so the Table card can show before the
 ///   game has synced.
 ///
@@ -15,7 +15,7 @@ nonisolated struct TableInviteLink: Hashable, Sendable {
         case savedSeat = "s"
     }
 
-    static let webHost = "kedro.app"
+    static let webHost = KedroLink.webHost
     static let scheme = "kedro"
 
     var kind: Kind

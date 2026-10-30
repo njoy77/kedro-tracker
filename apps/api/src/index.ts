@@ -1,8 +1,9 @@
-// Server entry (`bun run dev` / `bun run start`). Configuration: see config.ts.
+// Server entry (`bun run dev` / `bun run start`, and the Vercel function: vercel.json). Configuration: see config.ts.
 
+import { waitUntil } from '@vercel/functions'
 import { createApp } from './app.ts'
 import { DevTokenVerifier, SupabaseTokenVerifier, type TokenVerifier } from './auth.ts'
-import { loadConfig } from './config.ts'
+import { deploymentProblems, loadConfig } from './config.ts'
 import { fetchLegacyRows, seedFromLegacy, type DevAccount } from './dev/seed.ts'
 import { MemoryStore } from './store/memory.ts'
 import { SupabaseStore } from './store/supabase.ts'
@@ -10,6 +11,10 @@ import type { Store } from './store/types.ts'
 
 const config = loadConfig()
 const log = (message: string) => console.error(`[kedro-api] ${message}`)
+
+// Fail loudly rather than serve production from an in-memory store or with dev auth.
+const problems = deploymentProblems(config)
+if (problems.length > 0) throw new Error(`Refusing to start (${config.environment}): ${problems.join('; ')}`)
 
 let store: Store
 let verifier: TokenVerifier
@@ -26,7 +31,7 @@ if (config.supabase) {
   )
 }
 
-const { app, services } = createApp({ store, verifier, log, logRequests: true, clipSecret: config.clipSecret, linkSigningKey: config.linkSigningKey, publicUrl: config.publicUrl })
+const { app, services } = createApp({ store, verifier, log, logRequests: true, clipSecret: config.clipSecret, linkSigningKey: config.linkSigningKey, publicUrl: config.publicUrl, defer: waitUntil })
 
 // Local test data (see dev/seed.ts). Only with dev auth and the in-memory store.
 if (config.devSeed && config.devAuth && !config.supabase) {

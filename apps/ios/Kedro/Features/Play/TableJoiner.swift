@@ -17,7 +17,7 @@ protocol SeatRequesting: AnyObject, Sendable {
 /// its admission accepts, and joining with a scanned code so the phone is let in without Ask to
 /// Sit. `app.discovery as? TableInviting`; without it the lobby mints its own code.
 protocol TableInviting: AnyObject {
-    /// `https://kedro.app/t/{gameID}?k={code}` for the table this phone is linked to, or nil.
+    /// `https://playkedro.com/t/{gameID}?k={code}` for the table this phone is linked to, or nil.
     func inviteLink(for game: GameID, at date: Date) -> URL?
     /// Starts linking with a table using the `k` from a scanned link.
     func prepareToJoin(_ game: GameID, inviteCode: String)

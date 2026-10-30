@@ -1,0 +1,8 @@
+// The Kedro API's base URL (Info.plist `KedroAPIBaseURL`), shared by the app and the App Clip.
+//
+// Debug talks to a local server (`bun run --filter '@kedro/api' dev:seed`). Release, which
+// TestFlight and the App Store use, talks to production (Vercel project kedro-api). "//" starts
+// a comment in xcconfig files, so the scheme separator is written ":/$()/".
+
+KEDRO_API_BASE_URL = https:/$()/api.playkedro.com
+KEDRO_API_BASE_URL[config=Debug] = http:/$()/localhost:8787

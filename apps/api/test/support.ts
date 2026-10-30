@@ -9,7 +9,7 @@ import { INVITE_WINDOW_MS, inviteCode } from '../src/services/invites.ts'
 
 export { fixedUUID, ids, sampleSeats, sampleWireOperations, seats, OperationBuilder, SAMPLE_START_MS } from '../../../packages/shared/test/fixtures/sampleGame.ts'
 
-export function harness(options: { now?: () => number } = {}) {
+export function harness(options: { now?: () => number; defer?: (work: Promise<unknown>) => void } = {}) {
   const store = new MemoryStore()
   const broadcaster = new StubLiveActivityBroadcaster()
   const logs: string[] = []
@@ -17,6 +17,7 @@ export function harness(options: { now?: () => number } = {}) {
     store,
     verifier: new DevTokenVerifier(),
     broadcaster,
+    defer: options.defer,
     now: options.now,
     log: (message) => logs.push(message),
   })

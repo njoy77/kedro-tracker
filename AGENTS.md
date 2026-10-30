@@ -27,6 +27,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 - Vercel (project `kedro-tracker`) is the single source of truth for keys. Do not hard-code keys or commit secrets files.
 - `bun run env:pull` generates `apps/web/.env.local` and `apps/ios/Config/Secrets.xcconfig` from Vercel. Never edit those files by hand.
 - `bun run env:push KEY=value` adds or updates a key in Vercel (all environments by default), then pulls.
+- The API's server-only keys live in a second Vercel project, `kedro-api` (production only): `bun run env:push KEY --project api --sensitive`. See `apps/api/README.md`.
 - When an app needs a new key, push it to Vercel and add it to `TARGETS` in `scripts/env.ts`.
 
 ## iOS

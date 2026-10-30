@@ -154,7 +154,7 @@ struct ReviewFixTests {
         var profile = PreviewData.noahProfile
         profile.avatar = .photo(URL(filePath: "/var/mobile/Containers/avatar.jpg"))
         #expect(profile.seat(order: 0, device: DeviceID(), languageLevel: .clean, gamesPlayed: 0).avatar == nil)
-        let remote = Avatar.photo(URL(string: "https://api.kedro.app/photos/abc?v=1")!)
+        let remote = Avatar.photo(URL(string: "https://api.playkedro.com/photos/abc?v=1")!)
         profile.avatar = remote
         #expect(profile.seat(order: 0, device: DeviceID(), languageLevel: .clean, gamesPlayed: 0).avatar == remote)
     }

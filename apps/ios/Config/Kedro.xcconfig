@@ -4,6 +4,7 @@
 // Vercel by `bun run env:pull` (see Secrets.example.xcconfig for its keys).
 
 #include? "Secrets.xcconfig"
+#include "API.xcconfig"
 
 // The app group shared with KedroWidgets and KedroClip (entitlements and Info.plist
 // `KedroAppGroup`; Shared/AppGroup.swift reads it).

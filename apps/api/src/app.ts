@@ -74,6 +74,8 @@ export type AppDeps = {
   linkSigningKey?: string
   /** The API's public origin for photo URLs (KEDRO_PUBLIC_URL); the request's origin when unset. */
   publicUrl?: string
+  /** Keeps background work (Live Activity broadcasts) going after the response; see OpsService. */
+  defer?: (work: Promise<unknown>) => void
   now?: () => number
   log?: (message: string) => void
   /** Log every request (the server entry turns this on; tests leave it off). */
@@ -96,7 +98,7 @@ export type Services = {
 const OK: OkResponse = { ok: true }
 const HLC_STRING = /^[0-9]{15}-[0-9]{5}-.{1,64}$/
 
-export function createServices({ store, broadcaster, notifier, clipSecret, linkSigningKey, now, log }: Omit<AppDeps, 'verifier'>): Services {
+export function createServices({ store, broadcaster, notifier, clipSecret, linkSigningKey, defer, now, log }: Omit<AppDeps, 'verifier'>): Services {
   const ratings = new RatingsService(store)
   const filter = new TauntFilter(store, now)
   const players = new PlayersService(store)
@@ -110,7 +112,7 @@ export function createServices({ store, broadcaster, notifier, clipSecret, linkS
     notifier: alerts,
     clip: new ClipService(store, clipTokens, now),
     link: new LinkAttestor(linkSigningKey, now),
-    ops: new OpsService({ store, ratings, filter, broadcaster: broadcaster ?? new StubLiveActivityBroadcaster(log), notifier: alerts, now, log }),
+    ops: new OpsService({ store, ratings, filter, broadcaster: broadcaster ?? new StubLiveActivityBroadcaster(log), notifier: alerts, defer, now, log }),
     leaderboard: new LeaderboardService(store, players),
     social: new SocialService(store, players, ratings),
   }

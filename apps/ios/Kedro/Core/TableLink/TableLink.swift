@@ -204,7 +204,7 @@ final class TableLink {
         return stream
     }
 
-    /// The link for the table's rotating QR code and AirDrop (design §5.8): `https://kedro.app/t/{id}?k={code}`.
+    /// The link for the table's rotating QR code and AirDrop (design §5.8): `https://playkedro.com/t/{id}?k={code}`.
     /// The code changes every 60 s, so regenerate it on a timer. nil when not at a table.
     func inviteLink(at date: Date = .now) -> URL? {
         guard let game else { return nil }

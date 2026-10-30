@@ -30,7 +30,8 @@ export async function importLegacy(
   const codeFor = (legacyId: string) => {
     let code = codes.get(legacyId)
     if (!code) {
-      code = `kedro-legacy-${randomBytes(18).toString('base64url')}`
+      // Letters, digits and dashes only: the app's claim sheet (iOS PendingClaims.code) takes nothing else.
+      code = `kedro-legacy-${randomBytes(16).toString('hex')}`
       codes.set(legacyId, code)
     }
     return code

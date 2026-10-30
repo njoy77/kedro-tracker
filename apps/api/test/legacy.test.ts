@@ -110,6 +110,8 @@ describe('legacy web history', () => {
     const me = '000000aa-0000-4000-8000-000000000042'
     await h.profile(me, 'Noah', 'noah')
     const noahCode = report.codes.find((row) => row.legacyId === 'lp1')?.claimCode ?? ''
+    // What the app's claim sheet accepts (iOS PendingClaims.code): 6–64 letters, digits or dashes.
+    for (const row of report.codes) expect(row.claimCode).toMatch(/^[A-Za-z0-9-]{6,64}$/)
     const claim = await h.post<{ gamesClaimed: number; guestId: string }>('/v1/claims', me, { claimToken: noahCode })
     expect(claim.status).toBe(200)
     expect(claim.body.gamesClaimed).toBe(1)

@@ -8,15 +8,15 @@ struct KedroLinkTests {
 
     @Test("Invite links parse the game and the rotating token")
     func invite() {
-        let link = KedroLink(url: URL(string: "https://kedro.app/t/4f6c0000-0000-4000-8000-000000000001?k=abc123") ?? URL(filePath: "/"))
+        let link = KedroLink(url: URL(string: "https://playkedro.com/t/4f6c0000-0000-4000-8000-000000000001?k=abc123") ?? URL(filePath: "/"))
         #expect(link == .invite(gameID: game, token: "abc123"))
         #expect(KedroLink(url: URL(string: "https://KEDRO.app/t/4f6c0000-0000-4000-8000-000000000001") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
-        #expect(KedroLink(url: URL(string: "https://kedro.app/t/4f6c0000-0000-4000-8000-000000000001?k=") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
+        #expect(KedroLink(url: URL(string: "https://playkedro.com/t/4f6c0000-0000-4000-8000-000000000001?k=") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
     }
 
     @Test("Other hosts, paths and bad IDs are rejected")
     func rejects() {
-        for string in ["https://evil.example/t/4f6c0000-0000-4000-8000-000000000001", "https://kedro.app/x/4f6c0000-0000-4000-8000-000000000001", "https://kedro.app/t/nope", "kedro://table/nope", "kedro://other/x", "mailto:hi@kedro.app"] {
+        for string in ["https://evil.example/t/4f6c0000-0000-4000-8000-000000000001", "https://playkedro.com/x/4f6c0000-0000-4000-8000-000000000001", "https://playkedro.com/t/nope", "kedro://table/nope", "kedro://other/x", "mailto:hi@playkedro.com"] {
             #expect(KedroLink(url: URL(string: string) ?? URL(filePath: "/")) == nil, "\(string)")
         }
     }

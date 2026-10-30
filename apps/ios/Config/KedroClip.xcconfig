@@ -3,4 +3,6 @@
 // The clip talks to the Kedro API over the internet only (no peer-to-peer, no Supabase SDK), so
 // it needs no secrets. Bundle ID, team and entitlements are set on the target in Kedro.xcodeproj.
 
+#include "API.xcconfig"
+
 KEDRO_APP_GROUP = group.com.njoy77.kedro

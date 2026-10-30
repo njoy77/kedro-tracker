@@ -42,7 +42,7 @@ struct ReceiptCard: View {
                 person(rival)
             }
             .padding(.top, 18)
-            Text("From \(sender.displayName) · kedro.app")
+            Text("From \(sender.displayName) · playkedro.com")
                 .font(.caption2)
                 .foregroundStyle(.silverDim)
                 .padding(.top, 14)
