@@ -74,7 +74,7 @@ final class LobbyModel {
                 if let next = LobbyRules.adding(seat, to: seats) { seats = next }
             }
             let previousOrder = previous.seats.map(\.id)
-            let rotated = LobbyRules.rotatedFirstDealer(order: previousOrder, previous: previous.config.firstDealerSeat)
+            let rotated = LobbyRules.rotatedFirstDealer(order: previousOrder, previous: previous.dealer(forRound: 1) ?? previous.config.firstDealerSeat)
             firstDealer = rotated.flatMap { id in seats.contains { $0.id == id } ? id : nil }
         }
         draftSeats = seats
