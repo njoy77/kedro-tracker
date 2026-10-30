@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "status": "PLACEHOLDER. The launch list (slurs and identity-based abuse, design 8.3 and open item 18.5) needs an owner. Terms are stored as SHA-256 hashes of their normalized form so the list never spells them out; see TauntFilter.normalizedToken. The server check (POST /v1/taunts/check) is the second gate.",
+  "blockedSHA256": [
+    "de48f02016a733c58ac5d0059eae53faeb05dd744d4e0e5c7a4d28b3c3c0c242",
+    "6a457888ee2d9237bbc05d64222aebdaff95d355f811e1bf7635df5f54e50192",
+    "158869a97379229b7681efae9d7f9c9214134e836d649ba53477c0c111414d59",
+    "1802d081455e60cd8a4e1b5d38d3f8c613662dee16f790e26a2a7a5332764780",
+    "94a877e2ce63725ecae04e85d09f50066b42e2c6a2ab3ce92aba7908e0dbd1bf"
+  ],
+  "profanityStems": ["fuck", "shit"],
+  "profanityWords": [
+    "arse", "arsehole", "ass", "asses", "asshole", "assholes", "badass", "bastard", "bastards",
+    "bollocks", "cock", "crap", "crappy", "damn", "damned", "dammit", "dick", "dickhead", "dickheads",
+    "dumbass", "goddamn", "goddammit", "hell", "jackass", "piss", "pissed", "prick", "smartass",
+    "twat", "wanker"
+  ]
+}
