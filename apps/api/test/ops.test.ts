@@ -135,6 +135,14 @@ describe('POST /v1/ops', () => {
     expect(response.body.rejected.every((row) => row.reason === 'inviteRequired')).toBe(true)
   })
 
+  test('phones cannot create imported games (the only kind with saved scores)', async () => {
+    const h = await seededHarness()
+    const ops = sampleWireOperations({ throughRound: 0, finished: false })
+    const forged = ops.map((op) => (op.type === 'GameCreated' ? { ...op, payload: { ...(op.payload as object), config: { ...((op.payload as { config: object }).config), imported: true } } } : op))
+    const response = await h.upload(ids.noah, forged)
+    expect(response.body.rejected.find((row) => row.opId === forged[0].opId)?.reason).toBe('invalid')
+  })
+
   test('mid-game, a stranger with the table code sits down as a late joiner', async () => {
     const h = await seededHarness()
     const late = fixedUUID(1, 98)

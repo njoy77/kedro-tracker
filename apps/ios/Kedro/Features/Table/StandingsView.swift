@@ -182,7 +182,7 @@ struct StandingRow: View {
     static func knockMath(_ outcome: KnockOutcome, hand: Int) -> String {
         switch outcome {
         case .landed: ScoreFormat.string(Scoring.landedScore)
-        case .tied: ScoreFormat.string(hand)
+        case .tied, .noPenalty: ScoreFormat.string(hand)
         case .failed: "\(ScoreFormat.string(hand)) + \(Scoring.failedPenalty)"
         }
     }

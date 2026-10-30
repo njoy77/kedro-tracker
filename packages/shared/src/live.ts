@@ -14,7 +14,7 @@
 import { dealerForRound, standings, type FoldedGame } from './fold.ts'
 import { seatIdOf, type SeatId } from './ids.ts'
 import type { Avatar, Seat } from './domain.ts'
-import { FAILED_PENALTY, LANDED_SCORE, knockOutcome, rankLabel, roundScores, type KnockOutcome } from './scoring.ts'
+import { FAILED_PENALTY, LANDED_SCORE, outcomeOf, rankLabel, scoresOf, type KnockOutcome } from './scoring.ts'
 
 export type LiveGamePhase = 'active' | 'finished' | 'abandoned'
 
@@ -91,8 +91,8 @@ export function liveActivityContentState(game: FoldedGame, nowMs: number = game.
   const name = (seat: SeatId) => names.get(seat) ?? 'Someone'
 
   const last = game.rounds[played - 1]
-  const lastScores = last ? roundScores(last.hands, last.knocker) : undefined
-  const lastOutcome = last ? knockOutcome(last.hands, last.knocker) : null
+  const lastScores = last ? scoresOf(last) : undefined
+  const lastOutcome = last ? outcomeOf(last) : null
   const table = standings(game)
   const best = table[0]?.total
 
@@ -129,7 +129,7 @@ export function liveActivityContentState(game: FoldedGame, nowMs: number = game.
     staleTemplate: STALE_TEMPLATE,
     updatedAt: Math.floor(nowMs / 1000),
   }
-  if (last) state.factLine = `Round ${last.number}. ${name(last.knocker)} knocked on ${scoreString(last.hands[last.knocker] ?? 0)}.`
+  if (last?.knocker) state.factLine = `Round ${last.number}. ${name(last.knocker)} ${last.inherent === last.knocker ? 'went out' : `knocked on ${scoreString(last.hands[last.knocker] ?? 0)}`}.`
   if (game.status === 'active' && game.liveKnock && game.liveKnock.roundNumber === nextRound) {
     state.liveKnockLine = `${name(game.liveKnock.knocker)} knocked · last turns`
   }
@@ -160,6 +160,7 @@ function knockerDelta(outcome: KnockOutcome, hand: number): string {
     case 'landed':
       return scoreString(LANDED_SCORE)
     case 'tied':
+    case 'noPenalty':
       return scoreString(hand)
     case 'failed':
       return `${scoreString(hand)} + ${FAILED_PENALTY}`

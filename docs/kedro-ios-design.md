@@ -333,6 +333,8 @@ A phone or iPad propped up in the middle of the table as a shared scoreboard.
 
 ### 7.1 Scorekeeper mode: the number pad
 
+**Inherent knock:** once a knocker is picked, a **Went out (all four cards)** switch sits under "Who knocked?". On, it fills the knocker's hand with 0 and the verdict never shows +10 ("Noah went out · Ben had −2 · no penalty, 0"). Typing any other hand for the knocker turns it off. Fact line: "Round 4. Noah went out." The beaten case has its own outcome, **no penalty** (dashed outline badge).
+
 `.sheet` at `.large`. Top to bottom:
 
 1. **Who knocked?** A row of avatars. One tap selects (red ring + `hand.raised`). **Pre-filled** if someone marked a live knock (§7.5), with "(marked live by Ana)". Save is disabled until a knocker is set.
@@ -366,7 +368,7 @@ The card palette replaces the pad: `A 2 3 4 5 / 6 7 8 9 10 / J Q K♠♣ K♥♦
 
 ### 7.4 Self-report mode
 
-**Report Your Hand** (`.medium` detent): **I knocked** toggle, the pad (or Cards), **Submit**. Values stay hidden until everyone has reported, then flip together at a shared reveal time on every phone.
+**Report Your Hand** (`.medium` detent): **I knocked** toggle (with **Went out (all four cards)** under it, which sets the hand to 0), the pad (or Cards), **Submit**. Values stay hidden until everyone has reported, then flip together at a shared reveal time on every phone.
 
 Knocker resolution: exactly one "I knocked" → done. Nobody or several → every phone asks "Who knocked?" (K-15/K-16); the first tap is a **proposal** shown everywhere ("Ana says Noah knocked · Change", 5 s ring), which commits unless someone disagrees ("Ana says Noah, Ben says Cleo. Sort it out."). VoiceOver and Switch Control users get an untimed **Confirm**. All logged.
 

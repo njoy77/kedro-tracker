@@ -154,18 +154,20 @@ final class GameSession: Identifiable {
 
     /// Saves the next round (scorekeeper mode).
     @discardableResult
-    func recordRound(hands: [SeatID: Int], knocker: SeatID) async throws -> GameOperation {
+    /// - Parameter inherent: The knocker went out with an inherent knock (all four cards played;
+    ///   their hand must be 0).
+    func recordRound(hands: [SeatID: Int], knocker: SeatID, inherent: Bool = false) async throws -> GameOperation {
         try requireLive()
-        let round = Round(number: state.nextRoundNumber, hands: hands, knocker: knocker)
+        let round = Round(number: state.nextRoundNumber, hands: hands, knocker: knocker, isInherent: inherent)
         try requireValid(round)
         return try await send(.roundRecorded(.init(round: round)))
     }
 
     /// Corrects a saved round (any player, until the game is finished).
     @discardableResult
-    func editRound(_ number: Int, hands: [SeatID: Int], knocker: SeatID) async throws -> GameOperation {
+    func editRound(_ number: Int, hands: [SeatID: Int], knocker: SeatID, inherent: Bool = false) async throws -> GameOperation {
         try requireLive()
-        let round = Round(number: number, hands: hands, knocker: knocker)
+        let round = Round(number: number, hands: hands, knocker: knocker, isInherent: inherent)
         try requireValid(round)
         guard state.round(number) != nil else { throw SessionError.invalidRound }
         return try await send(.roundEdited(.init(round: round)))
@@ -195,13 +197,16 @@ final class GameSession: Identifiable {
         else { throw SessionError.nothingToUndo }
         var hands = current.round.hands
         for change in handChanges { hands[change.seat] = change.before }
-        return try await editRound(number, hands: hands, knocker: knocker?.before ?? current.knocker)
+        guard let previousKnocker = knocker?.before ?? current.knocker else { throw SessionError.nothingToUndo }
+        // The knock type isn't in the audit entry; it stays inherent only if the knocker didn't change.
+        return try await editRound(number, hands: hands, knocker: previousKnocker, inherent: knocker == nil && current.round.isInherentKnock)
     }
 
     /// "Use this version" on a duplicate round (H-06).
     @discardableResult
     func useConflictVersion(_ conflict: RoundConflict) async throws -> GameOperation {
-        try await editRound(conflict.roundNumber, hands: conflict.rejected.hands, knocker: conflict.rejected.knocker)
+        guard let knocker = conflict.rejected.knocker else { throw SessionError.invalidRound }
+        return try await editRound(conflict.roundNumber, hands: conflict.rejected.hands, knocker: knocker, inherent: conflict.rejected.isInherentKnock)
     }
 
     // MARK: Knocks and self-report
@@ -215,10 +220,11 @@ final class GameSession: Identifiable {
 
     /// Self-report: one seat's hand for the round being played.
     @discardableResult
-    func reportHand(_ hand: Int, knocked: Bool, for seat: SeatID) async throws -> GameOperation {
+    /// - Parameter inherent: They went out with an inherent knock (hand 0, and `knocked`).
+    func reportHand(_ hand: Int, knocked: Bool, inherent: Bool = false, for seat: SeatID) async throws -> GameOperation {
         try requireLive()
-        guard Round.handRange.contains(hand), state.seat(seat) != nil else { throw SessionError.invalidRound }
-        return try await send(.handReported(.init(roundNumber: state.nextRoundNumber, seatId: seat, hand: hand, knocked: knocked)))
+        guard Round.handRange.contains(hand), state.seat(seat) != nil, !inherent || (knocked && hand == 0) else { throw SessionError.invalidRound }
+        return try await send(.handReported(.init(roundNumber: state.nextRoundNumber, seatId: seat, hand: hand, knocked: knocked, inherent: inherent ? true : nil)))
     }
 
     @discardableResult
@@ -334,8 +340,9 @@ final class GameSession: Identifiable {
     }
 
     private func requireValid(_ round: Round) throws {
-        let seats = Set(state.seats.map(\.id))
-        guard round.isValid, Set(round.hands.keys) == seats, seats.contains(round.knocker) else {
+        // A late joiner isn't in rounds from before they sat down.
+        let seats = Set(state.seats(inRound: round.number).map(\.id))
+        guard round.isValid, Set(round.hands.keys) == seats, let knocker = round.knocker, seats.contains(knocker) else {
             throw SessionError.invalidRound
         }
     }

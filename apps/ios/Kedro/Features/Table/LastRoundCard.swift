@@ -54,9 +54,8 @@ struct LastRoundCard: View {
 
     @ViewBuilder
     private func roundContent(_ record: RoundRecord) -> some View {
-        let knocker = state.name(of: record.knocker)
         let hand = record.round.knockerHand ?? 0
-        let fact = Literal.fact(round: record.number, knocker: knocker, hand: hand)
+        let fact = Literal.fact(record.round) { state.name(of: $0) }
         VStack(alignment: .leading, spacing: 2) {
             factText(fact)
                 .font(compact ? .subheadline : .body)

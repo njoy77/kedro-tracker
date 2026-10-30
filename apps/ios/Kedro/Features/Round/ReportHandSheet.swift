@@ -13,6 +13,8 @@ struct ReportHandSheet: View {
     @State private var current: SeatID?
     @State private var entry = HandEntry.empty
     @State private var knocked = false
+    /// Went out with all four cards (an inherent knock: hand 0).
+    @State private var wentOut = false
     @State private var isCardMode = false
     @State private var isSubmitting = false
     @State private var submits = 0
@@ -82,6 +84,15 @@ struct ReportHandSheet: View {
             }
             .tint(.kedroRed)
             .padding(.horizontal, 16)
+            .onChange(of: knocked) { _, on in if !on { wentOut = false } }
+            if knocked {
+                Toggle(isOn: $wentOut) {
+                    Text(TableText.text("label.inherentKnock")).foregroundStyle(.cream)
+                }
+                .tint(.kedroRed)
+                .padding(.horizontal, 16)
+                .onChange(of: wentOut) { _, on in if on { entry = HandEntry(value: 0) } }
+            }
 
             HStack {
                 if let seat = state.seat(seatID) { AvatarView(seat: seat, size: .compact) }
@@ -181,6 +192,7 @@ struct ReportHandSheet: View {
         current = seat
         entry = session.state.selfReport?.hands[seat].map(HandEntry.init(value:)) ?? .empty
         knocked = session.state.selfReport?.claimedKnockers.contains(seat) ?? false
+        wentOut = false
     }
 
     /// Red Kings not already in hands reported by others (a lower bound: only negatives show).
@@ -196,10 +208,11 @@ struct ReportHandSheet: View {
         Task {
             defer { isSubmitting = false }
             do {
-                try await session.reportHand(value, knocked: knocked, for: seat)
+                try await session.reportHand(value, knocked: knocked, inherent: wentOut && value == 0, for: seat)
                 submits += 1
                 entry = .empty
                 knocked = false
+                wentOut = false
                 current = nextPending()
                 if current == nil { detent = .medium }
             } catch {

@@ -42,6 +42,8 @@ struct OnTheRecordView: View {
         let hands = state.seats(inRound: conflict.roundNumber).map { seat in
             "\(seat.displayName) \(ScoreFormat.string(conflict.rejected.hands[seat.id] ?? 0))"
         }
+        let knocked: String = conflict.rejected.knocker.map { TableText.text("label.knocked") + ": " + state.name(of: $0) } ?? ""
+        let summary: String = (hands + [knocked]).filter { !$0.isEmpty }.joined(separator: " · ")
         return VStack(alignment: .leading, spacing: 6) {
             Text(voice.line("H-06", ["r": conflict.roundNumber]))
                 .font(.callout.weight(.semibold))
@@ -49,7 +51,7 @@ struct OnTheRecordView: View {
             Text(TableText.text("label.conflictBy", ["name": conflict.byName, "time": conflict.at.formatted(date: .omitted, time: .shortened)]))
                 .font(.caption)
                 .foregroundStyle(.silverDim)
-            Text(hands.joined(separator: " · ") + " · " + TableText.text("label.knocked") + ": " + state.name(of: conflict.rejected.knocker))
+            Text(summary)
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.silver)
@@ -129,8 +131,8 @@ struct AuditRow: View {
     private var effect: String? {
         switch entry.change {
         case let .roundEdited(round, _, knocker, outcome):
-            guard let record = state.round(round) else { return nil }
-            let knockerName = state.name(of: knocker?.after ?? record.knocker)
+            guard let record = state.round(round), let seat = knocker?.after ?? record.knocker else { return nil }
+            let knockerName = state.name(of: seat)
             if let outcome, let before = outcome.before, let after = outcome.after, before != after {
                 return TableText.text("label.knockFlip", ["knocker": knockerName, "before": before.word, "after": after.word])
             }

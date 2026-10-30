@@ -13,15 +13,15 @@ nonisolated enum Scoring {
     ///
     /// - strictly lowest → `.landed`
     /// - tied for lowest → `.tied`
-    /// - someone lower → `.failed`
-    static func knockOutcome<Key: Hashable>(hands: [Key: Int], knocker: Key) -> KnockOutcome? {
+    /// - someone lower → `.failed`, or `.noPenalty` for an inherent knock (it never takes +10)
+    static func knockOutcome<Key: Hashable>(hands: [Key: Int], knocker: Key, inherent: Bool = false) -> KnockOutcome? {
         guard let knockerHand = hands[knocker] else { return nil }
         guard let lowestOther = hands.lazy.filter({ $0.key != knocker }).map(\.value).min() else {
             return .landed
         }
         if knockerHand < lowestOther { return .landed }
         if knockerHand == lowestOther { return .tied }
-        return .failed
+        return inherent ? .noPenalty : .failed
     }
 
     /// Round scores from hand values and the knocker (PRD §2.6):
@@ -30,12 +30,12 @@ nonisolated enum Scoring {
     /// |---|---|---|
     /// | Knocker strictly lowest | −10 flat | hand |
     /// | Knocker tied for lowest | hand | hand |
-    /// | Someone lower | hand + 10 | hand |
+    /// | Someone lower | hand + 10 (inherent knock: hand, 0) | hand |
     ///
     /// If the knocker has no hand (an invalid round), the hands are returned unchanged.
-    static func roundScores<Key: Hashable>(hands: [Key: Int], knocker: Key) -> [Key: Int] {
+    static func roundScores<Key: Hashable>(hands: [Key: Int], knocker: Key, inherent: Bool = false) -> [Key: Int] {
         var scores = hands
-        guard let knockerHand = hands[knocker], let outcome = knockOutcome(hands: hands, knocker: knocker) else {
+        guard let knockerHand = hands[knocker], let outcome = knockOutcome(hands: hands, knocker: knocker, inherent: inherent) else {
             return scores
         }
         scores[knocker] = knockerScore(hand: knockerHand, outcome: outcome)
@@ -46,7 +46,7 @@ nonisolated enum Scoring {
     static func knockerScore(hand: Int, outcome: KnockOutcome) -> Int {
         switch outcome {
         case .landed: landedScore
-        case .tied: hand
+        case .tied, .noPenalty: hand
         case .failed: hand + failedPenalty
         }
     }

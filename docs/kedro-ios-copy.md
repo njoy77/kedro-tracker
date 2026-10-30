@@ -457,7 +457,7 @@ Settings copy. Sound labels are literal.
 
 Buttons: Sit Down · Ask to Sit · Let {name} In · Remove · New Table · Deal · Record Round {r} · Report Your Hand · Knock · Talk · Send · Next: {name} › · Save Round {r} · Save Change · Undo · Cards · Keep {hand} · Fix {name} · Finish Game · Fix a Round First · Play Another Round · Extend · End Game · End Early · Abandon · Add Player · Restore Game · Run It Back · Send a Receipt · Share Results · Play Again with {name} · Invite with QR · Yes, that's me · Mute Their Taunts · Block · Report · Done.
 
-Fact and verdict lines (templates): "**Round {r}.** {knocker} knocked on {hand}." · "Landed: −10." · "Tied: {hand}." · "Failed: {hand} + 10 = {score}." · Delta captions: "landed · −10", "tied · {hand}", "failed · {hand} + 10".
+Fact and verdict lines (templates): "**Round {r}.** {knocker} knocked on {hand}." · inherent knock: "**Round {r}.** {knocker} went out." · imported round with no knock recorded: "**Round {r}.** No knock recorded." · "Landed: −10." · "Tied: {hand}." · "Failed: {hand} + 10 = {score}." · "No penalty: {hand}." · Delta captions: "landed · −10", "tied · {hand}", "failed · {hand} + 10", "no penalty · {hand}".
 
 Rules, the Knock Calculator, permission primers' factual sentence, error fix steps, the audit log ("{name} changed {player}'s R{r} hand {old} → {new} at {time}") and all accessibility labels are literal.
 

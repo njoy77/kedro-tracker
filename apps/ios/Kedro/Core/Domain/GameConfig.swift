@@ -35,6 +35,8 @@ nonisolated struct GameConfig: Hashable, Sendable, Codable {
     var houseVoiceCap: LanguageLevel?
     /// Scorekeeper mode: whose phone enters the rounds. nil means the host.
     var scorekeeperSeat: SeatID?
+    /// Set only by the server's web-history importer (its rounds keep the web's saved scores).
+    var imported: Bool?
 
     init(
         plannedRounds: Int = GameConfig.defaultPlannedRounds,
@@ -42,7 +44,8 @@ nonisolated struct GameConfig: Hashable, Sendable, Codable {
         tableWord: String = TableWord.random(),
         firstDealerSeat: SeatID? = nil,
         houseVoiceCap: LanguageLevel? = nil,
-        scorekeeperSeat: SeatID? = nil
+        scorekeeperSeat: SeatID? = nil,
+        imported: Bool? = nil
     ) {
         self.plannedRounds = plannedRounds
         self.scoringMode = scoringMode
@@ -50,6 +53,7 @@ nonisolated struct GameConfig: Hashable, Sendable, Codable {
         self.firstDealerSeat = firstDealerSeat
         self.houseVoiceCap = houseVoiceCap
         self.scorekeeperSeat = scorekeeperSeat
+        self.imported = imported
     }
 }
 

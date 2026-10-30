@@ -52,6 +52,21 @@ struct RoundEntryPanel<Footer: View>: View {
             SeatPickerRow(seats: seats, selected: entry.knocker, marksKnocker: true) { seat in
                 entry.selectKnocker(seat)
             }
+            if entry.knocker != nil {
+                Toggle(isOn: Binding(get: { entry.isInherent }, set: { entry.setInherent($0) })) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(TableText.text("label.inherentKnock"))
+                            .font(.subheadline)
+                            .foregroundStyle(.cream)
+                        Text(TableText.text("label.inherentKnockHint"))
+                            .font(.caption2)
+                            .foregroundStyle(.silverDim)
+                    }
+                }
+                .tint(.kedroRed)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+            }
         }
         .padding(.top, 4)
     }

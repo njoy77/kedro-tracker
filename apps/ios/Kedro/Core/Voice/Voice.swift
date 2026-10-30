@@ -136,8 +136,14 @@ nonisolated enum Literal {
     static func playAgain(with name: String) -> String { text("button.playAgainWith", ["name": name]) }
 
     /// "Round 5. Noah knocked on 2."
-    static func fact(round: Int, knocker: String, hand: Int) -> String {
-        text("fact.round", ["r": round, "knocker": knocker, "hand": hand])
+    static func fact(round: Int, knocker: String, hand: Int, inherent: Bool = false) -> String {
+        text(inherent ? "fact.inherent" : "fact.round", ["r": round, "knocker": knocker, "hand": hand])
+    }
+
+    /// The fact line for a round: who knocked (or went out), or that no knock was recorded.
+    static func fact(_ round: Round, name: (SeatID) -> String) -> String {
+        guard let knocker = round.knocker else { return text("fact.noKnock", ["r": round.number]) }
+        return fact(round: round.number, knocker: name(knocker), hand: round.hands[knocker] ?? 0, inherent: round.isInherentKnock)
     }
 
     /// "Landed: −10." / "Tied: 5." / "Failed: 2 + 10 = 12."
@@ -146,6 +152,7 @@ nonisolated enum Literal {
         case .landed: text("verdict.landed")
         case .tied: text("verdict.tied", ["hand": hand])
         case .failed: text("verdict.failed", ["hand": hand, "score": hand + Scoring.failedPenalty])
+        case .noPenalty: text("verdict.noPenalty", ["hand": hand])
         }
     }
 
@@ -155,6 +162,7 @@ nonisolated enum Literal {
         case .landed: text("delta.landed")
         case .tied: text("delta.tied", ["hand": hand])
         case .failed: text("delta.failed", ["hand": hand])
+        case .noPenalty: text("delta.noPenalty", ["hand": hand])
         }
     }
 

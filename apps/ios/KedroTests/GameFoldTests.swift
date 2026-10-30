@@ -258,6 +258,55 @@ struct GameFoldTests {
         #expect(game.state.rounds[0].round.hands[game.seat(2)] == 8)
     }
 
+    @Test("An inherent knock: −10 if lowest alone, otherwise 0, never +10; tracked apart from knocks")
+    func inherentKnock() {
+        var game = TestGame()
+        game.setUp()
+        game.add(.roundRecorded(.init(round: Round(number: 1, hands: game.round(1, [0, 3, 7], knocker: 0).hands, knocker: game.seat(0), isInherent: true))))
+        game.add(.roundRecorded(.init(round: Round(number: 2, hands: game.round(2, [0, -2, 7], knocker: 0).hands, knocker: game.seat(0), isInherent: true))))
+        game.add(.roundRecorded(.init(round: Round(number: 3, hands: game.round(3, [0, 0, 7], knocker: 0).hands, knocker: game.seat(0), isInherent: true))))
+        let state = game.state
+        #expect(state.rounds.map { $0.scores[game.seat(0)] } == [-10, 0, 0])
+        #expect(state.rounds.map(\.outcome) == [.landed, .noPenalty, .tied])
+
+        // Inherent needs the knocker's own hand of 0.
+        game.add(.roundRecorded(.init(round: Round(number: 4, hands: game.round(4, [5, 3, 7], knocker: 0).hands, knocker: game.seat(0), isInherent: true))))
+        #expect(game.state.rounds.count == 3)
+        #expect(game.state.lateOperations.last?.reason == .invalid)
+
+        game.add(.gameFinished(.init(reason: .completed, finalRounds: game.state.rounds.map(\.round))))
+        let stats = StatsSnapshot.build([game.state]).stats(for: game.seats[0].player)
+        #expect(stats?.knocks == 0)
+        #expect(stats?.inherentKnocks == 3)
+        #expect(stats?.inherentKnocksLanded == 1)
+    }
+
+    @Test("Saved scores and missing knockers are refused outside imported games")
+    func importedRoundsOnly() {
+        let hands: (TestGame) -> [SeatID: Int] = { $0.round(1, [4, 5, -1], knocker: 0).hands }
+        var live = TestGame()
+        live.setUp()
+        live.add(.roundRecorded(.init(round: Round(number: 1, hands: hands(live), knocker: nil, inherent: nil, recordedScores: hands(live)))))
+        #expect(live.state.rounds.isEmpty)
+
+        var imported = TestGame()
+        imported.add(.gameCreated(.init(config: GameConfig(plannedRounds: 3, tableWord: "Legacy", imported: true), host: imported.seat(0))))
+        for seat in imported.seats { imported.add(.playerSeated(.init(seat: seat))) }
+        imported.add(.gameStarted(.init(seatOrder: imported.seats.map(\.id), firstDealer: imported.seat(0))))
+        // The web marked a tie though the knocker was lowest alone: the saved scores stand.
+        var tied = Round(number: 1, hands: imported.round(1, [0, 6, 8], knocker: 0).hands, knocker: imported.seat(0), inherent: nil, recordedScores: [:])
+        tied.recordedScores = tied.hands
+        imported.add(.roundRecorded(.init(round: tied)))
+        imported.add(.roundRecorded(.init(round: Round(number: 2, hands: hands(imported), knocker: nil, inherent: nil, recordedScores: hands(imported)))))
+        let state = imported.state
+        #expect(state.rounds.count == 2)
+        #expect(state.rounds[0].scores[imported.seat(0)] == 0)
+        #expect(state.rounds[0].outcome == .tied)
+        #expect(state.rounds[1].knocker == nil)
+        #expect(state.rounds[1].outcome == nil)
+        #expect(state.totals[imported.seat(2)] == 8 - 1)
+    }
+
     @Test("Only games with 3+ rounds count for stats")
     func countedGames() {
         var short = TestGame()

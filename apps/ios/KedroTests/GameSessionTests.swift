@@ -20,7 +20,7 @@ struct GameSessionTests {
         let (session, store, transport) = makeSession()
         #expect(session.isScorekeeper)
         let round = PreviewData.sampleRounds[5]
-        try await session.recordRound(hands: round.hands, knocker: round.knocker)
+        try await session.recordRound(hands: round.hands, knocker: try #require(round.knocker))
         #expect(session.state.rounds.count == 6)
         #expect(session.state.standings.map(\.total) == [31, 33, 53, 53, 37].sorted()) // Ana 31, Noah 33, Sam 37, Ben 53, Cleo 53
         #expect(session.state.standings.first?.seat.displayName == "Ana")
@@ -48,7 +48,7 @@ struct GameSessionTests {
         let (session, _, _) = makeSession()
         let dealer = session.state.currentDealer
         let round = PreviewData.sampleRounds[5]
-        try await session.recordRound(hands: round.hands, knocker: round.knocker)
+        try await session.recordRound(hands: round.hands, knocker: try #require(round.knocker))
         try await session.undoLastRound()
         #expect(session.state.rounds.count == 5)
         #expect(session.state.currentDealer == dealer)

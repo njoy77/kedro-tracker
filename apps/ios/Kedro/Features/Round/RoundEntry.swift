@@ -28,6 +28,9 @@ nonisolated struct RoundEntry: Hashable, Sendable {
     let seatOrder: [SeatID]
     private(set) var knocker: SeatID?
     private(set) var knockerSource: KnockerSource?
+    /// The knocker went out with an inherent knock (played all four cards): their hand is 0, and
+    /// they take −10 if lowest alone but never the +10.
+    private(set) var isInherent = false
     private(set) var entries: [SeatID: HandEntry]
     private(set) var focus: SeatID?
     /// Rows whose pre-filled value is replaced by the next digit typed (corrections, Fix {name}).
@@ -56,15 +59,16 @@ nonisolated struct RoundEntry: Hashable, Sendable {
         seatOrder = seats
         original = round
         knocker = round.knocker
+        isInherent = round.isInherentKnock
         knockerSource = .saved
         var entries: [SeatID: HandEntry] = [:]
         for seat in seats {
             entries[seat] = round.hands[seat].map(HandEntry.init(value:)) ?? .empty
         }
         self.entries = entries
-        let start = focus.flatMap { seats.contains($0) ? $0 : nil } ?? round.knocker
+        let start = focus.flatMap { seats.contains($0) ? $0 : nil } ?? round.knocker ?? seats.first
         self.focus = start
-        replacesOnType = [start]
+        replacesOnType = Set([start].compactMap(\.self))
     }
 
     var isEditing: Bool { original != nil }
@@ -99,7 +103,7 @@ nonisolated struct RoundEntry: Hashable, Sendable {
     /// For corrections: true once something differs from the saved round.
     var hasChanges: Bool {
         guard let original else { return true }
-        return original.knocker != knocker || hands != original.hands
+        return original.knocker != knocker || original.isInherentKnock != isInherent || hands != original.hands
     }
 
     var primaryAction: PrimaryAction {
@@ -136,7 +140,19 @@ nonisolated struct RoundEntry: Hashable, Sendable {
         let nothingTyped = entries.values.allSatisfy(\.isEmpty)
         knocker = seat == knocker ? nil : seat
         knockerSource = nil
+        isInherent = false
         if nothingTyped, !isEditing { focus = rows.first }
+    }
+
+    /// Marks the knock as inherent (or regular again). Inherent fills the knocker's hand with 0
+    /// and moves on to the next empty row.
+    mutating func setInherent(_ on: Bool) {
+        guard let knocker else { return }
+        isInherent = on
+        guard on else { return }
+        entries[knocker] = HandEntry(value: 0)
+        replacesOnType.remove(knocker)
+        if focus == knocker || focus == nil { focus = nextEmptyRow(after: knocker) ?? focus }
     }
 
     /// A live knock marked while the sheet is open pre-fills the knocker, unless one is picked.
@@ -186,6 +202,8 @@ nonisolated struct RoundEntry: Hashable, Sendable {
         guard entry.press(key, negativeLimit: redKingsLeft(for: focus)) else { return false }
         replacesOnType.remove(focus)
         entries[focus] = entry
+        // A hand typed for an inherent knocker means it wasn't one: they'd have had nothing left.
+        if focus == knocker, isInherent, entry.value != 0 { isInherent = false }
         return true
     }
 
@@ -242,7 +260,11 @@ nonisolated struct RoundEntry: Hashable, Sendable {
         guard let knocker, let hand = value(knocker) else { return nil }
         let others = rows.filter { $0 != knocker }.compactMap { seat in value(seat).map { (seat, $0) } }
         guard let lowest = others.min(by: { $0.1 < $1.1 }) else { return nil }
-        if hand > lowest.1 { return .failed(knocker: knocker, hand: hand, by: lowest.0, low: lowest.1) }
+        if hand > lowest.1 {
+            return isInherent
+                ? .inherentBeaten(knocker: knocker, hand: hand, by: lowest.0, low: lowest.1)
+                : .failed(knocker: knocker, hand: hand, by: lowest.0, low: lowest.1)
+        }
         if isComplete {
             return hand < lowest.1 ? .landed(knocker: knocker, hand: hand) : .tied(knocker: knocker, hand: hand, with: lowest.0)
         }
@@ -260,7 +282,7 @@ nonisolated struct RoundEntry: Hashable, Sendable {
     /// The round to save, once complete.
     var round: Round? {
         guard let hands, let knocker else { return nil }
-        return Round(number: roundNumber, hands: hands, knocker: knocker)
+        return Round(number: roundNumber, hands: hands, knocker: knocker, isInherent: isInherent && hands[knocker] == 0)
     }
 }
 
@@ -276,18 +298,20 @@ nonisolated enum RoundVerdict: Hashable, Sendable {
     case landed(knocker: SeatID, hand: Int)
     /// All in: tied for lowest.
     case tied(knocker: SeatID, hand: Int, with: SeatID)
+    /// An inherent knock someone beat: no penalty (decided as soon as anyone is lower).
+    case inherentBeaten(knocker: SeatID, hand: Int, by: SeatID, low: Int)
 
     var knocker: SeatID {
         switch self {
         case .leading(let knocker, _), .tiedSoFar(let knocker, _, _), .failed(let knocker, _, _, _),
-             .landed(let knocker, _), .tied(let knocker, _, _):
+             .landed(let knocker, _), .tied(let knocker, _, _), .inherentBeaten(let knocker, _, _, _):
             knocker
         }
     }
 
     var isFinal: Bool {
         switch self {
-        case .failed, .landed, .tied: true
+        case .failed, .landed, .tied, .inherentBeaten: true
         case .leading, .tiedSoFar: false
         }
     }
@@ -296,7 +320,7 @@ nonisolated enum RoundVerdict: Hashable, Sendable {
     var knockerScore: Int {
         switch self {
         case .leading, .landed: Scoring.landedScore
-        case .tiedSoFar(_, let hand, _), .tied(_, let hand, _): hand
+        case .tiedSoFar(_, let hand, _), .tied(_, let hand, _), .inherentBeaten(_, let hand, _, _): hand
         case .failed(_, let hand, _, _): hand + Scoring.failedPenalty
         }
     }
@@ -314,6 +338,8 @@ nonisolated enum RoundVerdict: Hashable, Sendable {
             TableText.text("label.verdict.landed", ["knocker": name(knocker), "hand": hand])
         case let .tied(knocker, hand, _):
             TableText.text("label.verdict.tied", ["knocker": name(knocker), "hand": hand])
+        case let .inherentBeaten(knocker, _, by, low):
+            TableText.text("label.verdict.inherentBeaten", ["knocker": name(knocker), "name": name(by), "low": low])
         }
     }
 }

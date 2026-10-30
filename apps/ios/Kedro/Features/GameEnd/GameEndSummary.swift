@@ -62,11 +62,12 @@ nonisolated struct GameEndSummary: Sendable {
         // Knock records
         var records: [SeatID: KnockRecord] = [:]
         for record in state.rounds {
-            guard let outcome = record.outcome else { continue }
+            // Inherent knocks are tracked apart from knocks.
+            guard let knocker = record.regularKnocker, let outcome = record.outcome else { continue }
             switch outcome {
-            case .landed: records[record.knocker, default: KnockRecord()].landed += 1
-            case .tied: records[record.knocker, default: KnockRecord()].tied += 1
-            case .failed: records[record.knocker, default: KnockRecord()].failed += 1
+            case .landed: records[knocker, default: KnockRecord()].landed += 1
+            case .tied, .noPenalty: records[knocker, default: KnockRecord()].tied += 1
+            case .failed: records[knocker, default: KnockRecord()].failed += 1
             }
         }
         knockRecords = records

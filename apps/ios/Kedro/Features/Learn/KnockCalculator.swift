@@ -90,6 +90,9 @@ nonisolated struct KnockCalculator: Hashable, Sendable {
         case .failed:
             let low = ScoreFormat.string(lowestOthers.first?.hand ?? 0)
             return "\(names) had \(low), lower than \(knocker.name)'s \(hand), so the knock failed: \(hand) + \(Scoring.failedPenalty) = \(ScoreFormat.string(knocker.hand + Scoring.failedPenalty))."
+        case .noPenalty:
+            let low = ScoreFormat.string(lowestOthers.first?.hand ?? 0)
+            return "\(names) had \(low), lower than \(knocker.name)'s \(hand), but \(knocker.name) went out with all four cards, so there's no penalty: \(hand)."
         }
     }
 

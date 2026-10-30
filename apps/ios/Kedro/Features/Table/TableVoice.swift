@@ -86,8 +86,8 @@ nonisolated enum TableVoice {
     /// teaching line for their own bad outcome (K-30s), and the player who beat the knocker gets K-10.
     static func roast(for record: RoundRecord, in state: GameState, viewer: SeatID?, viewerIsLearner: Bool) -> VoicePick? {
         let round = record.round
-        guard let hand = round.knockerHand, let outcome = record.outcome else { return nil }
-        let knockerName = state.name(of: round.knocker)
+        guard let knocker = round.knocker, let hand = round.knockerHand, let outcome = record.outcome else { return nil }
+        let knockerName = state.name(of: knocker)
         let lowSeat = round.lowestOtherSeat
         let low = round.lowestOtherHand
         var args: VoiceArgs = ["knocker": knockerName, "hand": hand]
@@ -118,11 +118,13 @@ nonisolated enum TableVoice {
             if margin >= bigFailMargin { return VoicePick(.knockFailedBig, args) }
             if margin == 1 { return VoicePick(.knockFailedByOne, args) }
             return VoicePick(.knockFailed, args)
-        case .landed, .tied:
-            if let big = round.hands.filter({ $0.key != round.knocker }).max(by: { ($0.value, $1.key) < ($1.value, $0.key) }),
+        case .landed, .tied, .noPenalty:
+            if let big = round.hands.filter({ $0.key != knocker }).max(by: { ($0.value, $1.key) < ($1.value, $0.key) }),
                big.value >= hugeHand {
                 return VoicePick(.hugeHand, ["name": state.name(of: big.key), "hand": big.value])
             }
+            // An inherent knock that didn't land has no knock to roast (no lines written for it yet).
+            if outcome == .noPenalty { return nil }
             if outcome == .tied { return VoicePick(.knockTied, args) }
             return hand <= 0 ? VoicePick(.knockLandedLow, args) : VoicePick(.knockLanded, args)
         }
@@ -152,8 +154,8 @@ nonisolated enum TableVoice {
         let name = { (seat: SeatID) in state.name(of: seat) }
 
         // B-07: the leader just failed a knock.
-        if n >= 2, let last = state.lastRound, last.outcome == .failed,
-           timeline.leaders(afterRound: n - 1).contains(last.knocker) {
+        if n >= 2, let last = state.lastRound, last.outcome == .failed, let knocker = last.knocker,
+           timeline.leaders(afterRound: n - 1).contains(knocker) {
             return VoicePick(["B-07"], key: "banter")
         }
         // B-03 the round someone first becomes cooked (mockup frame 6: "Sam's 21 back with 3 to

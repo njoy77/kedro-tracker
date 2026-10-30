@@ -131,7 +131,7 @@ nonisolated struct StatsSnapshot: Sendable {
             beaten: record.knocksBeaten, average: record.averageRoundScore, rating: record.rating
         )
 
-        var knocks = 0, landed = 0, tied = 0, failed = 0, beaten = 0, redKings = 0, ghosts = 0
+        var knocks = 0, landed = 0, tied = 0, failed = 0, beaten = 0, redKings = 0, ghosts = 0, inherentKnocks = 0, inherentLanded = 0
         var biggestHand = Int.min, roundsPlayed = 0, roundScoreSum = 0
         for round in rounds {
             guard let hand = round.hands[me] else { continue }
@@ -140,14 +140,18 @@ nonisolated struct StatsSnapshot: Sendable {
             redKings += CardInference.redKings(inHand: hand)
             if hand == 0 { ghosts += 1 }
             biggestHand = max(biggestHand, hand)
-            if round.knocker == me, let outcome = round.outcome {
+            if round.inherent == me {
+                inherentKnocks += 1
+                if round.isInherentKnock, round.outcome == .landed { inherentLanded += 1 }
+            }
+            if round.regularKnocker == me, let outcome = round.outcome {
                 knocks += 1
                 switch outcome {
                 case .landed:
                     landed += 1
                     record.currentLandedStreak += 1
                     record.longestLandedStreak = max(record.longestLandedStreak, record.currentLandedStreak)
-                case .tied:
+                case .tied, .noPenalty:
                     tied += 1
                     record.currentLandedStreak = 0
                 case .failed:
@@ -182,6 +186,7 @@ nonisolated struct StatsSnapshot: Sendable {
             isWinner: isWinner, isSharedWin: isWinner && game.winners.count > 1,
             roundsPlayed: roundsPlayed, roundScoreSum: roundScoreSum,
             knocks: knocks, landed: landed, tied: tied, failed: failed, knocksBeaten: beaten,
+            inherentKnocks: inherentKnocks, inherentKnocksLanded: inherentLanded,
             redKings: redKings, ghostHands: ghosts, biggestHand: biggestHand == .min ? 0 : biggestHand,
             isComeback: isWinner && half >= 1 && !ledAtHalf, bottledFinalRound: bottled,
             biggestLead: biggestLead, deepestDeficit: deepest,

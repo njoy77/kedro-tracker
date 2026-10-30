@@ -169,9 +169,9 @@ private struct FeedRow: View {
     private var message: String? {
         switch entry.kind {
         case .roundSaved(let number):
-            guard let record = state.round(number), let hand = record.round.hands[record.knocker] else { return nil }
-            let fact = Literal.fact(round: number, knocker: state.name(of: record.knocker), hand: hand)
-            guard let outcome = record.outcome else { return fact }
+            guard let record = state.round(number) else { return nil }
+            let fact = Literal.fact(record.round) { state.name(of: $0) }
+            guard let outcome = record.outcome, let hand = record.round.knockerHand else { return fact }
             return fact + " " + Literal.verdict(outcome, hand: hand)
         case .liveKnock(let knock):
             return houseVoice.line("K-21", ["knocker": state.name(of: knock.knocker)])

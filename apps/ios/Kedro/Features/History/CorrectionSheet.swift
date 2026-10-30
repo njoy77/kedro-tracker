@@ -157,7 +157,8 @@ struct CorrectionSheet: View {
         Task {
             defer { isSaving = false }
             do {
-                try await session.editRound(round.number, hands: round.hands, knocker: round.knocker)
+                guard let knocker = round.knocker else { return }
+                try await session.editRound(round.number, hands: round.hands, knocker: knocker, inherent: round.isInherentKnock)
                 saves += 1
                 dismiss()
             } catch {

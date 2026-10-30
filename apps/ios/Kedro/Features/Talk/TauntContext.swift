@@ -24,7 +24,7 @@ nonisolated struct TauntContext: Hashable, Sendable {
                 case .failed: moments.insert(.knockFailed)
                 case .landed: moments.insert(.knockLanded)
                 case .tied: moments.insert(.knockTied)
-                case nil: break
+                case .noPenalty, nil: break
                 }
             }
             if last.redKingDecided {
@@ -59,8 +59,8 @@ extension TauntTarget {
         if let knock = state.liveKnock, knock.roundNumber == state.nextRoundNumber, knock.knocker != me {
             return .seat(knock.knocker)
         }
-        if let last = state.lastRound, last.knocker != me, last.outcome != nil {
-            return .seat(last.knocker)
+        if let last = state.lastRound, let knocker = last.knocker, knocker != me, last.outcome != nil {
+            return .seat(knocker)
         }
         return .table
     }

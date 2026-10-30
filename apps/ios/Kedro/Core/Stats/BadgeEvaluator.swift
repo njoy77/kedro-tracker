@@ -43,7 +43,7 @@ nonisolated enum BadgeEvaluator {
         var streak = preGameLandedStreak(record, game: game.id)
         for round in myRounds {
             guard let hand = round.hands[me] else { continue }
-            if round.knocker == me, let outcome = round.outcome {
+            if round.regularKnocker == me, let outcome = round.outcome {
                 switch outcome {
                 case .landed:
                     award(.landedIt, round: round.number)
@@ -59,6 +59,8 @@ nonisolated enum BadgeEvaluator {
                     award(.foundOut, round: round.number)
                     if hand >= 10 { award(.boldChoice, round: round.number) }
                     streak = 0
+                case .noPenalty:
+                    break // only inherent knocks get this, and they aren't regular knocks
                 }
             }
             if hand < 0 { award(.belowZero, round: round.number) }

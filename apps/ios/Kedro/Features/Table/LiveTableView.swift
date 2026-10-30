@@ -364,7 +364,7 @@ struct LiveTableView: View {
     private var defaultTauntTarget: TauntTarget {
         let me = session.mySeatID
         if let mark = state.liveKnock, mark.knocker != me { return .seat(mark.knocker) }
-        if let last = state.lastRound, last.outcome == .failed, last.knocker != me { return .seat(last.knocker) }
+        if let last = state.lastRound, last.outcome == .failed, let knocker = last.knocker, knocker != me { return .seat(knocker) }
         return .table
     }
 

@@ -83,9 +83,9 @@ nonisolated enum Receipts {
     /// "Round 3. Noah knocked on 8.\nFailed: 8 + 10 = 18."
     static func roast(for option: ReceiptOption, in state: GameState) -> String? {
         guard let number = option.roundNumber, let record = state.round(number), let outcome = record.outcome,
-              let hand = record.round.hands[record.knocker]
+              let hand = record.round.knockerHand
         else { return nil }
-        return Literal.fact(round: number, knocker: state.name(of: record.knocker), hand: hand) + "\n" + Literal.verdict(outcome, hand: hand)
+        return Literal.fact(record.round) { state.name(of: $0) } + "\n" + Literal.verdict(outcome, hand: hand)
     }
 
     /// Literal eyebrow for the card: "COLD DECK · FINAL · 8 ROUNDS" (uppercased by the label style).
@@ -104,8 +104,8 @@ nonisolated enum Receipts {
 
     /// How far the knocker missed by: their hand minus the lowest other hand.
     private static func margin(of record: RoundRecord) -> Int {
-        let knockerHand = record.round.hands[record.knocker] ?? 0
-        let lowestOther = record.round.hands.filter { $0.key != record.knocker }.map(\.value).min() ?? knockerHand
+        let knockerHand = record.round.knockerHand ?? 0
+        let lowestOther = record.round.lowestOtherHand ?? knockerHand
         return knockerHand - lowestOther
     }
 

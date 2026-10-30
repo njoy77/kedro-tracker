@@ -1,6 +1,26 @@
 import { describe, expect, test } from 'bun:test'
-import { knockOutcome, knockerScore, ordered, rankLabel, ranks, roundScores, totals, winners } from '../src/index.ts'
+import { knockOutcome, knockerScore, ordered, outcomeOf, rankLabel, ranks, roundScores, scoresOf, totals, winners } from '../src/index.ts'
 import { sampleRounds, seats } from './fixtures/sampleGame.ts'
+
+describe('inherent knocks (PRD §2.6)', () => {
+  test('lowest alone takes −10; tied or beaten scores 0, never +10', () => {
+    expect(scoresOf({ hands: { A: 0, B: 3, C: 7 }, knocker: 'A', inherent: 'A' })).toEqual({ A: -10, B: 3, C: 7 })
+    expect(outcomeOf({ hands: { A: 0, B: 0, C: 7 }, knocker: 'A', inherent: 'A' })).toBe('tied')
+    expect(scoresOf({ hands: { A: 0, B: 0, C: 7 }, knocker: 'A', inherent: 'A' })).toEqual({ A: 0, B: 0, C: 7 })
+    expect(scoresOf({ hands: { A: 0, B: -2, C: 7 }, knocker: 'A', inherent: 'A' })).toEqual({ A: 0, B: -2, C: 7 })
+    expect(outcomeOf({ hands: { A: 0, B: -2, C: 7 }, knocker: 'A', inherent: 'A' })).toBe('noPenalty')
+    // The same hands as a regular knock fail.
+    expect(scoresOf({ hands: { A: 0, B: -2, C: 7 }, knocker: 'A' })).toEqual({ A: 10, B: -2, C: 7 })
+  })
+
+  test('imported rounds keep their saved scores, knocker or not', () => {
+    const saved = { hands: { A: 0, B: 6, C: 8 }, knocker: 'A', scores: { A: 0, B: 6, C: 8 } }
+    expect(scoresOf(saved)).toEqual({ A: 0, B: 6, C: 8 }) // the web marked it tied
+    expect(outcomeOf(saved)).toBe('tied')
+    expect(scoresOf({ hands: { A: 4, B: 5, C: -1 }, scores: { A: 4, B: 5, C: -1 } })).toEqual({ A: 4, B: 5, C: -1 })
+    expect(outcomeOf({ hands: { A: 4, B: 5, C: -1 }, scores: { A: 4, B: 5, C: -1 } })).toBeNull()
+  })
+})
 
 describe('roundScores (PRD §2.6)', () => {
   test('knocker strictly lowest scores −10 flat', () => {
@@ -56,14 +76,14 @@ describe('the §17 sample game', () => {
 
   test('every round scores as in the table', () => {
     sampleRounds.forEach((round, index) => {
-      const scores = roundScores(round.hands, round.knocker)
+      const scores = scoresOf(round)
       expect(order.map((seat) => scores[seat])).toEqual(expectedRoundScores[index])
-      expect(knockOutcome(round.hands, round.knocker)).toBe(outcomes[index] as never)
+      expect(outcomeOf(round)).toBe(outcomes[index] as never)
     })
   })
 
   const scoresThrough = (count: number) =>
-    totals(sampleRounds.slice(0, count).map((round) => roundScores(round.hands, round.knocker)))
+    totals(sampleRounds.slice(0, count).map(scoresOf))
 
   test('after R4: 36, 20, 38, 34, 43', () => {
     const after = scoresThrough(4)

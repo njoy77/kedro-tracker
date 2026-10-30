@@ -241,8 +241,8 @@ private nonisolated struct GameReducer {
         if state.status == .lobby { startImplicitly(op) }
         state.rounds.append(RoundRecord(round: round, recordedAt: op.hlc.date, recordedBy: recordedBy, opId: op.opId))
         lastTouch[round.number] = op
-        if let marked = liveKnocks[round.number], marked.knocker != round.knocker {
-            log(.knockerOverridden(round: round.number, marked: marked.knocker, recorded: round.knocker), op, actor, addToFeed: false)
+        if let marked = liveKnocks[round.number], let recorded = round.knocker, marked.knocker != recorded {
+            log(.knockerOverridden(round: round.number, marked: marked.knocker, recorded: recorded), op, actor, addToFeed: false)
         }
         state.feed.append(FeedEntry(opId: op.opId, hlc: op.hlc, kind: .roundSaved(round: round.number)))
     }
@@ -266,8 +266,11 @@ private nonisolated struct GameReducer {
             .sorted { seatSortKey($0) < seatSortKey($1) }
             .map { HandChange(seat: $0, before: old.round.hands[$0] ?? 0, after: round.hands[$0] ?? 0) }
         record.editedSeats.formUnion(handChanges.map(\.seat))
-        let knockerChange = old.knocker != round.knocker ? Change(before: old.knocker, after: round.knocker) : nil
-        if knockerChange != nil { record.editedSeats.insert(round.knocker) }
+        var knockerChange: Change<SeatID>?
+        if let before = old.knocker, let after = round.knocker, before != after {
+            knockerChange = Change(before: before, after: after)
+            record.editedSeats.insert(after)
+        }
         let outcomeChange = old.outcome != round.outcome ? Change(before: old.outcome, after: round.outcome) : nil
         state.rounds[index] = record
         lastTouch[round.number] = op
@@ -330,7 +333,7 @@ private nonisolated struct GameReducer {
         guard let roundReports = reports[number], state.seats.allSatisfy({ roundReports[$0.id] != nil }) else { return }
         let claimed = (reportOrder[number] ?? []).filter { roundReports[$0]?.knocked == true }
         guard let knocker = resolvedKnockers[number] ?? (claimed.count == 1 ? claimed.first : nil) else { return }
-        let round = Round(number: number, hands: roundReports.mapValues(\.hand), knocker: knocker)
+        let round = Round(number: number, hands: roundReports.mapValues(\.hand), knocker: knocker, isInherent: roundReports[knocker]?.inherent == true)
         applyRoundRecorded(round, op, actor, recordedBy: "Everyone reported")
     }
 
@@ -466,9 +469,10 @@ private nonisolated struct GameReducer {
 
     /// Every seat in play for the round must have a hand; a late joiner isn't in earlier rounds.
     private func isValid(_ round: Round) -> Bool {
-        guard round.isValid, !state.seats.isEmpty else { return false }
+        guard round.isValid(imported: state.config.imported == true), !state.seats.isEmpty else { return false }
         let seatIDs = Set(state.seats.filter { $0.firstRound <= round.number }.map(\.id))
-        return Set(round.hands.keys) == seatIDs && seatIDs.contains(round.knocker)
+        guard Set(round.hands.keys) == seatIDs else { return false }
+        return [round.knocker, round.inherent].allSatisfy { $0.map(seatIDs.contains) ?? true }
     }
 
     private func resolveActor(_ op: GameOperation) -> GameActor {

@@ -106,8 +106,8 @@ struct ClipTableView: View {
             return model.voice.line("K-23", ["knocker": state.name(of: knock.knocker)])
         }
         guard let last = state.lastRound else { return nil }
-        let hand = last.round.hands[last.knocker] ?? 0
-        let fact = Literal.fact(round: last.number, knocker: state.name(of: last.knocker), hand: hand)
+        let hand = last.round.knockerHand ?? 0
+        let fact = Literal.fact(last.round) { state.name(of: $0) }
         guard let outcome = last.outcome else { return fact }
         return "\(fact) \(Literal.verdict(outcome, hand: hand))"
     }

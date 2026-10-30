@@ -330,6 +330,8 @@ struct ProfileView: View {
             }
             Divider().overlay(Color.rule)
             StatRow("Success rate", value: stats.knockSuccessRate.map { StatsFormat.percent($0) } ?? "–", info: .knockSuccess)
+            Divider().overlay(Color.rule)
+            StatRow("Inherent knocks", value: "\(stats.inherentKnocks) · \(stats.inherentKnocksLanded) at −10", info: .inherentKnocks)
         }
     }
 

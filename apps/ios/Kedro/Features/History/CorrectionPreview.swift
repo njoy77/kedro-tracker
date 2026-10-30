@@ -38,8 +38,8 @@ nonisolated struct CorrectionPreview: Hashable, Sendable {
             if let o = oldTotals[id], let n = newTotals[id], o != n { line.total = Change(before: o, after: n) }
             return line.round == nil && line.total == nil ? nil : line
         }
-        if let old, let new, old.knocker != new.knocker {
-            knocker = Change(before: old.knocker, after: new.knocker)
+        if let before = old?.knocker, let after = new?.knocker, before != after {
+            knocker = Change(before: before, after: after)
         } else {
             knocker = nil
         }
@@ -49,7 +49,7 @@ nonisolated struct CorrectionPreview: Hashable, Sendable {
             outcome = nil
         }
         knockerSeat = new?.knocker
-        if let new, let o = old?.scores[new.knocker], let n = new.scores[new.knocker] {
+        if let new, let seat = new.knocker, let o = old?.scores[seat], let n = new.scores[seat] {
             knockerScore = Change(before: o, after: n)
         } else {
             knockerScore = nil

@@ -48,14 +48,18 @@ nonisolated extension CopyDeck {
 
         // Fact and verdict lines
         .literal("fact.round", "Fact line", "Round {r}. {knocker} knocked on {hand}."),
+        .literal("fact.inherent", "Fact line, inherent knock", "Round {r}. {knocker} went out."),
+        .literal("fact.noKnock", "Fact line, imported round with no knock recorded", "Round {r}. No knock recorded."),
         .literal("verdict.landed", "Verdict", "Landed: −10."),
         .literal("verdict.tied", "Verdict", "Tied: {hand}."),
         .literal("verdict.failed", "Verdict", "Failed: {hand} + 10 = {score}."),
+        .literal("verdict.noPenalty", "Verdict, inherent knock beaten", "No penalty: {hand}."),
 
         // Delta captions (the knocker's math, never a bare +12)
         .literal("delta.landed", "Delta caption", "landed · −10"),
         .literal("delta.tied", "Delta caption", "tied · {hand}"),
         .literal("delta.failed", "Delta caption", "failed · {hand} + 10"),
+        .literal("delta.noPenalty", "Delta caption", "no penalty · {hand}"),
 
         // Labels
         .literal("label.roundOf", "Metadata line", "ROUND {r} OF {total}"),

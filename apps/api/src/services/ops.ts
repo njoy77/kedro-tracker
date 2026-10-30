@@ -192,6 +192,12 @@ export class OpsService {
         reject(op, 'invalidActor', 'actorPlayerId is not seated in this game')
         continue
       }
+      // Only the web-history importer (which writes to the store directly) makes imported games,
+      // the one kind whose rounds may carry saved scores or no knocker.
+      if (op.type === 'GameCreated' && op.payload.config.imported) {
+        reject(op, 'invalid', 'Imported games come from the importer')
+        continue
+      }
       const refusal = admission(state, op, timing()) ?? tauntLimitRefusal(state, admitted, op) ?? (await blocks.refusal(state, op))
       if (refusal) {
         reject(op, refusal.reason, refusal.message)

@@ -94,11 +94,11 @@ nonisolated enum SoundCues {
     static func outcomeMoment(for record: RoundRecord, learners: Set<SeatID>) -> SoundMoment? {
         guard let outcome = record.outcome else { return nil }
         // Never for a learner's own failed knock.
-        if outcome == .failed, learners.contains(record.knocker) { return nil }
+        if outcome == .failed, let knocker = record.knocker, learners.contains(knocker) { return nil }
         if record.redKingDecided { return .redKing }
         switch outcome {
         case .landed: return .knockLanded
-        case .tied: return .knockTied
+        case .tied, .noPenalty: return .knockTied
         case .failed: return .knockFailed
         }
     }

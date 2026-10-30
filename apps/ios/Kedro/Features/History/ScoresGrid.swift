@@ -63,8 +63,7 @@ struct ScoresGrid: View {
             }
         }
         .accessibilityRotor(TableText.text("label.rotorKnocks")) {
-            ForEach(state.rounds) { record in
-                let cell = ScoreCellRef(round: record.number, seat: record.knocker)
+            ForEach(state.rounds.compactMap { record in record.knocker.map { ScoreCellRef(round: record.number, seat: $0) } }) { cell in
                 AccessibilityRotorEntry(Text(cellLabel(cell)), id: cell.id, in: rotor)
             }
         }
@@ -274,6 +273,8 @@ struct KnockScoreBadge: View {
                 Capsule().fill(.cream)
             case .tied:
                 Capsule().strokeBorder(.silver, lineWidth: 1.5)
+            case .noPenalty:
+                Capsule().strokeBorder(.silver, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
             case .failed:
                 HatchPattern(color: .silverDim, spacing: 5, lineWidth: 2)
                     .clipShape(.capsule)

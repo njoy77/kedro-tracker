@@ -6,7 +6,7 @@
 import { COUNTED_MIN_ROUNDS, type FinishReason, type Round } from './domain.ts'
 import { gameTotals, roundsPlayed, standings, type FoldedGame } from './fold.ts'
 import { seatGuestId, seatIdOf, seatPlayerId, type SeatId, type UUID } from './ids.ts'
-import { knockOutcome, roundScores } from './scoring.ts'
+import { isInherentKnock, outcomeOf, scoresOf } from './scoring.ts'
 
 /** One seat's result in a finished game (a row of `finished_game_seats`). */
 export type FinishedSeatResult = {
@@ -63,9 +63,10 @@ export function projectFinishedGame(game: FoldedGame): FinishedGameProjection | 
       if (hand === undefined) continue
       lowest = lowest === null ? hand : Math.min(lowest, hand)
       highest = highest === null ? hand : Math.max(highest, hand)
-      if (round.knocker !== seatId) continue
+      // Inherent knocks are their own stat, not knocks (they can't fail).
+      if (round.knocker !== seatId || isInherentKnock(round)) continue
       knocks += 1
-      const outcome = knockOutcome(round.hands, round.knocker)
+      const outcome = outcomeOf(round)
       if (outcome === 'landed') landed += 1
       else if (outcome === 'tied') tied += 1
       else if (outcome === 'failed') failed += 1
@@ -103,7 +104,7 @@ export function projectFinishedGame(game: FoldedGame): FinishedGameProjection | 
 /** Round scores for one seat across a game (stats helpers). */
 export function seatRoundScores(rounds: Round[], seatId: SeatId): number[] {
   return rounds.flatMap((round) => {
-    const score = roundScores(round.hands, round.knocker)[seatId]
+    const score = scoresOf(round)[seatId]
     return score === undefined ? [] : [score]
   })
 }

@@ -42,34 +42,44 @@ nonisolated struct StatsParticipant: Hashable, Sendable {
     var titleID: String?
 }
 
-/// One saved round keyed by person rather than seat.
+/// One saved round keyed by person rather than seat, with the scores the game itself gave (an
+/// imported round's saved scores included).
 nonisolated struct StatsRound: Hashable, Sendable {
     var number: Int
     var hands: [PlayerRef: Int]
-    var knocker: PlayerRef
+    /// nil on an imported round with no knock recorded.
+    var knocker: PlayerRef?
+    /// Who went out with an inherent knock (tracked apart from knocks).
+    var inherent: PlayerRef?
     var scores: [PlayerRef: Int]
     var outcome: KnockOutcome?
 
-    init(number: Int, hands: [PlayerRef: Int], knocker: PlayerRef) {
+    init(number: Int, hands: [PlayerRef: Int], knocker: PlayerRef?, inherent: PlayerRef? = nil, scores: [PlayerRef: Int], outcome: KnockOutcome?) {
         self.number = number
         self.hands = hands
         self.knocker = knocker
-        scores = Scoring.roundScores(hands: hands, knocker: knocker)
-        outcome = Scoring.knockOutcome(hands: hands, knocker: knocker)
-    }
-
-    /// A round whose scores were already worked out by seat (the game's own scoring), keyed by
-    /// person after the fact. Used when a seat is dropped as a duplicate of the same person, so
-    /// the remaining seats keep the scores they actually got at the table.
-    init(number: Int, hands: [PlayerRef: Int], knocker: PlayerRef, scores: [PlayerRef: Int], outcome: KnockOutcome?) {
-        self.number = number
-        self.hands = hands
-        self.knocker = knocker
+        self.inherent = inherent
         self.scores = scores
         self.outcome = outcome
     }
 
-    var knockerHand: Int? { hands[knocker] }
+    /// Scored from hands (tests and fixtures).
+    init(number: Int, hands: [PlayerRef: Int], knocker: PlayerRef, isInherent: Bool = false) {
+        self.init(
+            number: number, hands: hands, knocker: knocker, inherent: isInherent ? knocker : nil,
+            scores: Scoring.roundScores(hands: hands, knocker: knocker, inherent: isInherent),
+            outcome: Scoring.knockOutcome(hands: hands, knocker: knocker, inherent: isInherent)
+        )
+    }
+
+    /// True when the knocker went out with an inherent knock.
+    var isInherentKnock: Bool { knocker != nil && inherent == knocker }
+
+    /// The knocker of a regular knock: the one knock stats, streaks and badges count. nil for an
+    /// inherent knock or an imported round with no knock recorded.
+    var regularKnocker: PlayerRef? { isInherentKnock ? nil : knocker }
+
+    var knockerHand: Int? { knocker.flatMap { hands[$0] } }
 
     /// The lowest hand among everyone but the knocker.
     var lowestOtherHand: Int? { hands.filter { $0.key != knocker }.values.min() }
@@ -154,10 +164,6 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
         func person(_ seat: SeatID) -> PlayerRef { map[seat] ?? options.canonical(seat.playerRef) }
 
         rounds = state.rounds.map { record in
-            if countedIDs.count == state.seats.count {
-                let hands = Dictionary(record.round.hands.map { (person($0.key), $0.value) }, uniquingKeysWith: +)
-                return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker))
-            }
             let hands = Dictionary(
                 record.round.hands.filter { countedIDs.contains($0.key) }.map { (person($0.key), $0.value) },
                 uniquingKeysWith: { first, _ in first }
@@ -166,7 +172,10 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
                 record.scores.filter { countedIDs.contains($0.key) }.map { (person($0.key), $0.value) },
                 uniquingKeysWith: { first, _ in first }
             )
-            return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker), scores: scores, outcome: record.outcome)
+            return StatsRound(
+                number: record.number, hands: hands, knocker: record.knocker.map(person), inherent: record.round.inherent.map(person),
+                scores: scores, outcome: record.outcome
+            )
         }
         // Late joiners enter the running totals at their starting score on their first round.
         let lateStarts = counted.filter { $0.firstRound > 1 }

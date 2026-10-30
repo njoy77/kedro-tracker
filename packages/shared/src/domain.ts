@@ -110,6 +110,8 @@ export const gameConfigSchema = z.object({
   firstDealerSeat: seatIdSchema.optional(),
   houseVoiceCap: languageLevelSchema.optional(),
   scorekeeperSeat: seatIdSchema.optional(),
+  /** Set only by the server's web-history importer; the server refuses it from phones. */
+  imported: z.literal(true).optional(),
 })
 export type GameConfig = z.infer<typeof gameConfigSchema>
 
@@ -117,11 +119,18 @@ export type GameConfig = z.infer<typeof gameConfigSchema>
 
 export const handSchema = z.number().int().min(HAND_MIN).max(HAND_MAX)
 
-/** One round's inputs. Scores are derived (`roundScores`), never stored. */
+/**
+ * One round's inputs. Scores are derived (`scoresOf`), never stored, except on rounds imported
+ * from the web app (games created with `config.imported`): those keep the web's saved `scores`
+ * and may have no known `knocker`. `inherent` is who went out with an inherent knock (played all
+ * four cards); in a live round it's always the knocker.
+ */
 export const roundSchema = z.object({
   number: z.number().int().min(1).max(500),
   hands: z.record(seatIdSchema, handSchema),
-  knocker: seatIdSchema,
+  knocker: seatIdSchema.optional(),
+  inherent: seatIdSchema.optional(),
+  scores: z.record(seatIdSchema, z.number().int().min(-1000).max(5000)).optional(),
 })
 export type Round = z.infer<typeof roundSchema>
 

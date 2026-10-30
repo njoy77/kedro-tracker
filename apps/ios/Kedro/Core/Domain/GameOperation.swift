@@ -210,6 +210,8 @@ nonisolated enum Op {
         var seatId: SeatID
         var hand: Int
         var knocked: Bool
+        /// The knock was inherent (they played all four cards; hand 0).
+        var inherent: Bool?
     }
 
     /// Extend (or shorten) the planned rounds (logged). `{"plannedRounds":8}`

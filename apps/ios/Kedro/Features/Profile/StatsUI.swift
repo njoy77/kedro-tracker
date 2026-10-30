@@ -104,6 +104,7 @@ nonisolated struct StatDefinition: Hashable, Sendable {
     static let longestStreak = StatDefinition(name: "Longest win streak", text: "Longest run of consecutive wins.")
     static let knockRate = StatDefinition(name: "Knock rate", text: "Rounds knocked ÷ rounds played.")
     static let knockSuccess = StatDefinition(name: "Knock success", text: "Knocks with the strictly lowest hand (−10) ÷ total knocks.")
+    static let inherentKnocks = StatDefinition(name: "Inherent knocks", text: "Rounds you went out by playing all four cards. −10 if your 0 was lowest alone, never +10. Not counted as knocks.")
     static let knockOutcomes = StatDefinition(name: "Knock outcomes", text: "Landed: strictly lowest hand, −10. Tied: tied for lowest, scores the hand. Failed: someone was lower, hand + 10.")
     static let nemesis = StatDefinition(name: "Nemesis", text: "The player who has finished ahead of you most often in shared games. Ties go to whoever got there first.")
     static let rating = StatDefinition(name: "Rating", text: "Pairwise Elo from finishing order. Starts at 1,000, moves twice as fast for your first 10 games, and shows from your 5th game.")

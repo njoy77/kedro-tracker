@@ -139,7 +139,8 @@ private struct ScorekeeperRoundSheet: View {
         Task {
             defer { isSaving = false }
             do {
-                try await session.recordRound(hands: round.hands, knocker: round.knocker)
+                guard let knocker = round.knocker else { return }
+                try await session.recordRound(hands: round.hands, knocker: knocker, inherent: round.isInherentKnock)
                 savedRounds += 1
                 showSavedToast(round.number)
                 if session.state.isAwaitingFinish {

@@ -13,6 +13,7 @@ nonisolated struct KnockTally: Hashable, Sendable {
         case .landed: landed += 1
         case .tied: tied += 1
         case .failed: failed += 1
+        case .noPenalty: break // inherent knocks aren't knocks
         }
     }
 
@@ -78,8 +79,8 @@ extension StatsSnapshot {
             if game.winners.contains(b) { h2h.bWins += 1 }
             for round in game.rounds {
                 guard let outcome = round.outcome else { continue }
-                if round.knocker == a { h2h.aKnocks.add(outcome) }
-                if round.knocker == b { h2h.bKnocks.add(outcome) }
+                if round.regularKnocker == a { h2h.aKnocks.add(outcome) }
+                if round.regularKnocker == b { h2h.bKnocks.add(outcome) }
             }
             h2h.lastMeeting = .init(gameID: game.id, tableWord: game.tableWord, date: game.finishedAt, aScore: aTotal, bScore: bTotal)
         }

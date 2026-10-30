@@ -74,7 +74,8 @@ When a card is discarded, any player may immediately play a matching card from t
 - On their turn, one player may **knock** to end the round. Knocking is a gamble, not a win or loss in itself.
 - After a knock, every other player gets exactly one more turn.
 - All cards are revealed and each player's hand value is totaled.
-- **Every round ends with exactly one knock.** A round cannot be recorded without a knocker.
+- **Inherent knock.** A player who has played all four of their cards knocks automatically when their turn comes around. Their hand is 0.
+- **Every round ends with exactly one knock** (regular or inherent). A round cannot be recorded without a knocker.
 - A wrong stick is handled at the table under the physical rules (it shows up in the player's hand value). The app does not track it separately.
 
 ### 2.6 Round scoring (enforced by the app)
@@ -85,10 +86,13 @@ When a card is discarded, any player may immediately play a matching card from t
 | Knocker **ties** for the lowest hand | Their hand value | Their hand value |
 | Someone has a **lower** hand than the knocker | Their hand value **+ 10** | Their hand value |
 
+An **inherent knock** (hand 0) scores −10 if it's the strictly lowest hand, and otherwise 0: it never takes the +10 penalty.
+
 Worked examples (knocker is A):
 - A = 4, B = 7, C = 9 → A scores −10, B 7, C 9.
 - A = 4, B = 4, C = 9 → A 4, B 4, C 9.
 - A = 6, B = 3, C = 9 → A 16, B 3, C 9.
+- Inherent: A = 0, B = 3 → A −10. A = 0, B = 0 → A 0. A = 0, B = −2 → A 0 (no penalty).
 
 The app must apply these adjustments automatically from the hand values and the identity of the knocker. Players never compute the bonus or penalty themselves.
 
@@ -208,7 +212,8 @@ All stats are **derived from recorded rounds and games**. They are not stored as
 | Current win streak | Consecutive most-recent games won |
 | Longest win streak | Longest run of consecutive wins |
 | Knock rate | Rounds knocked ÷ rounds played |
-| Knock success rate | Knocks with strictly lowest hand (−10) ÷ total knocks |
+| Knock success rate | Knocks with strictly lowest hand (−10) ÷ total knocks (inherent knocks excluded) |
+| Inherent knocks | Rounds a player went out with all four cards, and how many were −10. Tracked apart from knocks. |
 | Knock outcomes | Count of successful, tied, and failed knocks |
 | Nemesis | The player who has finished ahead of this player most often in shared games |
 
@@ -309,6 +314,9 @@ Suggested judging criteria, mapped to goals:
 - iOS is the flagship. The web app will share the backend and catch up later.
 - Web parity is **not** a v1 constraint, and the iOS experience must not be shaped by web limitations.
 - **Existing web history is migrated.** Legacy games are imported, and each legacy username becomes a guest identity that its owner can claim with a claim link or code (3.2). Migrated games count toward stats once claimed, and are fixed records like any finished game.
+  - The web app saved scores (with the knock result marked by the scorekeeper), not hands, and allowed rounds with no knocker. Imported rounds **keep the web's saved scores exactly**, even where the marked result doesn't match the hands.
+  - A web round with no knocker recorded is imported with **no knock credited** to anyone (imported rounds only; live rounds always need a knocker). The web's inherent knock ("IK") is kept.
+  - Web rounds where everyone scored 0 were testing and are dropped.
 
 ---
 
@@ -329,5 +337,7 @@ Suggested judging criteria, mapped to goals:
 | 11 | Late joins | Allowed after Round 1, at the highest total at the table, from the next round. |
 | 12 | Who can end a game | Any seated player, at any time. |
 | 13 | Adding players | A browsable list (nearby, played with, everyone A–Z) with search on top. |
+| 14 | Inherent knock | Part of the rules: hand 0, −10 if lowest alone, otherwise 0 (never +10). Its own stat, not counted as a knock. |
+| 15 | Importing web history | Keep the web's saved scores; credit no knock where none was recorded; drop all-zero test rounds. |
 
 *Kedro iOS PRD v3.0 · October 2026*

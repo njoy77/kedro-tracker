@@ -19,6 +19,10 @@ nonisolated struct PlayerGameResult: Hashable, Sendable, Identifiable {
     var failed: Int
     /// Rounds where this player had a lower hand than a beaten knocker (The Snake).
     var knocksBeaten: Int
+    /// Inherent knocks (went out with all four cards played), tracked apart from knocks.
+    var inherentKnocks: Int = 0
+    /// Inherent knocks that were lowest alone (−10).
+    var inherentKnocksLanded: Int = 0
     var redKings: Int
     var ghostHands: Int
     var biggestHand: Int
@@ -104,6 +108,8 @@ nonisolated struct PlayerRecord: Hashable, Sendable, Identifiable {
     var tied: Int { knockEvents.count { $0.outcome == .tied } }
     var failed: Int { knockEvents.count { $0.outcome == .failed } }
     var knocksBeaten: Int { results.reduce(0) { $0 + $1.knocksBeaten } }
+    var inherentKnocks: Int { results.reduce(0) { $0 + $1.inherentKnocks } }
+    var inherentKnocksLanded: Int { results.reduce(0) { $0 + $1.inherentKnocksLanded } }
     var tauntsCounted: Int { results.reduce(0) { $0 + $1.tauntsCounted } }
 
     var isRanked: Bool { gamesPlayed >= Ratings.rankedAfterGames }
@@ -179,6 +185,9 @@ nonisolated struct PlayerStats: Hashable, Sendable {
     var landed: Int
     var tied: Int
     var failed: Int
+    /// Inherent knocks (went out with all four cards), apart from knocks; and how many were −10.
+    var inherentKnocks: Int
+    var inherentKnocksLanded: Int
     var nemesis: PlayerRef?
     var nemesisCount: Int
     /// Rating, replayed from game 1. Shown only once `isRanked`.
@@ -207,6 +216,8 @@ nonisolated struct PlayerStats: Hashable, Sendable {
         knocks = record.knocks
         knockRate = record.knockRate
         knockSuccessRate = record.knockSuccessRate
+        inherentKnocks = record.inherentKnocks
+        inherentKnocksLanded = record.inherentKnocksLanded
         landed = record.landed
         tied = record.tied
         failed = record.failed

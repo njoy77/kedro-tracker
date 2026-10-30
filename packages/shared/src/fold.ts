@@ -18,7 +18,7 @@ import { PLANNED_ROUNDS_LIMITS, SEAT_LIMITS } from './domain.ts'
 import { compareHlc, type HLC } from './hlc.ts'
 import { seatIdOf, type SeatId, type UUID } from './ids.ts'
 import { compareFoldOrder, isStateChanging, type Operation, type PayloadByType } from './operations.ts'
-import { HAND_MAX, HAND_MIN, ordered, ranks, roundScores, totals, winners, type Rank } from './scoring.ts'
+import { HAND_MAX, HAND_MIN, ordered, ranks, scoresOf, totals, winners, type Rank } from './scoring.ts'
 
 /** How long an abandoned game can be restored, and how long after a finish a racing abandon still wins. */
 export const RESTORE_WINDOW_MS = 15 * 60 * 1000
@@ -103,7 +103,7 @@ export type Standing = { seat: Seat; total: number; rank: Rank; isWinner: boolea
 /** Totals for every seat (a late joiner's starting score included; 0 for seats with no rounds). */
 export function gameTotals(game: FoldedGame): Record<SeatId, number> {
   const result: Record<SeatId, number> = Object.fromEntries(game.seats.map((seat) => [seatIdOf(seat.player), seat.startingScore ?? 0]))
-  const summed = totals(game.rounds.map((round) => roundScores(round.hands, round.knocker)))
+  const summed = totals(game.rounds.map(scoresOf))
   for (const [seat, total] of Object.entries(summed)) result[seat] = (result[seat] ?? 0) + total
   return result
 }
@@ -441,7 +441,8 @@ class Reducer {
     if (!knocker) return
     const hands: Record<SeatId, number> = {}
     for (const [seat, report] of roundReports) hands[seat] = report.hand
-    this.roundRecorded({ number, hands, knocker }, op)
+    const inherent = roundReports.get(knocker)?.inherent === true
+    this.roundRecorded(inherent ? { number, hands, knocker, inherent: knocker } : { number, hands, knocker }, op)
   }
 
   // MARK: Game shape
@@ -540,14 +541,26 @@ class Reducer {
     if (!state.dealerAnchor && first) state.dealerAnchor = { roundNumber: 1, seat: first }
   }
 
-  /** Every seat in play for the round must have a hand; a late joiner isn't in earlier rounds. */
+  /**
+   * Every seat in play for the round must have a hand; a late joiner isn't in earlier rounds. A
+   * live round needs a seated knocker, and an inherent knock is the knocker's own with a hand of
+   * 0. Saved scores and a missing knocker are allowed only in imported games.
+   */
   private isValid(round: Round): boolean {
     const seatIds = new Set(this.state.seats.filter((seat) => joinedRound(seat) <= round.number).map((seat) => seatIdOf(seat.player)))
     if (seatIds.size === 0) return false
-    const handKeys = Object.keys(round.hands)
-    if (round.hands[round.knocker] === undefined || !seatIds.has(round.knocker)) return false
-    if (handKeys.length !== seatIds.size || !handKeys.every((key) => seatIds.has(key))) return false
-    return Object.values(round.hands).every((hand) => hand >= HAND_MIN && hand <= HAND_MAX)
+    const sameSeats = (record: Record<string, number>) => {
+      const keys = Object.keys(record)
+      return keys.length === seatIds.size && keys.every((key) => seatIds.has(key))
+    }
+    if (!sameSeats(round.hands)) return false
+    if (!Object.values(round.hands).every((hand) => hand >= HAND_MIN && hand <= HAND_MAX)) return false
+    if (round.knocker !== undefined && !seatIds.has(round.knocker)) return false
+    if (round.inherent !== undefined && !seatIds.has(round.inherent)) return false
+    if (this.state.config.imported) return round.scores === undefined || sameSeats(round.scores)
+    if (round.scores !== undefined || round.knocker === undefined) return false
+    if (round.inherent !== undefined && (round.inherent !== round.knocker || round.hands[round.knocker] !== 0)) return false
+    return true
   }
 
   private seat(id: SeatId): Seat | undefined {
@@ -576,16 +589,25 @@ function seatSort(a: Seat, b: Seat): number {
 }
 
 function cloneRound(round: Round): Round {
-  return { number: round.number, hands: { ...round.hands }, knocker: round.knocker }
+  const copy: Round = { number: round.number, hands: { ...round.hands } }
+  if (round.knocker !== undefined) copy.knocker = round.knocker
+  if (round.inherent !== undefined) copy.inherent = round.inherent
+  if (round.scores !== undefined) copy.scores = { ...round.scores }
+  return copy
 }
 
 /** Value equality of two rounds (hands compared as maps). */
 export function sameRound(a: Round | undefined, b: Round | undefined): boolean {
   if (!a || !b) return a === b
-  if (a.number !== b.number || a.knocker !== b.knocker) return false
-  const left = Object.keys(a.hands)
-  if (left.length !== Object.keys(b.hands).length) return false
-  return left.every((key) => a.hands[key] === b.hands[key])
+  if (a.number !== b.number || a.knocker !== b.knocker || a.inherent !== b.inherent) return false
+  return sameRecord(a.hands, b.hands) && sameRecord(a.scores, b.scores)
+}
+
+function sameRecord(a: Record<string, number> | undefined, b: Record<string, number> | undefined): boolean {
+  if (!a || !b) return a === b
+  const left = Object.keys(a)
+  if (left.length !== Object.keys(b).length) return false
+  return left.every((key) => a[key] === b[key])
 }
 
 /** True when `a` sorts strictly after `b` in HLC order. */

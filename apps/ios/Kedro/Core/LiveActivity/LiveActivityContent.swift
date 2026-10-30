@@ -82,8 +82,7 @@ nonisolated enum LiveActivityContent {
     /// "Round 5. Noah knocked on 2." for the latest round.
     static func factLine(for state: GameState) -> String? {
         guard let last = state.lastRound else { return nil }
-        let hand = last.round.hands[last.knocker] ?? 0
-        return Literal.fact(round: last.number, knocker: state.name(of: last.knocker), hand: hand)
+        return Literal.fact(last.round) { state.name(of: $0) }
     }
 
     /// "Sam knocked · last turns" (K-23) while a live knock is marked for the round being played.
@@ -139,7 +138,7 @@ nonisolated enum LiveActivityContent {
     static func delta(_ result: SeatRoundResult) -> String {
         switch result.outcome {
         case .landed: ScoreFormat.string(Scoring.landedScore)
-        case .tied: ScoreFormat.string(result.hand)
+        case .tied, .noPenalty: ScoreFormat.string(result.hand)
         case .failed: "\(ScoreFormat.string(result.hand)) + \(Scoring.failedPenalty)"
         case nil: ScoreFormat.signed(result.score)
         }
@@ -148,7 +147,8 @@ nonisolated enum LiveActivityContent {
     static func outcome(_ outcome: KnockOutcome) -> LiveKnockOutcome {
         switch outcome {
         case .landed: .landed
-        case .tied: .tied
+        // The Lock Screen has three glyphs; a beaten inherent knock shows as level, like a tie.
+        case .tied, .noPenalty: .tied
         case .failed: .failed
         }
     }

@@ -46,6 +46,8 @@ export const payloadSchemas = {
     seatId: seatIdSchema,
     hand: z.number().int(),
     knocked: z.boolean(),
+    /** The knock was inherent (they played all four cards; hand 0). */
+    inherent: z.boolean().optional(),
   }),
   RoundsChanged: z.object({ plannedRounds: z.number().int() }),
   DealerChanged: z.object({ roundNumber, dealer: seatIdSchema }),

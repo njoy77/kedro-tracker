@@ -158,7 +158,8 @@ struct LearningTests {
         #expect(KnockScenario.tied.knockerScore == 4)
         #expect(KnockScenario.failed.outcome == .failed)
         #expect(KnockScenario.failed.knockerScore == 16)
-        #expect(Set(KnockScenario.drill.compactMap(\.outcome)) == Set(KnockOutcome.allCases))
+        // The drill teaches regular knocks; inherent knocks (no penalty) aren't in Learn yet.
+        #expect(Set(KnockScenario.drill.compactMap(\.outcome)) == [.landed, .tied, .failed])
         for scenario in KnockScenario.drill + KnockScenario.quiz {
             #expect(scenario.choices.contains(scenario.knockerScore))
             #expect(!scenario.explanation.isEmpty)

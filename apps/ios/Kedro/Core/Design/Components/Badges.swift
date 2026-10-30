@@ -27,7 +27,7 @@ struct OutcomeBadge: View {
     private var foreground: Color {
         switch outcome {
         case .landed: .night
-        case .tied: .silver
+        case .tied, .noPenalty: .silver
         case .failed: .cream
         }
     }
@@ -40,6 +40,9 @@ struct OutcomeBadge: View {
             shape.fill(.cream)
         case .tied:
             shape.strokeBorder(.silver, lineWidth: 1.2)
+        case .noPenalty:
+            // An inherent knock someone beat: dashed, since it was never at risk of the +10.
+            shape.strokeBorder(.silver, style: StrokeStyle(lineWidth: 1.2, dash: [3, 2]))
         case .failed:
             HatchPattern()
                 .clipShape(shape)

@@ -189,7 +189,10 @@ nonisolated struct RoundRecord: Hashable, Sendable, Identifiable {
 
     var id: Int { round.number }
     var number: Int { round.number }
-    var knocker: SeatID { round.knocker }
+    var knocker: SeatID? { round.knocker }
+    /// The knocker of a regular knock (what knock records count); nil for an inherent knock or an
+    /// imported round with no knock recorded.
+    var regularKnocker: SeatID? { round.isInherentKnock ? nil : round.knocker }
     var isEdited: Bool { editCount > 0 }
 
     init(round: Round, recordedAt: Date, recordedBy: String, opId: UUID, editedSeats: Set<SeatID> = [], editCount: Int = 0) {
