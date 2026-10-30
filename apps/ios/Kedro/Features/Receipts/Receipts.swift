@@ -79,12 +79,13 @@ nonisolated enum Receipts {
         state.receipts.contains { $0.from == sender && $0.to == rival }
     }
 
-    /// The literal round line behind a knock receipt: "Round 3. Noah knocked on 14. Failed: 14 + 10 = 24."
+    /// The literal round behind a knock receipt, fact and verdict on two lines:
+    /// "Round 3. Noah knocked on 8.\nFailed: 8 + 10 = 18."
     static func roast(for option: ReceiptOption, in state: GameState) -> String? {
         guard let number = option.roundNumber, let record = state.round(number), let outcome = record.outcome,
               let hand = record.round.hands[record.knocker]
         else { return nil }
-        return Literal.fact(round: number, knocker: state.name(of: record.knocker), hand: hand) + " " + Literal.verdict(outcome, hand: hand)
+        return Literal.fact(round: number, knocker: state.name(of: record.knocker), hand: hand) + "\n" + Literal.verdict(outcome, hand: hand)
     }
 
     /// Literal eyebrow for the card: "COLD DECK · FINAL · 8 ROUNDS" (uppercased by the label style).

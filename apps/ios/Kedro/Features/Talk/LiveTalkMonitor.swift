@@ -36,7 +36,8 @@ final class LiveTalkMonitor {
     /// Handles one change (internal for tests).
     func react(from old: GameState, to new: GameState) {
         let visible = services.visibleTaunts(in: new, preferences: app.preferences)
-        let fresh = visible.filter { toastedTaunts.insert($0.tauntId).inserted && !isMine($0) }
+        // Your own taunts toast too (mockup frame 9): it's how you see it went out and how it reads.
+        let fresh = visible.filter { toastedTaunts.insert($0.tauntId).inserted }
         for taunt in fresh {
             showToast(for: taunt, in: new)
         }
@@ -51,11 +52,6 @@ final class LiveTalkMonitor {
     }
 
     // MARK: Private
-
-    private func isMine(_ taunt: TauntRecord) -> Bool {
-        if let seat = session.mySeatID, taunt.from == seat { return true }
-        return session.operations.first { $0.opId == taunt.opId }?.deviceId == session.identity.deviceID
-    }
 
     private func showToast(for taunt: TauntRecord, in state: GameState) {
         let level = app.preferences.effectiveLanguageLevel
