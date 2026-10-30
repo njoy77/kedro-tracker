@@ -1,7 +1,7 @@
 import Foundation
 
 /// What's wrong with a typed @handle. Messages are literal (identical in every level).
-nonisolated enum HandleProblem: Hashable, Sendable {
+nonisolated enum HandleProblem: Error, Hashable, Sendable {
     case empty
     case tooShort
     case tooLong

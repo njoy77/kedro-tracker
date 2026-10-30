@@ -1,4 +1,4 @@
-import DeclaredAgeRange
+@preconcurrency import DeclaredAgeRange
 import OSLog
 import SwiftUI
 
