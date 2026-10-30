@@ -94,6 +94,7 @@ final class TableLink {
     @ObservationIgnored private var lastKnownMembers: [LinkMember] = []
     @ObservationIgnored private var lostHub: DeviceID?
     @ObservationIgnored private var continuations: [GameID: [UUID: AsyncStream<[GameOperation]>.Continuation]] = [:]
+    @ObservationIgnored private var inviteCodes: [GameID: String] = [:]
 
     /// - Parameters:
     ///   - identity: Who this phone is acting as (`AppModel.identity`).
@@ -121,7 +122,9 @@ final class TableLink {
     // MARK: Public API
 
     /// Starts linking with the phones at a game's table. Leaves any other table first.
-    func join(_ game: GameID) {
+    /// - Parameter inviteCode: The `k` from a scanned QR link, which admits without Ask to Sit.
+    func join(_ game: GameID, inviteCode: String? = nil) {
+        if let inviteCode { inviteCodes[game] = inviteCode }
         guard self.game != game else { return }
         leave()
         self.game = game
@@ -189,6 +192,14 @@ final class TableLink {
             Task { @MainActor in self?.continuations[game]?[token] = nil }
         }
         return stream
+    }
+
+    /// The link for the table's rotating QR code and AirDrop (design §5.8): `https://kedro.app/t/{id}?k={code}`.
+    /// The code changes every 60 s, so regenerate it on a timer. nil when not at a table.
+    func inviteLink(at date: Date = .now) -> URL? {
+        guard let game else { return nil }
+        let secret = secrets.secretCreatingIfNeeded(for: game)
+        return TableInvite.link(for: game, inviteCode: TableKey.inviteCode(secret: secret, game: game, at: date))
     }
 
     /// Lets a stranger in, or not ("Let Jo In", J-02). Any seated phone may answer.
@@ -316,7 +327,10 @@ final class TableLink {
 
         let me = identity()
         let proof = secrets.secret(for: game).map { TableKey.membershipProof(secret: $0, game: game, device: me.deviceID) }
-        let hello = LinkHello(purpose: .join, game: game, device: me.deviceID, person: me.player, displayName: me.displayName, proof: proof)
+        let hello = LinkHello(
+            purpose: .join, game: game, device: me.deviceID, person: me.player, displayName: me.displayName,
+            proof: proof, inviteCode: inviteCodes[game]
+        )
         do {
             try await channel.send(.hello(hello))
         } catch {
@@ -502,6 +516,10 @@ final class TableLink {
     private func shouldAdmit(_ hello: LinkHello, state: GameState?, game: GameID) async -> Bool {
         if let proof = hello.proof, let secret = secrets.secret(for: game),
            TableKey.isValidProof(proof, secret: secret, game: game, device: hello.device) {
+            return true
+        }
+        if let code = hello.inviteCode, let secret = secrets.secret(for: game),
+           TableKey.isValidInviteCode(code, secret: secret, game: game) {
             return true
         }
         guard let person = hello.person else { return false }

@@ -51,6 +51,8 @@ nonisolated struct LinkHello: Hashable, Sendable, Codable {
     var displayName: String
     /// Proves this phone was admitted before: `TableKey.membershipProof`. nil for a first visit.
     var proof: Data?
+    /// The rotating code from the table's QR link (`TableKey.inviteCode`): admits without asking.
+    var inviteCode: String?
 }
 
 nonisolated struct LinkWelcome: Hashable, Sendable, Codable {

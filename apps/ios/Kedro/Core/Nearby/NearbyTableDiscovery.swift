@@ -48,7 +48,7 @@ final class NearbyTableDiscovery: TableDiscovery {
 
     func advertise(_ table: AdvertisedTable) async {
         link.advertise(table)
-        alerts?.startBeacon(for: identity().player)
+        alerts?.startBeacon(for: identity().player, game: table.gameID)
     }
 
     func stopAdvertising() async {
@@ -60,46 +60,46 @@ final class NearbyTableDiscovery: TableDiscovery {
 
     private func discover(into continuation: AsyncStream<[NearbyTable]>.Continuation) async {
         let playedWith = Dictionary(((try? await directory.playedWith()) ?? []).map { ($0.player.id, $0) }) { first, _ in first }
-        var visible: [DiscoveredTable] = []
+        let visible = VisibleTables()
         var peeks: [GameID: Task<Void, Never>] = [:]
+
+        // Re-emit when a distance changes.
+        let distances = ranger.map { ranger in
+            Task { [weak self] in
+                for await _ in Observations({ ranger.distances }) {
+                    guard let self else { return }
+                    continuation.yield(cards(from: visible.tables, playedWith: playedWith))
+                }
+            }
+        }
         defer {
+            distances?.cancel()
             for (game, peek) in peeks {
                 peek.cancel()
                 ranger?.endSession(for: Self.peerKey(game))
             }
         }
 
-        let emit = { [weak self] in
-            guard let self else { return }
-            continuation.yield(self.cards(from: visible, playedWith: playedWith))
+        for await tables in networking.browse() {
+            visible.tables = tables
+            let games = Set(tables.map(\.advertisement.game))
+            for (game, peek) in peeks where !games.contains(game) {
+                peek.cancel()
+                peeks[game] = nil
+                ranger?.endSession(for: Self.peerKey(game))
+            }
+            if ranger != nil {
+                for table in tables where peeks[table.advertisement.game] == nil && table.advertisement.game != link.game {
+                    peeks[table.advertisement.game] = Task { [weak self] in await self?.peek(table) }
+                }
+            }
+            continuation.yield(cards(from: tables, playedWith: playedWith))
         }
+    }
 
-        await withTaskGroup(of: Void.self) { group in
-            // Re-emit when a distance changes.
-            if let ranger {
-                group.addTask {
-                    for await _ in Observations({ ranger.distances }) {
-                        await MainActor.run { emit() }
-                    }
-                }
-            }
-            for await tables in networking.browse() {
-                visible = tables
-                let games = Set(tables.map(\.advertisement.game))
-                for (game, peek) in peeks where !games.contains(game) {
-                    peek.cancel()
-                    peeks[game] = nil
-                    ranger?.endSession(for: Self.peerKey(game))
-                }
-                if ranger != nil {
-                    for table in tables where peeks[table.advertisement.game] == nil && table.advertisement.game != link.game {
-                        peeks[table.advertisement.game] = Task { [weak self] in await self?.peek(table) }
-                    }
-                }
-                emit()
-            }
-            group.cancelAll()
-        }
+    /// The tables a discovery run currently sees (shared with its distance observer).
+    private final class VisibleTables {
+        var tables: [DiscoveredTable] = []
     }
 
     /// Builds the Table cards: one per game, excluding finished tables and the one we're at.

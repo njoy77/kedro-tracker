@@ -23,13 +23,13 @@ nonisolated struct APIClient: Sendable {
     let baseURL: URL
     var http: any HTTPTransport
     /// The signed-in user's access token, or nil when signed out (guest phones, the DEBUG test user).
-    /// Wire it to the AuthStore's Supabase client with `SupabaseAccessToken.provider(for:)`.
+    /// Defaults to `SupabaseAccessToken.current` (the AuthStore's client once registered).
     var accessToken: @Sendable () async -> String?
 
     init(
         baseURL: URL,
         http: any HTTPTransport = URLSessionTransport(),
-        accessToken: @escaping @Sendable () async -> String? = { nil }
+        accessToken: @escaping @Sendable () async -> String? = SupabaseAccessToken.current
     ) {
         self.baseURL = baseURL
         self.http = http
