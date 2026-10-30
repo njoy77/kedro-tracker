@@ -176,6 +176,14 @@ class Reducer {
   }
 
   apply(op: Operation): void {
+    this.applyOperation(op)
+    // The live knock is for the round in play only: saving or undoing a round moves it.
+    const nextRound = this.state.rounds.length + 1
+    const knocker = this.state.status === 'active' || this.state.status === 'lobby' ? this.liveKnocks.get(nextRound) : undefined
+    this.state.liveKnock = knocker ? { roundNumber: nextRound, knocker } : null
+  }
+
+  private applyOperation(op: Operation): void {
     const state = this.state
     state.latestHlc = op.hlc
     state.operationCount += 1

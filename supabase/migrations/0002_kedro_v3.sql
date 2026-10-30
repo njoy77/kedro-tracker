@@ -304,7 +304,7 @@ create index receipts_to on public.receipts (to_player_id, created_at desc);
 create table public.push_tokens (
   id         uuid primary key default gen_random_uuid(),
   player_id  uuid not null references public.players (id) on delete cascade,
-  token      text not null check (token ~ '^[0-9a-f]{32,512}$'),
+  token      text not null check (token ~ '^[0-9a-f]+$' and char_length(token) between 32 and 512),
   kind       text not null check (kind in ('apns', 'liveactivity')),
   -- Live Activity push-to-start / update tokens are per game.
   game_id    uuid references public.games (id) on delete cascade,

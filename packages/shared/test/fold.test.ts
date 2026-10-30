@@ -5,6 +5,7 @@ import {
   foldGame,
   gameTotals,
   hlcString,
+  liveActivityContentState,
   parseHlc,
   parseOperation,
   projectFinishedGame,
@@ -231,5 +232,40 @@ describe('operations', () => {
     expect(parseHlc(hlcString(a))).toEqual(a)
     expect(parseHlc('001761700000000-00002-8f14e45f-ceea-467f')).toEqual({ wallMs: 1_761_700_000_000, counter: 2, node: '8f14e45f-ceea-467f' })
     expect(parseHlc('nope')).toBeNull()
+  })
+})
+
+describe('live knock and the Live Activity content state', () => {
+  test('a marked knock is live until the round is saved', () => {
+    const marked = foldGame(sampleOperations({ throughRound: 5, finished: false, liveKnock: true }))
+    expect(marked.liveKnock).toEqual({ roundNumber: 6, knocker: seats.sam })
+    const saved = foldGame(sampleOperations({ throughRound: 6, finished: false }))
+    expect(saved.liveKnock).toBeNull()
+  })
+
+  test('the content state carries standings, the next dealer and the last outcome', () => {
+    const state = liveActivityContentState(foldGame(sampleOperations({ throughRound: 5, finished: false, liveKnock: true })))
+    expect(state.tableWord).toBe('Cold Deck')
+    expect(state.roundsPlayed).toBe(5)
+    expect(state.plannedRounds).toBe(6)
+    expect(state.dealerSeat).toBe(seats.noah)
+    expect(state.liveKnocker).toBe(seats.sam)
+    // R5: Noah knocked with 2 against Sam's 4 and landed (−10).
+    expect(state.lastRound).toEqual({ number: 5, knocker: seats.noah, outcome: 'landed' })
+    expect(state.standings.map((row) => [row.displayName, row.total, row.lastScore])).toEqual([
+      ['Noah', 26, -10],
+      ['Ana', 29, 9],
+      ['Ben', 44, 6],
+      ['Cleo', 45, 11],
+      ['Sam', 47, 4],
+    ])
+    expect(JSON.stringify(state).length).toBeLessThan(4096)
+  })
+
+  test('a finished game has no dealer and no live knock', () => {
+    const state = liveActivityContentState(foldGame(sampleOperations()))
+    expect(state.status).toBe('finished')
+    expect(state.dealerSeat).toBeUndefined()
+    expect(state.standings.map((row) => row.total)).toEqual([28, 34, 65, 67, 70])
   })
 })

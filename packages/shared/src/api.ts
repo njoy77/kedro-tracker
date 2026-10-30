@@ -22,6 +22,8 @@ export type ApiErrorCode =
   | 'profileRequired'
   | 'alreadyClaimed'
   | 'tooManyOps'
+  | 'payloadTooLarge'
+  | 'unavailable'
   | 'internal'
 
 /** Every non-2xx response. */
@@ -53,9 +55,13 @@ export type OpRejectionReason =
   | 'invalid'
   /** The game is finished; only reactions, receipts, speaker claims and retractions are accepted (and an abandon within 15 minutes). */
   | 'gameFinished'
-  /** The game was abandoned and the 15-minute restore window has passed. */
+  /** The game is abandoned: only a GameRestored within 15 minutes of the abandon is accepted. */
   | 'gameAbandoned'
-  /** The caller isn't seated in (or hosting) the game. */
+  /**
+   * The caller isn't seated in (or hosting) the game. A player joins by uploading their own
+   * PlayerSeated (the game ID is the join secret, shared by QR code or nearby discovery); the
+   * fold must actually take the seat, so seats lock after Round 1.
+   */
   | 'notSeated'
   /** `actorPlayerId` is neither the caller nor a player seated in the game. */
   | 'invalidActor'
@@ -70,7 +76,11 @@ export type RejectedOp = { opId: string | null; reason: OpRejectionReason; messa
  */
 export type PostOpsResponse = { accepted: UUID[]; duplicates: UUID[]; rejected: RejectedOp[] }
 
-/** GET /v1/games/:gameId/ops?after=<hlcString> (ops strictly after that HLC, in HLC order). */
+/**
+ * GET /v1/games/:gameId/ops?after=<hlcString>[&limit=] (ops strictly after that HLC, in fold order:
+ * HLC, deviceId, opId). Pages hold at most `limit` ops (default 2000, max 5000); a full page means
+ * there may be more, so ask again with the last op's HLC. Only seated players (and the creator) may read.
+ */
 export type GetOpsResponse = { ops: WireOperation[] }
 
 // MARK: Players
@@ -109,6 +119,17 @@ export type SearchPlayersResponse = { players: PlayerSummary[] }
 
 /** GET /v1/handles/:handle (an addition: availability check for onboarding). */
 export type HandleAvailabilityResponse = { handle: string; available: boolean }
+
+/** GET /v1/players/:playerId (an addition: `PlayerDirectory.player`). 404 when unknown or blocked. */
+export type GetPlayerResponse = PlayerSummary
+
+/** GET /v1/players/me/played-with (an addition: `PlayerDirectory.playedWith`), most recent first. */
+export type PlayedWithRow = { player: PlayerSummary; gamesTogether: number; lastPlayedAt: string }
+export type PlayedWithResponse = { players: PlayedWithRow[] }
+
+/** GET /v1/players/me/guests?name= (an addition: `PlayerDirectory.guestSuggestions`). */
+export type GuestSuggestion = { guestId: UUID; name: string; gamesTogether: number }
+export type GuestSuggestionsResponse = { guests: GuestSuggestion[] }
 
 // MARK: Claims
 
@@ -196,3 +217,8 @@ export type LeaderboardResponse = {
 // MARK: Health
 
 export type HealthResponse = { status: 'ok'; version: string }
+
+/** ISO 8601 with whole seconds and a Z ("2026-10-24T21:00:00Z"), which Swift's `.iso8601` decodes. */
+export function isoSeconds(date: Date | number | string): string {
+  return new Date(date).toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
