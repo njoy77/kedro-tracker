@@ -1,7 +1,7 @@
 import Foundation
 
 /// A way into a specific table that arrived from outside the app: the "saved you a seat" push
-/// (design §5.5, N-01), the QR/AirDrop link (`https://kedro.app/t/{gameID}?k={code}`, §5.8), or
+/// (design §5.5, N-01), the QR/AirDrop link (`https://playkedro.com/t/{gameID}?k={code}`, §5.8), or
 /// the nearby alert (N-07). The Play tab shows it as the Table card with **Sit Down** focused.
 nonisolated struct TableInvite: Hashable, Sendable, Identifiable {
     nonisolated enum Source: String, Hashable, Sendable {
@@ -22,12 +22,12 @@ nonisolated struct TableInvite: Hashable, Sendable, Identifiable {
 
     var id: GameID { gameID }
 
-    static let linkHost = "kedro.app"
+    static let linkHost = KedroLink.webHost
     static let urlScheme = "kedro"
 
     // MARK: Links
 
-    /// Parses `https://kedro.app/t/{gameID}?k={code}` or `kedro://t/{gameID}?k={code}`.
+    /// Parses `https://playkedro.com/t/{gameID}?k={code}` or `kedro://t/{gameID}?k={code}`.
     init?(url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         var segments = components.path.split(separator: "/").map(String.init)

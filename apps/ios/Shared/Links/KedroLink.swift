@@ -2,7 +2,7 @@ import Foundation
 
 /// The links Kedro understands, shared by the app, the widgets and the App Clip.
 ///
-/// - `https://kedro.app/t/{gameID}?k={token}`: the Invite with QR / AirDrop link (design §5.8).
+/// - `https://playkedro.com/t/{gameID}?k={token}`: the Invite with QR / AirDrop link (design §5.8).
 ///   Opens the app if installed (applinks), the App Clip if not (appclips). `k` rotates every 60 s.
 /// - `kedro://table/{gameID}?action=recordRound`: the Live Activity and its buttons.
 /// - `kedro://widget/{kind}`: a home screen widget tap.
@@ -11,7 +11,9 @@ nonisolated enum KedroLink: Hashable, Sendable {
     case table(gameID: UUID, action: LiveActivityAction)
     case widget(kind: String)
 
-    static let webHost = "kedro.app"
+    /// The domain for every web link (invites, saved seats, claims) and the associated domains in
+    /// Config/*.entitlements.
+    static let webHost = "playkedro.com"
     static let scheme = "kedro"
 
     init?(url: URL) {

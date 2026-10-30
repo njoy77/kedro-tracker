@@ -6,7 +6,7 @@ nonisolated enum PendingClaims {
     static let defaultsKey = "kedro.pendingClaimCodes"
 
     /// Pulls the code out of what was typed: a bare code, or a claim link
-    /// (`https://kedro.app/claim/<code>` or `…?code=<code>`). Codes are 6–64 letters, digits or dashes.
+    /// (`https://playkedro.com/claim/<code>` or `…?code=<code>`). Codes are 6–64 letters, digits or dashes.
     static func code(from input: String) -> String? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         var candidate = trimmed

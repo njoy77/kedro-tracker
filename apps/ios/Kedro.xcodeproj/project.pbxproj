@@ -64,6 +64,7 @@
 /* Begin PBXFileReference section */
 		AA0000000000000000000010 /* Kedro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kedro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000011 /* KedroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KedroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC0000000000000000000001 /* API.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = API.xcconfig; sourceTree = "<group>"; };
 		AA0000000000000000000012 /* Kedro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Kedro.xcconfig; sourceTree = "<group>"; };
 		BB0000000000000000000010 /* KedroWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KedroWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000011 /* KedroClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KedroClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -239,6 +240,7 @@
 		AA0000000000000000000007 /* Config */ = {
 			isa = PBXGroup;
 			children = (
+				CC0000000000000000000001 /* API.xcconfig */,
 				AA0000000000000000000012 /* Kedro.xcconfig */,
 				BB0000000000000000000012 /* KedroWidgets.xcconfig */,
 				BB0000000000000000000013 /* KedroClip.xcconfig */,
@@ -544,7 +546,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -574,7 +575,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -688,7 +688,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -719,7 +718,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

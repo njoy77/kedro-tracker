@@ -11,7 +11,7 @@ struct ServicesTests {
     func inviteLinks() throws {
         let game = GameID()
         let link = TableInvite.link(for: game, inviteCode: "abc_123")
-        #expect(link.absoluteString == "https://kedro.app/t/\(game.uuidString.lowercased())?k=abc_123")
+        #expect(link.absoluteString == "https://playkedro.com/t/\(game.uuidString.lowercased())?k=abc_123")
 
         let invite = try #require(TableInvite(url: link))
         #expect(invite.gameID == game)
@@ -23,7 +23,7 @@ struct ServicesTests {
         #expect(scheme.gameID == game)
         #expect(scheme.inviteCode == nil)
 
-        for string in ["https://example.com/t/\(game.uuidString)", "https://kedro.app/t/not-a-game", "https://kedro.app/u/\(game.uuidString)"] {
+        for string in ["https://example.com/t/\(game.uuidString)", "https://playkedro.com/t/not-a-game", "https://playkedro.com/u/\(game.uuidString)"] {
             let url = try #require(URL(string: string))
             #expect(TableInvite(url: url) == nil, "\(string)")
         }
@@ -54,7 +54,7 @@ struct ServicesTests {
         push.prefetch = { prefetched.append($0) }
         let game = GameID()
         #expect(push.handle(TableInvite.link(for: game, inviteCode: "x")))
-        let about = try #require(URL(string: "https://kedro.app/about"))
+        let about = try #require(URL(string: "https://playkedro.com/about"))
         #expect(!push.handle(about))
         #expect(push.pendingInvite?.gameID == game)
         #expect(await eventually { prefetched == [game] })

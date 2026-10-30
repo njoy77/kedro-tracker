@@ -7,12 +7,14 @@
     "dev": "bun --watch src/index.ts",
     "dev:seed": "KEDRO_DEV_AUTH=1 KEDRO_DEV_SEED=legacy bun src/index.ts",
     "start": "bun src/index.ts",
+    "build": "bun build ./src/index.ts --target=bun --outdir=dist --external hono --external 'hono/*'",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
     "@kedro/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.1",
+    "@vercel/functions": "^3.10.5",
     "hono": "^4.6.0",
     "jose": "^6",
     "zod": "^3.25.0"

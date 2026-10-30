@@ -8,7 +8,7 @@ struct TableInviteLinkTests {
     func roundTrip() throws {
         let game = GameID()
         let invite = TableInviteLink(kind: .table, gameID: game, token: "abc123")
-        #expect(invite.url.absoluteString == "https://kedro.app/t/\(game.uuidString)?k=abc123")
+        #expect(invite.url.absoluteString == "https://playkedro.com/t/\(game.uuidString)?k=abc123")
         #expect(TableInviteLink(url: invite.url) == invite)
 
         let saved = TableInviteLink(kind: .savedSeat, gameID: game, hostName: "Maya", tableWord: "Cold Deck")
@@ -23,7 +23,7 @@ struct TableInviteLinkTests {
         let game = GameID()
         let custom = try #require(URL(string: "kedro://t/\(game.uuidString)?k=x"))
         #expect(TableInviteLink(url: custom)?.gameID == game)
-        for string in ["https://example.com/t/\(game.uuidString)", "https://kedro.app/x/\(game.uuidString)", "https://kedro.app/t/not-a-uuid", "https://kedro.app/t"] {
+        for string in ["https://example.com/t/\(game.uuidString)", "https://playkedro.com/x/\(game.uuidString)", "https://playkedro.com/t/not-a-uuid", "https://playkedro.com/t"] {
             let url = try #require(URL(string: string))
             #expect(TableInviteLink(url: url) == nil, "\(string)")
         }
@@ -87,8 +87,8 @@ struct TableCardTests {
 struct ClaimCodeTests {
     @Test("Codes come from bare codes and claim links", arguments: [
         ("ABC-123-XYZ", "ABC-123-XYZ"),
-        ("https://kedro.app/claim/abc123def", "abc123def"),
-        ("https://kedro.app/claim?code=zz99zz", "zz99zz"),
+        ("https://playkedro.com/claim/abc123def", "abc123def"),
+        ("https://playkedro.com/claim?code=zz99zz", "zz99zz"),
         ("  abcdef  ", "abcdef"),
     ])
     func parses(input: String, expected: String) {

@@ -35,11 +35,42 @@ didn't knock) are skipped; the startup log says how many.
 ## Configuration
 
 `bun run env:pull` writes `apps/api/.env.local` from Vercel (see `.env.example` and `src/config.ts`):
-`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only) and optionally
-`SUPABASE_JWT_SECRET`. Without the service-role key the server falls back to the in-memory store.
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` from the web project. The API's own keys are
+production-only secrets in the `kedro-api` project, which Vercel never hands back, so locally the
+server runs on the in-memory store.
 
-The database schema is `supabase/migrations/0002_kedro_v3.sql` (the legacy web app's `kedro_kv`
-table in `supabase/schema.sql` is untouched).
+The database schema is `supabase/migrations/0002_kedro_v3.sql` and `0003_security_and_sync.sql`
+(the legacy web app's `kedro_kv` table in `supabase/schema.sql` is untouched).
+
+## Production
+
+Vercel project **kedro-api** (root directory `apps/api`), deployed from `main` at
+`https://api.playkedro.com`. The iOS Release build points there (`apps/ios/Config/API.xcconfig`).
+
+`vercel.json` runs `bun run build`, which bundles `src/index.ts` into `dist/index.js` (Hono left
+external, so Vercel's Hono preset recognizes the entrypoint), and Vercel serves it on the Bun
+runtime. Vercel's own TypeScript step would type-check without our tsconfig base and leave the
+`.ts` import paths in place, so it gets JavaScript only. `bunx vercel build` (after
+`vercel pull --project kedro-api`) reproduces a deploy's build locally.
+
+Keys, production only (`--project api` defaults to production):
+
+```sh
+bun run env:push SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon> --project api
+bun run env:push SUPABASE_SERVICE_ROLE_KEY --project api --sensitive   # value on stdin
+bun scripts/api-keys.ts                                               # KEDRO_CLIP_SECRET, KEDRO_LINK_SIGNING_KEY
+bun run env:push KEDRO_PUBLIC_URL=https://api.playkedro.com --project api
+```
+
+On Vercel production (or with `NODE_ENV=production` elsewhere) the server refuses to start
+without Supabase, `KEDRO_CLIP_SECRET`, `KEDRO_LINK_SIGNING_KEY` and `KEDRO_PUBLIC_URL`, and every
+deployment refuses `KEDRO_DEV_AUTH` / `KEDRO_DEV_SEED` (`deploymentProblems` in `src/config.ts`).
+Previews get no keys: they run on memory and answer every `/v1` request 401.
+
+Known limits on Vercel: the per-game ingest lock (`services/lock.ts`) is per instance, so two
+uploads to one game landing on different instances at once can leave its projection a write
+behind until the next upload (the op log is always right). Background work after a response goes
+through `waitUntil` (`defer` in `createApp`).
 
 ## Routes
 

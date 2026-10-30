@@ -73,6 +73,8 @@ type Deps = {
   filter: TauntFilter
   broadcaster: LiveActivityBroadcaster
   notifier?: Notifier
+  /** Keeps work going after the response is sent (Vercel's `waitUntil`); fire-and-forget when unset. */
+  defer?: (work: Promise<unknown>) => void
   now?: () => number
   log?: (message: string) => void
 }
@@ -390,7 +392,8 @@ export class OpsService {
     }
     if (ratingsChanged) await ratings.replay()
 
-    broadcaster.gameChanged(folded).catch((error: unknown) => this.log(`live activity broadcast failed: ${String(error)}`))
+    const broadcast = broadcaster.gameChanged(folded).catch((error: unknown) => this.log(`live activity broadcast failed: ${String(error)}`))
+    this.deps.defer?.(broadcast)
     return folded
   }
 

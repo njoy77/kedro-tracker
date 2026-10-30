@@ -59,7 +59,7 @@ nonisolated enum TableKey {
         return Data(HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: secret)))
     }
 
-    /// The rotating invite code for the QR link (`https://kedro.app/t/{gameID}?k={code}`, design
+    /// The rotating invite code for the QR link (`https://playkedro.com/t/{gameID}?k={code}`, design
     /// §5.8): changes every 60 s. `isValidInviteCode` accepts the current and previous window.
     /// The server computes the same code from the registered `inviteKey` (apps/api services/invites.ts).
     static func inviteCode(secret: Data, game: GameID, at date: Date = .now) -> String {

@@ -91,7 +91,7 @@ final class ClipModel {
 
     // MARK: Invocation
 
-    /// Handles the invocation URL (`https://kedro.app/t/{gameID}?k={token}`).
+    /// Handles the invocation URL (`https://playkedro.com/t/{gameID}?k={token}`).
     func open(_ url: URL?) {
         guard let url, case .invite(let gameID, let token) = KedroLink(url: url) else {
             if session == nil { phase = .waitingForInvite }
