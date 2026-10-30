@@ -40,6 +40,17 @@ const TARGETS: Target[] = [
       SUPABASE_ANON_KEY: required(env, 'VITE_SUPABASE_ANON_KEY'),
     }),
   },
+  {
+    // The API (apps/api/src/config.ts). The service-role key and JWT secret are optional here so
+    // pulling works before they exist; without the service-role key the API runs on memory.
+    file: 'apps/api/.env.local',
+    format: 'dotenv',
+    values: (env) => ({
+      SUPABASE_URL: required(env, 'VITE_SUPABASE_URL'),
+      SUPABASE_ANON_KEY: required(env, 'VITE_SUPABASE_ANON_KEY'),
+      ...pick(env, (key) => key === 'SUPABASE_SERVICE_ROLE_KEY' || key === 'SUPABASE_JWT_SECRET'),
+    }),
+  },
 ]
 
 // MARK: Commands
