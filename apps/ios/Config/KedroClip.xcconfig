@@ -1,0 +1,6 @@
+// Build settings for the KedroClip App Clip (design §5.8).
+//
+// The clip talks to the Kedro API over the internet only (no peer-to-peer, no Supabase SDK), so
+// it needs no secrets. Bundle ID, team and entitlements are set on the target in Kedro.xcodeproj.
+
+KEDRO_APP_GROUP = group.com.njoy77.kedro
