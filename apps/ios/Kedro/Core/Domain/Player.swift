@@ -29,7 +29,7 @@ nonisolated struct PlayerSummary: Hashable, Sendable, Codable, Identifiable {
     var avatar: Avatar
     /// Displayed title (`TI-xx` copy ID), if any.
     var titleID: String?
-    /// Finished, non-abandoned games. Drives the 5-step meter and learner hints. Optional because
+    /// Finished, non-abandoned games. Drives the rank meter and learner hints. Optional because
     /// not every source knows it.
     var gamesPlayed: Int?
 
@@ -40,4 +40,12 @@ nonisolated struct PlayerSummary: Hashable, Sendable, Codable, Identifiable {
 
     var ref: PlayerRef { .player(id) }
     var seatID: SeatID { ref.seatID }
+}
+
+/// When a player gets a rank and a shown rating (PRD §5.3; packages/shared
+/// `LEADERBOARD_MINIMUMS.rankGames`). Here rather than in `Ratings` so the App Clip's progress meter
+/// can use it too.
+nonisolated enum Ranking {
+    /// Finished, non-abandoned games before a player is ranked.
+    static let gamesToRank = 10
 }

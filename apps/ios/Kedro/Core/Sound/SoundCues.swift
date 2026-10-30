@@ -111,8 +111,8 @@ nonisolated enum SoundCues {
         return Set(state.standings.filter { $0.total == worst }.map(\.id))
     }
 
-    /// Signed-up players whose 5th game this was: their debut on the board (design §10).
+    /// Signed-up players whose ranking game this was: their debut on the board (design §10).
     static func debuts(in state: GameState) -> [SeatID] {
-        state.seats.filter { !$0.isGuest && $0.gamesPlayed == 4 }.map(\.id)
+        state.seats.filter { !$0.isGuest && $0.gamesPlayed == Ratings.rankedAfterGames - 1 }.map(\.id)
     }
 }

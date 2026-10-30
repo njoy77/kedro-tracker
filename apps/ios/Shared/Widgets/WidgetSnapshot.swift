@@ -19,10 +19,10 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     static let empty = WidgetSnapshot(generatedAt: Date(timeIntervalSince1970: 0), playerName: "", standing: nil, rivalry: nil, nextBadge: nil)
 }
 
-/// The Standing widget: rank, rating and weekly movement, or the 5-step meter before game 5.
+/// The Standing widget: rank, rating and weekly movement, or the step meter before a player is ranked.
 nonisolated struct StandingSnapshot: Codable, Hashable, Sendable {
-    /// Games needed to get a rank (PRD: ranked after 5 finished games).
-    static let gamesToRank = 5
+    /// Games needed to get a rank (PRD: ranked after 10 finished games; `Ratings.rankedAfterGames` in the app).
+    static let gamesToRank = 10
 
     /// nil until ranked.
     var rank: Int?

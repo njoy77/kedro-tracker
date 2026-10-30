@@ -134,7 +134,7 @@ struct StandingRow: View {
         }
     }
 
-    /// Guest caption, or the title (TI-xx in the viewer's level) with "· 4 OF 5" while unranked.
+    /// Guest caption, or the title (TI-xx in the viewer's level) with "· 4 OF 10" while unranked.
     private var subtitle: Text? {
         let seat = standing.seat
         if seat.isGuest {
@@ -144,8 +144,8 @@ struct StandingRow: View {
         let title = Text(app.voice.line(titleID).uppercased())
             .font(.kedro(.label))
             .foregroundStyle(.kedroRed)
-        if let games = seat.gamesPlayed, games < 5 {
-            let meter = Text(" · " + Literal.text("label.meter", ["n": games]).uppercased())
+        if let games = seat.gamesPlayed, games < Ratings.rankedAfterGames {
+            let meter = Text(" · " + Literal.text("label.meter", ["n": games, "total": Ratings.rankedAfterGames]).uppercased())
                 .font(.kedro(.label))
                 .foregroundStyle(.silverDim)
             return Text("\(title)\(meter)")

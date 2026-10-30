@@ -1,7 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-/// Standing: rank, rating and weekly movement; the 5-step meter before game 5 (design §13.3).
+/// Standing: rank, rating and weekly movement; the step meter before a player is ranked (design §13.3).
 struct StandingWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: KedroWidgetKind.standing, provider: SnapshotProvider()) { entry in
@@ -56,7 +56,7 @@ struct StandingWidgetView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 6)
-                FiveStepMeter(steps: standing.meterSteps)
+                RankMeter(steps: standing.meterSteps)
                 Text(WidgetCopy.meter(standing.meterSteps))
                     .kedroFont(.label)
                     .foregroundStyle(.silver)

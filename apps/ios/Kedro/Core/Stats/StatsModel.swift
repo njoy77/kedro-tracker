@@ -23,7 +23,7 @@ nonisolated enum LearningProgress {
 /// ```
 ///
 /// Also the Play tab's `StakesProvider` (Tonight's stakes, Since you last looked, the Wrapped
-/// slot, the 5-step meter).
+/// slot, the rank meter).
 @Observable
 final class StatsModel: StakesProvider {
     private(set) var snapshot: StatsSnapshot

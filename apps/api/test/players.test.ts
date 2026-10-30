@@ -206,41 +206,45 @@ describe('GET /v1/leaderboard', () => {
     const h = await table()
     const base = sampleWireOperations()
     for (let index = 0; index < games; index++) {
-      await h.upload(ids.noah, cloneGame(base, gameUUID(index + 1), index * 86_400_000))
+      // A day apart, ending on the sample game's day (later ones would be in the future).
+      await h.upload(ids.noah, cloneGame(base, gameUUID(index + 1), (index - games + 1) * 86_400_000))
     }
     return h
   }
 
-  test('under five games everyone is Not Yet Ranked', async () => {
+  test('under ten games everyone is Not Yet Ranked', async () => {
     const h = await history(1)
     const response = await h.get('/v1/leaderboard', ids.noah)
     expect(response.status).toBe(200)
     expect(response.body.rows).toEqual([])
     expect(response.body.notYetRankedCount).toBe(4) // Sam is an unclaimed guest: never listed
     expect(response.body.notYetRanked.map((row: { player: { handle: string }; gamesToRank: number }) => [row.player.handle, row.gamesToRank])).toEqual([
-      ['noah', 4],
-      ['ana.k', 4],
-      ['ben', 4],
-      ['cleo', 4],
+      ['noah', 9],
+      ['ana.k', 9],
+      ['ben', 9],
+      ['cleo', 9],
     ])
     expect(response.body.me).toMatchObject({ isMe: true, gamesPlayed: 1 })
   })
 
-  test('five games: ranked by the replayed rating, other sorts and minimums apply', async () => {
-    const h = await history(5)
+  test('ten games: ranked by the replayed rating, other sorts and minimums apply', async () => {
+    const h = await history(10)
     const response = await h.get('/v1/leaderboard?scope=global&sort=rating', ids.ana)
     const rows = response.body.rows as { rank: number; value: number; rating: number; player: { id: string }; isMe: boolean; wins: number }[]
     expect(rows.map((row) => row.player.id)).toEqual([ids.noah, ids.ana, ids.cleo, ids.ben])
     expect(rows.map((row) => row.rank)).toEqual([1, 2, 3, 4])
-    expect(rows[0].wins).toBe(5)
+    expect(rows[0].wins).toBe(10)
     expect(response.body.me.player.id).toBe(ids.ana)
 
     // The ratings match a replay of the same games.
     const expected = replayRatings(ratedGames(await h.store.finishedSeatRows())).ratings
     expect(rows[0].rating).toBe(displayRating(expected.get(seats.noah)?.rating ?? 0))
 
+    // Win rate's 10-game minimum is the same as ranking's, so everyone ranked has a win rate.
     const winRate = await h.get('/v1/leaderboard?sort=winRate', ids.ana)
-    expect(winRate.body.rows.every((row: { rank: number | null; needs?: { games: number } }) => row.rank === null && row.needs?.games === 5)).toBe(true)
+    expect(winRate.body.rows.map((row: { rank: number | null; value: number }) => [row.rank, row.value])).toEqual([[1, 1], [2, 0], [2, 0], [2, 0]])
+    const knocks = await h.get('/v1/leaderboard?sort=knockSuccess', ids.ana)
+    expect(knocks.body.rows.some((row: { rank: number | null; needs?: { knocks: number } }) => row.rank === null && (row.needs?.knocks ?? 0) > 0)).toBe(true)
     const avg = await h.get('/v1/leaderboard?sort=avgScore', ids.ana)
     expect(avg.body.rows.map((row: { value: number }) => row.value)).toEqual([28, 34, 65, 67])
   })
@@ -265,7 +269,8 @@ describe('GET /v1/records', () => {
     const h = await table()
     const base = sampleWireOperations()
     for (let index = 0; index < games; index++) {
-      await h.upload(ids.noah, cloneGame(base, gameUUID(index + 1), index * 86_400_000))
+      // A day apart, ending on the sample game's day (later ones would be in the future).
+      await h.upload(ids.noah, cloneGame(base, gameUUID(index + 1), (index - games + 1) * 86_400_000))
     }
     return h
   }

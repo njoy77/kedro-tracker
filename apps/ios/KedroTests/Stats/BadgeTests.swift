@@ -88,11 +88,14 @@ struct BadgeTests {
     func streaks() throws {
         var history = StatsHistory()
         var games: [GameID] = []
-        for _ in 0..<5 { games.append(history.win([a, b, c], winner: 0)) }
+        for _ in 0..<Ratings.rankedAfterGames { games.append(history.win([a, b, c], winner: 0)) }
         let snapshot = history.snapshot()
         #expect(earned(snapshot, a, in: games[2]).contains(.threePeat))
         #expect(!earned(snapshot, a, in: games[1]).contains(.threePeat))
-        #expect(earned(snapshot, a, in: games[4]).isSuperset(of: [.untouchable, .onTheBoard]))
+        #expect(earned(snapshot, a, in: games[4]).contains(.untouchable))
+        // On the Board comes with the ranking game, not before.
+        #expect(!earned(snapshot, a, in: games[4]).contains(.onTheBoard))
+        #expect(earned(snapshot, a, in: games[Ratings.rankedAfterGames - 1]).contains(.onTheBoard))
         // Untouchable unlocks its title.
         #expect(snapshot.earnedTitles(of: a.ref).contains(.untouchable))
     }

@@ -55,11 +55,11 @@ struct RatingsTests {
         #expect((upset["a"] ?? 0) > 0)
     }
 
-    @Test("Ben's 5th game is his debut, revealed to the whole table")
+    @Test("Ben's 10th game is his debut, revealed to the whole table")
     func benDebut() throws {
         let snapshot = StatsSnapshot.build(PreviewData.demoStates)
         let before = snapshot.before(PreviewData.sampleGameID)
-        #expect(before.record(PreviewData.ben.ref)?.gamesPlayed == 4)
+        #expect(before.record(PreviewData.ben.ref)?.gamesPlayed == Ratings.rankedAfterGames - 1)
         #expect(before.record(PreviewData.ben.ref)?.isRanked == false)
         let change = try #require(snapshot.ratingChanges(for: PreviewData.sampleGameID)[PreviewData.ben.ref])
         #expect(change.isDebut)

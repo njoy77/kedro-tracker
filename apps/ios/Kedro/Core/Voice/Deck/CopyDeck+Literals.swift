@@ -68,7 +68,7 @@ nonisolated extension CopyDeck {
         .literal("label.guest", "Guest caption", "guest"),
         .literal("label.keepingScore", "Bottom bar caption", "You're keeping score · screen stays awake"),
         .literal("label.miniBar", "Mini bar", "{word} · R{r}/{total} · You {rank} · {score}"),
-        .literal("label.meter", "Progress meter", "{n} of 5"),
+        .literal("label.meter", "Progress meter", "{n} of {total}"),
 
         // Audit log
         .literal("audit.handChanged", "Audit", "{name} changed {player}'s R{r} hand {old} → {new} at {time}"),

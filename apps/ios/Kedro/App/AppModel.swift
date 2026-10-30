@@ -244,7 +244,7 @@ final class AppModel {
     }
 
     /// Finished games for a person, from Core/Stats, for the `Seat.gamesPlayed` snapshot (learner
-    /// hints, the 5-step meter). nil until stats have loaded.
+    /// hints, the rank meter). nil until stats have loaded.
     func gamesPlayed(by person: PlayerRef) -> Int? {
         let stats = StatsModel.shared(for: store)
         return stats.isLoaded ? stats.progress(for: person).gamesPlayed : nil

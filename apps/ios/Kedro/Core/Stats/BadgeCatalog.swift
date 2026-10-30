@@ -124,7 +124,7 @@ nonisolated struct BadgeDefinition: Hashable, Sendable {
     static let all: [BadgeDefinition] = [
         make(.outOfTheGate, "Out of the Gate", .milestone, .silver, "finish your first game", target: 1),
         make(.firstBlood, "First Blood", .milestone, .silver, "win a game", target: 1),
-        make(.onTheBoard, "On the Board", .milestone, .silver, "finish 5 games and get a rank", target: 5),
+        make(.onTheBoard, "On the Board", .milestone, .silver, "finish \(Ratings.rankedAfterGames) games and get a rank", target: Ratings.rankedAfterGames),
         make(.regular, "Regular", .milestone, .red, "finish 25 games", target: 25),
         make(.touchGrass, "Touch Grass", .milestone, .gold, "finish 100 games", target: 100),
         make(.topDog, "Top Dog", .milestone, .gold, "#1 by rating among your people (5+ ranked)"),

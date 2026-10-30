@@ -45,7 +45,7 @@ nonisolated enum SeatRoleLine: Hashable, Sendable {
     case guest
     /// "Seat saved · waiting for their phone" (the table is open and nobody has sat in it).
     case waitingForPhone
-    /// Unranked: the 5-step meter ("4 of 5").
+    /// Unranked: the progress meter ("4 of 10").
     case meter(gamesPlayed: Int)
     /// "Played 21 together".
     case playedTogether(Int)
@@ -59,7 +59,7 @@ nonisolated enum SeatRoleLine: Hashable, Sendable {
         case let .reportedBy(reporter, guest): "\(reporter) reports for \(guest)"
         case .guest: "Guest"
         case .waitingForPhone: "Seat saved · waiting for their phone"
-        case .meter(let games): Literal.text("label.meter", ["n": min(games, 5)])
+        case .meter(let games): Literal.text("label.meter", ["n": min(games, Ratings.rankedAfterGames), "total": Ratings.rankedAfterGames])
         case .playedTogether(let count): count == 1 ? "Played once together" : "Played \(count) together"
         case .neverPlayed: "Never played"
         }
@@ -192,7 +192,7 @@ nonisolated enum LobbyRules {
             return .guest
         }
         if isOpen, seat.id != me, seat.deviceID == nil { return .waitingForPhone }
-        if let games = seat.gamesPlayed, games < 5 { return .meter(gamesPlayed: games) }
+        if let games = seat.gamesPlayed, games < Ratings.rankedAfterGames { return .meter(gamesPlayed: games) }
         if let playedTogether, playedTogether > 0 { return .playedTogether(playedTogether) }
         return .neverPlayed
     }

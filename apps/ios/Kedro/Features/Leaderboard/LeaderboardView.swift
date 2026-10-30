@@ -385,7 +385,7 @@ private struct BelowMinimumRowView: View {
     }
 }
 
-/// Still in their first five: the 5-step meter, no number (L-02).
+/// Still in their first ten: the progress meter, no number (L-02).
 private struct UnrankedRowView: View {
     let row: UnrankedRow
     let voice: Voice

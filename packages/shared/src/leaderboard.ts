@@ -1,8 +1,10 @@
 // Leaderboard ranking (PRD §5.3, design §12.4).
 //
-// - A player needs 5 finished, non-abandoned games to hold a placement ("Not Yet Ranked" below).
+// - A player needs 10 finished, non-abandoned games to hold a placement ("Not Yet Ranked" below):
+//   ratings over fewer games swing too much on one result to rank people by.
 // - Sorts: rating (default), win rate, wins, avg score (lower is better), knock success.
-// - Per-sort minimums on top of that: win rate needs 10 games, knock success needs 15 knocks.
+// - Per-sort minimums on top of that: win rate needs 10 games (the same as ranking), knock success
+//   needs 15 knocks.
 //   Below a sort's minimum a player is listed after the ranked rows without a number.
 // - The rank shown is the rank for that sort (competition ranking: ties share a number).
 
@@ -16,7 +18,7 @@ export type LeaderboardScope = (typeof LEADERBOARD_SCOPES)[number]
 
 export const LEADERBOARD_MINIMUMS = {
   /** Games to hold any placement (and to reveal a rating). */
-  rankGames: 5,
+  rankGames: 10,
   winRateGames: 10,
   knockSuccessKnocks: 15,
 } as const

@@ -100,30 +100,35 @@ describe('stats and leaderboard', () => {
     expect(stats?.avgPerRound).toBeCloseTo(125 / 24, 10)
   })
 
-  test('5-game eligibility, per-sort minimums and shared ranks', () => {
+  test('10-game eligibility, per-sort minimums and shared ranks', () => {
     const rows: StatsRow[] = []
     const add = (subject: string, games: number, wins: number, knocks: number) => {
       for (let i = 0; i < games; i++) rows.push(row(subject, `${subject}-${i}`, i, 20, i < wins, i < knocks ? 1 : 0, i < knocks ? 1 : 0))
     }
-    add('p:a', 12, 6, 12)
+    add('p:a', 16, 6, 16)
     add('p:b', 12, 6, 3)
     add('p:c', 6, 6, 0)
     add('p:d', 3, 3, 0)
     const stats = aggregateStats(rows)
+    // Six games, all won, is still unranked: one hot streak isn't a placement.
     const board = buildLeaderboard({ stats: stats.values(), ratings: new Map(), sort: 'winRate' })
-    expect(board.rows.map((entry) => [entry.subject, entry.rank])).toEqual([['p:a', 1], ['p:b', 1], ['p:c', null]])
-    expect(board.rows[2].needs).toEqual({ games: 4 })
-    expect(board.notYetRanked).toEqual([{ subject: 'p:d', gamesPlayed: 3, gamesToRank: 2 }])
+    expect(board.rows.map((entry) => [entry.subject, entry.rank])).toEqual([['p:b', 1], ['p:a', 2]])
+    expect(board.notYetRanked).toEqual([
+      { subject: 'p:c', gamesPlayed: 6, gamesToRank: 4 },
+      { subject: 'p:d', gamesPlayed: 3, gamesToRank: 7 },
+    ])
 
+    // Knock success still needs 15 knocks on top of ranking.
     const knock = buildLeaderboard({ stats: stats.values(), ratings: new Map(), sort: 'knockSuccess' })
-    expect(knock.rows.filter((entry) => entry.rank !== null).map((entry) => entry.subject)).toEqual([])
+    expect(knock.rows.map((entry) => [entry.subject, entry.rank])).toEqual([['p:a', 1], ['p:b', null]])
+    expect(knock.rows[1].needs).toEqual({ knocks: 12 })
     const wins = buildLeaderboard({ stats: stats.values(), ratings: new Map(), sort: 'wins' })
-    expect(wins.rows.map((entry) => [entry.subject, entry.rank, entry.value])).toEqual([['p:a', 1, 6], ['p:b', 1, 6], ['p:c', 1, 6]])
+    expect(wins.rows.map((entry) => [entry.subject, entry.rank, entry.value])).toEqual([['p:a', 1, 6], ['p:b', 1, 6]])
   })
 
   test('avg score sorts ascending (lower is better)', () => {
     const rows: StatsRow[] = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       rows.push(row('p:low', `l${i}`, i, 10, false))
       rows.push(row('p:high', `h${i}`, i, 40, false))
     }

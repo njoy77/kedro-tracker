@@ -90,7 +90,7 @@ struct TableCardView: View {
     let content: TableCardContent
     /// Stakes for you at this table (J-01, J-05).
     var stakes: [StakesLine]
-    /// Your finished games, for the 5-step meter (shown under 5).
+    /// Your finished games, for the rank meter (shown until ranked).
     var myGamesPlayed: Int
     var otherTablesCount: Int
     var isWaitingForHost = false
@@ -153,9 +153,9 @@ struct TableCardView: View {
                     .lineLimit(2)
             }
 
-            if !stakes.isEmpty && stakes != [.nothing] || myGamesPlayed < 5 {
+            if !stakes.isEmpty && stakes != [.nothing] || myGamesPlayed < Ratings.rankedAfterGames {
                 VStack(alignment: .leading, spacing: 6) {
-                    if myGamesPlayed < 5 { ProgressMeter(value: myGamesPlayed) }
+                    if myGamesPlayed < Ratings.rankedAfterGames { ProgressMeter(value: myGamesPlayed) }
                     ForEach(stakes.filter { $0 != .nothing }, id: \.self) { line in
                         Text(line.text(app.voice)).font(.subheadline).foregroundStyle(.cream)
                     }
@@ -217,7 +217,7 @@ struct TableCardView: View {
     return VStack {
         Spacer()
         TableCardView(
-            content: TableCardContent(table: table), stakes: [.fifthGame], myGamesPlayed: 4,
+            content: TableCardContent(table: table), stakes: [.debutGame], myGamesPlayed: Ratings.rankedAfterGames - 1,
             otherTablesCount: 2, onAction: {}, onShowOthers: {}, onDismiss: {}
         )
         .padding(8)
