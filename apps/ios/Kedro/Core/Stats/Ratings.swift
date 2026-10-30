@@ -34,9 +34,11 @@ nonisolated enum Ratings {
     ///   - totals: Final totals (lower is better).
     ///   - ratings: Ratings before the game (missing players start at 1,000).
     ///   - gamesBefore: Finished games before this one, per player.
+    ///   - order: The order pairs are summed in (seat order). Floating-point sums depend on order,
+    ///     so pass it whenever the result must match another device or the server exactly.
     /// - Returns: The change for every player in `totals`. The changes sum to zero.
-    static func deltas<Key: Hashable>(totals: [Key: Int], ratings: [Key: Double], gamesBefore: [Key: Int]) -> [Key: Double] {
-        let players = Array(totals.keys)
+    static func deltas<Key: Hashable>(totals: [Key: Int], ratings: [Key: Double], gamesBefore: [Key: Int], order: [Key]? = nil) -> [Key: Double] {
+        let players = order.map { order in order.filter { totals[$0] != nil } } ?? Array(totals.keys)
         var deltas = Dictionary(uniqueKeysWithValues: players.map { ($0, 0.0) })
         guard players.count >= 2 else { return deltas }
         let scale = 1 / Double(players.count - 1)

@@ -108,3 +108,52 @@ extension GameEndProgression {
         return snapshot.gameEnd(for: gameID, viewer: viewer)
     }
 }
+
+// MARK: - Table adapters
+
+extension StatsSnapshot {
+    /// The title to show under each seated person at a live table (design §12.7): their chosen
+    /// title, validated (a lost held title falls back to their best earned one).
+    func tableTitles(for seats: [Seat], now: Date = .now) -> [SeatID: TitleID] {
+        var titles: [SeatID: TitleID] = [:]
+        for seat in seats {
+            if let title = displayTitle(for: seat.player, chosen: seat.titleID, now: now) {
+                titles[seat.id] = title
+            }
+        }
+        return titles
+    }
+
+    /// Finished games per seated person, for the lobby's `Seat.gamesPlayed` snapshot and the
+    /// 5-step meter on lobby seats.
+    func gamesPlayed(for seats: [Seat]) -> [SeatID: Int] {
+        Dictionary(uniqueKeysWithValues: seats.map { ($0.id, record($0.player)?.gamesPlayed ?? 0) })
+    }
+}
+
+extension StatsModel {
+    /// The game-end progression from the current snapshot (it reloads when the finish lands in
+    /// the store). nil until the game shows up as finished.
+    func gameEnd(for gameID: GameID, viewer: PlayerRef?, chosenTitles: [PlayerRef: String] = [:]) -> GameEndProgression? {
+        snapshot.gameEnd(for: gameID, viewer: viewer, chosenTitles: chosenTitles)
+    }
+
+    func tableTitles(for seats: [Seat]) -> [SeatID: TitleID] {
+        snapshot.tableTitles(for: seats)
+    }
+}
+
+extension GameEndProgression {
+    /// The viewer's next goal as a line (W-12 style): "Next up: Three-Peat, 1 of 3."
+    var nextGoalLine: String? { viewerNextUp.map(StatsLiteral.nextUp) }
+
+    /// The debut card line (W-05) in a voice.
+    func debutLine(_ debut: Debut, voice: Voice) -> String {
+        voice.line("W-05", ["name": debut.name, "rating": debut.rating.formatted()])
+    }
+
+    /// The Hall of Shame card line (HS-08) in a voice.
+    func inductionLine(_ entry: ShameEntry, voice: Voice) -> String {
+        voice.line("HS-08", ["category": entry.category.name, "name": entry.identity.name])
+    }
+}
