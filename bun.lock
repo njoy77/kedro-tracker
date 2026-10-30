@@ -28,6 +28,10 @@
       "name": "@kedro/ios",
       "version": "0.1.0",
     },
+    "apps/site": {
+      "name": "@kedro/site",
+      "version": "1.0.0",
+    },
     "apps/web": {
       "name": "@kedro/web",
       "version": "1.0.0",
@@ -186,6 +190,8 @@
     "@kedro/ios": ["@kedro/ios@workspace:apps/ios"],
 
     "@kedro/shared": ["@kedro/shared@workspace:packages/shared"],
+
+    "@kedro/site": ["@kedro/site@workspace:apps/site"],
 
     "@kedro/web": ["@kedro/web@workspace:apps/web"],
 
