@@ -255,7 +255,8 @@ After **Deal**, every phone flips into the Table and starts its Live Activity.
 
 ### 5.8 App Clip (guest with an iPhone, no app)
 
-- **Invite with QR** shows a code for `https://kedro.app/t/{gameID}?k={token}`; the token rotates every 60 s (J-12).
+- **Invite with QR** shows a code for `https://playkedro.com/t/{gameID}?k={token}`; the token rotates every 60 s (J-12).
+- `playkedro.com` (`apps/site`) serves the `apple-app-site-association` (applinks for `/t/*` and `/s/*`, the App Clip) and a page for each link for people without the app: Android, a desktop, or Safari before the App Clip card shows.
 - The App Clip card shows the full logo and "Noah's table. Which one's you?" (J-13) with the unclaimed guest seats. The clip shows the live Table read-only, plus **Report Your Hand** in self-report games, and can send canned taunts.
 - It uses the internet (not peer-to-peer), and says so when offline (F-04).
 - At game end: the guest's result plus "Get Kedro to keep this" (`.appStoreOverlay`). The claim token goes into the app-group container, so installing and signing in claims the history automatically.

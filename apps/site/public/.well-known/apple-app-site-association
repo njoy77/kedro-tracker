@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["2RXNMCM34K.com.njoy77.kedro"],
+        "components": [
+          { "/": "/t/*", "comment": "Table invite: the rotating QR / AirDrop link" },
+          { "/": "/s/*", "comment": "Saved seat: the push's tap target" }
+        ]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": ["2RXNMCM34K.com.njoy77.kedro.Clip"]
+  }
+}

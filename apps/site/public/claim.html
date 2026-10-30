@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Your games are waiting · Kedro</title>
+    <meta name="description" content="Claim the Cambio games you played as a guest." />
+    <meta property="og:title" content="Your games are waiting" />
+    <meta property="og:description" content="Claim the Cambio games you played as a guest." />
+    <meta property="og:image" content="https://playkedro.com/assets/logo.png" />
+    <meta name="theme-color" content="#0A0A0E" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <main>
+      <a href="/"><img class="logo" src="/assets/logo.png" width="640" height="362" alt="Kedro" /></a>
+
+      <section id="claim">
+        <h1>Your games are waiting</h1>
+        <p class="lead">You played as a guest. This code moves those games onto your own account.</p>
+
+        <div class="card">
+          <span class="label">Claim code</span>
+          <span id="code" class="code"></span>
+          <button id="copy" class="button secondary" type="button">Copy Code</button>
+        </div>
+
+        <ol>
+          <li>Get Kedro and <strong>sign in</strong>.</li>
+          <li>Tap <strong>Got a claim code?</strong> on the welcome screen, or in Settings.</li>
+          <li>Paste the code. Everything you played is yours.</li>
+        </ol>
+
+        <a id="install" class="button" hidden>Get Kedro</a>
+        <p id="beta" class="note" hidden></p>
+      </section>
+
+      <section id="broken" hidden>
+        <h1>This link's missing its code</h1>
+        <p class="lead">Ask whoever sent it to send your claim code again.</p>
+      </section>
+    </main>
+
+    <footer>Kedro keeps score for Cambio. <a href="/">playkedro.com</a></footer>
+
+    <script type="module">
+      import { pathPart, query, setText, setUpInstall, show } from '/assets/site.js'
+
+      // /claim/<code> or /claim?code=<code>. Letters, digits, dashes (and underscores, which
+      // older base64url codes can contain).
+      const code = query('code') ?? pathPart(1)
+      if (/^[A-Za-z0-9_-]{6,64}$/.test(code)) {
+        setText('code', code)
+        setUpInstall(null)
+        const copy = document.getElementById('copy')
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(code)
+            copy.textContent = 'Copied'
+          } catch {
+            getSelection().selectAllChildren(document.getElementById('code'))
+          }
+        })
+      } else {
+        show('claim', false)
+        show('broken')
+      }
+    </script>
+  </body>
+</html>
