@@ -74,6 +74,19 @@ nonisolated struct APIClient: Sendable {
         return try await perform(makeRequest(method, path, query: query, body: data, authenticated: authenticated))
     }
 
+    /// Sends a request with a raw (non-JSON) body, such as a photo.
+    func sendRaw<Response: Decodable>(
+        _ method: String,
+        _ path: String,
+        body: Data,
+        contentType: String,
+        authenticated: Bool = true
+    ) async throws -> Response {
+        var request = try await makeRequest(method, path, query: [], body: body, authenticated: authenticated)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        return try await perform(request)
+    }
+
     private func makeRequest(_ method: String, _ path: String, query: [URLQueryItem], body: Data?, authenticated: Bool) async throws -> URLRequest {
         var url = baseURL.appending(path: path)
         if !query.isEmpty {

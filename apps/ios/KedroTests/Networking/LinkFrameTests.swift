@@ -119,8 +119,12 @@ struct TableAdvertisementTests {
         #expect(txt["r"] == "2")
         #expect(txt.values.allSatisfy { $0.utf8.count <= 255 })
 
+        // The host's player ID is never advertised (anyone nearby could claim to be them).
+        #expect(txt["hp"] == nil)
         let parsed = try #require(TableAdvertisement(txt: txt))
-        #expect(parsed == ad)
+        var expected = ad
+        expected.hostPlayer = nil
+        #expect(parsed == expected)
     }
 
     @Test("Records that aren't Kedro tables are ignored")

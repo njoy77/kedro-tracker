@@ -126,6 +126,11 @@ nonisolated enum TableText {
 
         // Menus and confirmations
         .literal("button.invite", "Menu", "Invite"),
+
+        // Game end: claim codes for guests the host typed in (PRD §3.2, design §5.9 row 9)
+        .literal("label.claimCodes", "Game end", "CLAIM CODES"),
+        .literal("label.claimCodesHint", "Game end", "Guests without the app keep tonight once they sign up. Send them their code."),
+        .literal("button.sendClaimCode", "Game end", "Send {name} Their Claim Code"),
         .literal("label.extendBy", "Extend", "Now playing to {total}."),
         .literal("label.handOffHint", "Hand off", "They record the rounds from their phone."),
         .literal("label.dealerHint", "Dealer picker", "The deal passes left from here. Everyone sees the change."),

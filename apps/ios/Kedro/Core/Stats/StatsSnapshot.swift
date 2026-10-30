@@ -71,11 +71,11 @@ nonisolated struct StatsSnapshot: Sendable {
                 records[participant.ref] = PlayerRecord(ref: participant.ref, identity: participant)
             }
             let refs = game.refs
-            let before = Dictionary(uniqueKeysWithValues: refs.map { ($0, records[$0]?.rating ?? Ratings.startingRating) })
-            let gamesBefore = Dictionary(uniqueKeysWithValues: refs.map { ($0, records[$0]?.gamesPlayed ?? 0) })
+            let before = Dictionary(refs.map { ($0, records[$0]?.rating ?? Ratings.startingRating) }, uniquingKeysWith: { first, _ in first })
+            let gamesBefore = Dictionary(refs.map { ($0, records[$0]?.gamesPlayed ?? 0) }, uniquingKeysWith: { first, _ in first })
             let deltas = Ratings.deltas(totals: game.totals, ratings: before, gamesBefore: gamesBefore, order: refs)
             // Rivalry context from before the game.
-            let nemesisBefore = Dictionary(uniqueKeysWithValues: refs.map { ($0, records[$0]?.nemesis(accountsOnly: true)?.ref) })
+            let nemesisBefore = Dictionary(refs.map { ($0, records[$0]?.nemesis(accountsOnly: true)?.ref) }, uniquingKeysWith: { first, _ in first })
 
             var changes: [PlayerRef: RatingChange] = [:]
             for participant in game.participants {

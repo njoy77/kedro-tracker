@@ -7,6 +7,9 @@
 //   SUPABASE_JWT_SECRET        optional; verifies legacy HS256 tokens locally instead of asking Supabase Auth
 //   PORT                       default 8787
 //   KEDRO_CLIP_SECRET          optional; signs App Clip session tokens (random per process when unset)
+//   KEDRO_LINK_SIGNING_KEY     optional; base64 PKCS#8 Ed25519 key that signs table-link identity
+//                              attestations (random per process when unset; set it in production)
+//   KEDRO_PUBLIC_URL           optional; the API's public origin, used in profile photo URLs
 //   KEDRO_DEV_AUTH=1           local only, no Supabase: in-memory store, tokens are "dev:<uuid>"
 //
 // APNs (Live Activity broadcast pushes) is not configured yet: see push/liveActivity.ts.
@@ -16,6 +19,8 @@ export type ApiConfig = {
   supabase: { url: string; anonKey: string; serviceRoleKey: string; jwtSecret?: string } | null
   devAuth: boolean
   clipSecret?: string
+  linkSigningKey?: string
+  publicUrl?: string
   /** Names of the Supabase keys that are missing (for the startup message). */
   missing: string[]
 }
@@ -37,6 +42,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         : null,
     devAuth: env.KEDRO_DEV_AUTH === '1',
     clipSecret: env.KEDRO_CLIP_SECRET || undefined,
+    linkSigningKey: env.KEDRO_LINK_SIGNING_KEY || undefined,
+    publicUrl: env.KEDRO_PUBLIC_URL || undefined,
     missing,
   }
 }

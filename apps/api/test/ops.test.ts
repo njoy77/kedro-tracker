@@ -140,7 +140,11 @@ describe('POST /v1/ops', () => {
     await h.upload(ids.noah, lobby)
     expect((await h.get(`/v1/games/${ids.game}/ops`, ids.ana)).status).toBe(403)
     const join = after(lobby, (b) => b.add('PlayerSeated', { seat: { player: { kind: 'player', id: ids.ana }, displayName: 'Ana', order: 1 } }, { device: ids.anaPhone, actor: ids.ana }))
-    const response = await h.upload(ids.ana, join)
+    // The game ID alone (public in the Bonjour record) doesn't seat anyone.
+    expect((await h.upload(ids.ana, join)).body.rejected.map((row) => row.reason)).toEqual(['inviteRequired'])
+    const code = await h.inviteKey(ids.noah, ids.game)
+    expect((await h.upload(ids.ana, join, { [ids.game]: 'not-the-code' })).body.rejected.map((row) => row.reason)).toEqual(['inviteRequired'])
+    const response = await h.upload(ids.ana, join, { [ids.game.toUpperCase()]: code() })
     expect(response.body.accepted).toHaveLength(1)
     const read = await h.get(`/v1/games/${ids.game}/ops`, ids.ana)
     expect(read.status).toBe(200)

@@ -18,6 +18,7 @@ private struct AppServicesHost: ViewModifier {
     @Environment(AppModel.self) private var app
     @Environment(WidgetSnapshotPublisher.self) private var widgets: WidgetSnapshotPublisher?
     @State private var talk = TalkServices.shared
+    @State private var claimed = ClaimedGuests.shared
     @State private var publishedGames: Int?
 
     private var stats: StatsModel { .shared(for: app.store) }
@@ -28,6 +29,12 @@ private struct AppServicesHost: ViewModifier {
             .task(id: app.profile?.identity) {
                 await stats.follow(app.store, viewer: app.profile?.identity)
             }
+            .onChange(of: AliasKey(guests: claimed.guestIDs, viewer: app.profile?.identity), initial: true) { _, key in
+                let aliases = claimed.aliases(for: key.viewer)
+                guard stats.options.aliases != aliases else { return }
+                stats.options.aliases = aliases
+                Task { await stats.load(from: app.store, viewer: key.viewer) }
+            }
             .onChange(of: talk.moderation.blocked, initial: true) { _, blocked in
                 guard stats.options.excluded != blocked else { return }
                 stats.options.excluded = blocked
@@ -36,6 +43,11 @@ private struct AppServicesHost: ViewModifier {
             .onChange(of: WidgetKey(games: stats.snapshot.games.count, level: app.preferences.effectiveLanguageLevel, profile: app.profile)) { _, key in
                 publishWidgets(gameCount: key.games)
             }
+    }
+
+    private struct AliasKey: Equatable {
+        var guests: Set<GuestID>
+        var viewer: PlayerRef?
     }
 
     private struct WidgetKey: Equatable {

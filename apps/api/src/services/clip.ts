@@ -2,15 +2,17 @@
 // table token for a short-lived bearer token scoped to one game and one phone, which the ops
 // routes and POST /v1/clip/claims accept for that game only.
 //
-// The table token is the rotating code from the host's QR (`k`). It is an HMAC under a secret
-// that lives only on the table's phones, so the server can't check it; it only requires one,
-// the same trust as joining by game ID (anyone holding the ID can sit before Round 1). What a clip
-// session may do is narrow instead: link its phone to an existing guest seat and act for that
-// seat (OpsService.ingestClip).
+// The table token is the rotating code from the host's QR (`k`). The phones make it with an
+// HMAC key derived from the table secret and register that key with the server
+// (PUT /v1/games/:gameId/invite-key, services/invites.ts), so the server checks the code: the
+// game ID alone (public in the Bonjour record and the BLE beacon) gets no session. What a clip
+// session may do is narrow too: link its phone to an existing guest seat of a live game and act
+// for that seat (OpsService.ingestClip).
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { foldGame, isoSeconds, parseOperation, seatIdOf, type Operation, type UUID } from '@kedro/shared'
 import { HttpError, forbidden, notFound } from '../http.ts'
+import { isValidInviteCode } from './invites.ts'
 import { claimTokenHash } from './social.ts'
 import type { Store } from '../store/types.ts'
 
@@ -67,6 +69,7 @@ export class ClipService {
   constructor(
     private readonly store: Store,
     private readonly tokens: ClipTokens,
+    private readonly now: () => number = Date.now,
   ) {}
 
   /** POST /v1/clip/sessions */
@@ -74,6 +77,11 @@ export class ClipService {
     const game = await this.store.getGame(request.gameId)
     if (!game) throw notFound('No such table yet. Ask the host to check their connection.')
     if (game.status === 'abandoned') throw notFound('That table was abandoned')
+    if (game.status === 'finished') throw forbidden('That game is over')
+    const key = await this.store.inviteKey(request.gameId)
+    if (!key || !isValidInviteCode(request.tableToken, key, request.gameId, this.now())) {
+      throw forbidden('That table code expired. Scan the code again.')
+    }
     const { accessToken, expiresAtMs } = this.tokens.issue({ gameId: request.gameId, deviceId: request.deviceId })
     return { accessToken, expiresAt: isoSeconds(expiresAtMs) }
   }

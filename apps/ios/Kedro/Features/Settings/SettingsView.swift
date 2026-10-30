@@ -137,7 +137,10 @@ struct SettingsView: View {
                 }
                 Button("Sign Out", role: .destructive) { isConfirmingSignOut = true }
             } else {
-                SignInWithAppleSoon()
+                // A guest signing in keeps their history: `AppModel.didSignIn` claims it.
+                AppleSignInButton()
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 #if DEBUG
                 Button("Continue as Test User") { auth.signInAsTestUser() }
                 #endif
@@ -212,23 +215,6 @@ private struct SoundMomentRow: View {
             }
         }
         .opacity(sounds.isEnabled ? 1 : 0.5)
-    }
-}
-
-/// Sign in with Apple, shown dimmed while the developer account is pending (PRD §3.1).
-struct SignInWithAppleSoon: View {
-    var body: some View {
-        Label("Sign in with Apple · Soon", systemImage: "applelogo")
-            .font(.headline)
-            .foregroundStyle(.black)
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .background(.white, in: .capsule)
-            .opacity(0.4)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Sign in with Apple, coming soon")
-            .accessibilityAddTraits(.isButton)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
     }
 }
 

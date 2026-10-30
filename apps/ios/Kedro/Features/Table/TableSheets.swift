@@ -12,6 +12,7 @@ enum TableSheet: Identifiable, Hashable {
     case handOff
     case extend
     case receipt
+    case invite
 
     var id: String {
         switch self {
@@ -25,6 +26,7 @@ enum TableSheet: Identifiable, Hashable {
         case .handOff: "handOff"
         case .extend: "extend"
         case .receipt: "receipt"
+        case .invite: "invite"
         }
     }
 }

@@ -76,6 +76,8 @@ export type ClaimResult =
   | { ok: true; guestId: UUID; gamesClaimed: number }
   | { ok: false; reason: 'notFound' | 'alreadyClaimed' }
 
+export type PlayerGameRow = { gameId: UUID; status: GameStatus; finishedAt: string | null; lastHlc: string | null }
+
 export type PlayedWithRow = { playerId: UUID; gamesTogether: number; lastPlayedMs: number }
 export type GuestSuggestionRow = { guestId: UUID; name: string; gamesTogether: number }
 
@@ -99,11 +101,21 @@ export interface Store {
   // Games
   getGame(gameId: UUID): Promise<GameRow | null>
   /** Creates the game row if it doesn't exist (first uploader becomes its creator). */
-  ensureGame(gameId: UUID, createdBy: UUID): Promise<void>
+  ensureGame(gameId: UUID, createdBy: UUID | null): Promise<void>
   /** Replaces a game's live projection (row fields and seats). */
   syncGame(game: GameRow, seats: readonly SeatRow[]): Promise<void>
   /** True when the player is seated in the game (directly or as a guest they claimed) or created it. */
   isSeated(gameId: UUID, playerId: UUID): Promise<boolean>
+  /** Every game the player is seated in (directly or through a claimed guest), newest activity first. */
+  gamesFor(playerId: UUID): Promise<PlayerGameRow[]>
+  /** Guests this player claimed (their seats count as the player's). */
+  claimedGuestIds(playerId: UUID): Promise<UUID[]>
+  /** When the server received each of these ops (ms since epoch); unknown op IDs are left out. */
+  receivedAt(opIds: readonly UUID[]): Promise<Map<UUID, number>>
+  /** The table's registered invite key (base64url), or null. */
+  inviteKey(gameId: UUID): Promise<string | null>
+  /** Registers the table's invite key unless one is already registered. Returns the key now on record. */
+  setInviteKey(gameId: UUID, key: string, registeredBy: UUID): Promise<string>
 
   // Finished games and ratings
   projectFinishedGame(projection: FinishedGameProjection): Promise<void>
@@ -132,6 +144,11 @@ export interface Store {
   claimGuest(claimTokenHash: string, playerId: UUID): Promise<ClaimResult>
   /** The claim token hash recorded for a guest (null when none; undefined for an unknown guest). */
   guestClaimTokenHash(guestId: UUID): Promise<string | null | undefined>
+
+  // Photos (profile pictures, PRD §3.1)
+  /** Stores a player's photo, replacing the old one. Returns the new version (for cache-busting URLs). */
+  putPhoto(playerId: UUID, photo: { bytes: Uint8Array; contentType: string }): Promise<string>
+  getPhoto(playerId: UUID): Promise<{ bytes: Uint8Array; contentType: string; version: string } | null>
 
   // Safety
   addBlock(blockerId: UUID, blockedId: UUID): Promise<void>

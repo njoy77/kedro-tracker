@@ -50,8 +50,18 @@ nonisolated enum TableKey {
         return HMAC<SHA256>.isValidAuthenticationCode(proof, authenticating: message, using: SymmetricKey(data: secret))
     }
 
+    /// The key the rotating invite codes are made with: an HMAC of the table secret, so it can be
+    /// registered with the server (`PUT /v1/games/:gameId/invite-key`) for the server to check codes
+    /// (App Clip sessions, a phone seating itself) without ever holding the secret, which would let
+    /// it forge membership proofs.
+    static func inviteKey(secret: Data, game: GameID) -> Data {
+        let message = Data("kedro.invite-key|\(game.uuidString)".utf8)
+        return Data(HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: secret)))
+    }
+
     /// The rotating invite code for the QR link (`https://kedro.app/t/{gameID}?k={code}`, design
     /// §5.8): changes every 60 s. `isValidInviteCode` accepts the current and previous window.
+    /// The server computes the same code from the registered `inviteKey` (apps/api services/invites.ts).
     static func inviteCode(secret: Data, game: GameID, at date: Date = .now) -> String {
         inviteCode(secret: secret, game: game, window: Int64(date.timeIntervalSince1970) / 60)
     }
@@ -63,7 +73,7 @@ nonisolated enum TableKey {
 
     private static func inviteCode(secret: Data, game: GameID, window: Int64) -> String {
         let message = Data("kedro.invite|\(game.uuidString)|\(window)".utf8)
-        let mac = HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: secret))
+        let mac = HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: inviteKey(secret: secret, game: game)))
         return Data(mac.prefix(12)).base64URLEncoded
     }
 }

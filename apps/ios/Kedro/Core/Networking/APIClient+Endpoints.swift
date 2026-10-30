@@ -5,9 +5,23 @@ import Foundation
 extension APIClient {
     // MARK: Operations
 
-    /// `POST /v1/ops`: idempotent by `opId`.
-    func uploadOperations(_ operations: [GameOperation]) async throws -> OpsUploadResult {
-        try await send("POST", "v1/ops", body: OpsUpload(ops: operations))
+    /// `POST /v1/ops`: idempotent by `opId`. `invites` (game → current invite code) lets the
+    /// server seat this phone at a table it seated itself at over the link.
+    func uploadOperations(_ operations: [GameOperation], invites: [GameID: String] = [:]) async throws -> OpsUploadResult {
+        let keyed = Dictionary(invites.map { ($0.key.uuidString.lowercased(), $0.value) }, uniquingKeysWith: { first, _ in first })
+        return try await send("POST", "v1/ops", body: OpsUpload(ops: operations, invites: keyed.isEmpty ? nil : keyed))
+    }
+
+    /// `PUT /v1/games/:gameId/invite-key`: registers the table's invite-code key (first key wins;
+    /// 409 when another key is on record, 403 when this account isn't seated there yet).
+    func registerInviteKey(_ key: Data, for game: GameID) async throws {
+        let _: OKResponse = try await send("PUT", "v1/games/\(game.uuidString.lowercased())/invite-key", body: InviteKeyRequest(key: key.base64URLEncoded))
+    }
+
+    /// `GET /v1/players/me/games`: every game this account is seated in, claimed guest seats
+    /// included, so a new phone (or a claim) can pull the history it never saw.
+    func myGames() async throws -> MyGamesResponse {
+        try await send("GET", "v1/players/me/games")
     }
 
     /// The server's page size for `GET /v1/games/:gameId/ops` (apps/api `DEFAULT_OPS_PAGE`).
@@ -37,6 +51,39 @@ extension APIClient {
     func searchPlayers(_ query: String) async throws -> [PlayerSummary] {
         let result: PlayerSearchResult = try await send("GET", "v1/players/search", query: [URLQueryItem(name: "q", value: query)])
         return result.players
+    }
+
+    /// `GET /v1/players/:playerId/profile`: the server's rating, global rank and lifetime stats.
+    func playerProfile(_ player: PlayerID) async throws -> PlayerProfileResponse {
+        try await send("GET", "v1/players/\(player.uuidString.lowercased())/profile")
+    }
+
+    /// `GET /v1/leaderboard?scope=&sort=`: the server's board over every finished game.
+    func leaderboard(scope: String = "global", sort: String = "rating", limit: Int = 100) async throws -> LeaderboardResponse {
+        try await send("GET", "v1/leaderboard", query: [
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "sort", value: sort),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ])
+    }
+
+    /// `PUT /v1/players/me/photo`: uploads a JPEG profile photo; the answer is the https avatar.
+    func uploadPhoto(_ jpeg: Data) async throws -> Avatar {
+        let response: PhotoUploadResponse = try await sendRaw("PUT", "v1/players/me/photo", body: jpeg, contentType: "image/jpeg")
+        return response.avatar
+    }
+
+    // MARK: Table link identity
+
+    /// `POST /v1/link/attestations`: the server vouches that this account owns `publicKey`.
+    func linkAttestation(device: DeviceID, publicKey: Data) async throws -> LinkAttestationResponse {
+        try await send("POST", "v1/link/attestations", body: LinkAttestationRequest(deviceId: device, publicKey: publicKey.base64URLEncoded))
+    }
+
+    /// `GET /link/key` (no auth): the key hubs check attestations against.
+    func linkKey() async throws -> Data? {
+        let response: LinkKeyResponse = try await send("GET", "link/key", authenticated: false)
+        return Data(base64URLEncoded: response.publicKey)
     }
 
     // MARK: Claims, moderation, receipts

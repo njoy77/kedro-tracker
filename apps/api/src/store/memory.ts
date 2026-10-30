@@ -23,6 +23,7 @@ import {
   type GuestSuggestionRow,
   type OpRow,
   type PlayedWithRow,
+  type PlayerGameRow,
   type PlayerRow,
   type PlayerUpdate,
   type PushTokenRow,
@@ -49,6 +50,10 @@ export class MemoryStore implements Store {
   readonly receipts = new Map<string, { gameId: UUID; fromPlayerId: UUID; toPlayerId: UUID; receiptKey: string }>()
   readonly tokens = new Map<string, PushTokenRow>()
   blocklist: string[] = []
+  readonly inviteKeys = new Map<UUID, string>()
+  readonly photos = new Map<UUID, { bytes: Uint8Array; contentType: string; version: string }>()
+  /** The receive clock (tests move it to check the server-time windows). */
+  clock: () => number = Date.now
 
   // MARK: Ops
 
@@ -73,7 +78,7 @@ export class MemoryStore implements Store {
       const id = row.operation.opId
       if (this.ops.has(id)) continue
       if (!this.games.has(row.operation.gameId)) throw new Error(`Foreign key: game ${row.operation.gameId} does not exist`)
-      this.ops.set(id, { ...structuredClone(row), hlc: hlcString(row.operation.hlc), receivedAt: Date.now() })
+      this.ops.set(id, { ...structuredClone(row), hlc: hlcString(row.operation.hlc), receivedAt: this.clock() })
       inserted.push(id)
     }
     return inserted
@@ -85,7 +90,7 @@ export class MemoryStore implements Store {
     return structuredClone(this.games.get(gameId) ?? null)
   }
 
-  async ensureGame(gameId: UUID, createdBy: UUID): Promise<void> {
+  async ensureGame(gameId: UUID, createdBy: UUID | null): Promise<void> {
     if (this.games.has(gameId)) return
     this.games.set(gameId, {
       id: gameId, createdBy, status: 'lobby', tableWord: null, plannedRounds: null, scoringMode: null, hostSeat: null,
@@ -106,6 +111,34 @@ export class MemoryStore implements Store {
     return (this.seats.get(gameId) ?? []).some(
       (seat) => seat.playerId === playerId || (seat.guestId !== null && this.guests.get(seat.guestId)?.claimedBy === playerId),
     )
+  }
+
+  async gamesFor(playerId: UUID): Promise<PlayerGameRow[]> {
+    const claimed = new Set([...this.guests.values()].filter((guest) => guest.claimedBy === playerId).map((guest) => guest.id))
+    return [...this.games.values()]
+      .filter((game) => (this.seats.get(game.id) ?? []).some((seat) => seat.playerId === playerId || (seat.guestId !== null && claimed.has(seat.guestId))))
+      .sort((a, b) => compareStrings(b.lastHlc ?? '', a.lastHlc ?? '') || compareStrings(a.id, b.id))
+      .map((game) => ({ gameId: game.id, status: game.status, finishedAt: game.finishedAt, lastHlc: game.lastHlc }))
+  }
+
+  async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
+    return [...this.guests.values()].filter((guest) => guest.claimedBy === playerId).map((guest) => guest.id).sort()
+  }
+
+  async receivedAt(opIds: readonly UUID[]): Promise<Map<UUID, number>> {
+    return new Map(opIds.flatMap((id) => {
+      const row = this.ops.get(id)
+      return row ? [[id, row.receivedAt] as const] : []
+    }))
+  }
+
+  async inviteKey(gameId: UUID): Promise<string | null> {
+    return this.inviteKeys.get(gameId) ?? null
+  }
+
+  async setInviteKey(gameId: UUID, key: string, _registeredBy: UUID): Promise<string> {
+    if (!this.inviteKeys.has(gameId)) this.inviteKeys.set(gameId, key)
+    return this.inviteKeys.get(gameId) ?? key
   }
 
   // MARK: Finished games and ratings
@@ -268,6 +301,19 @@ export class MemoryStore implements Store {
       if (found && !row.isAbandoned) gamesClaimed += 1
     }
     return { ok: true, guestId: guest.id, gamesClaimed }
+  }
+
+  // MARK: Photos
+
+  async putPhoto(playerId: UUID, photo: { bytes: Uint8Array; contentType: string }): Promise<string> {
+    const version = new Bun.CryptoHasher('sha256').update(photo.bytes).digest('hex').slice(0, 16)
+    this.photos.set(playerId, { bytes: new Uint8Array(photo.bytes), contentType: photo.contentType, version })
+    return version
+  }
+
+  async getPhoto(playerId: UUID): Promise<{ bytes: Uint8Array; contentType: string; version: string } | null> {
+    const photo = this.photos.get(playerId)
+    return photo ? { ...photo, bytes: new Uint8Array(photo.bytes) } : null
   }
 
   // MARK: Safety

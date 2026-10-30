@@ -16,6 +16,8 @@ final class AccountSync: AccountSyncing {
     private let clipClaims: ClaimTokenStore
     private let defaults: UserDefaults
     private let onClaimed: @MainActor (Int) async -> Void
+    /// Runs when a local photo was uploaded: the profile should switch to the returned https avatar.
+    var onPhotoUploaded: @MainActor (_ local: URL, _ uploaded: Avatar) -> Void = { _, _ in }
     private let log = Logger(subsystem: "com.njoy77.kedro", category: "Account")
 
     /// - Parameter onClaimed: Runs after games were claimed (pull them again, refresh widgets).
@@ -36,8 +38,11 @@ final class AccountSync: AccountSyncing {
         let handle = profile.handle ?? Handle.suggestions(firstName: profile.displayName).first
         guard let handle else { return .notSent }
         do {
-            let avatar = try await Self.uploadableAvatar(profile.avatar, api: api)
+            let avatar = try await uploadableAvatar(profile.avatar)
             _ = try await api.updateMe(PlayerUpdate(displayName: profile.displayName, handle: handle, avatar: avatar, titleID: profile.titleID))
+            if case .photo(let local) = profile.avatar, local.isFileURL, case .photo(let remote) = avatar, !remote.isFileURL {
+                onPhotoUploaded(local, avatar)
+            }
             return .saved
         } catch APIError.badStatus(409) {
             return .handleTaken
@@ -71,7 +76,9 @@ final class AccountSync: AccountSyncing {
     /// nil when it should be tried again later.
     private func redeem(_ token: String) async -> Int? {
         do {
-            return try await api.claim(token: token).gamesClaimed
+            let result = try await api.claim(token: token)
+            ClaimedGuests.shared.record([result.guestId])
+            return result.gamesClaimed
         } catch let error as APIError where error.isRetryable || error == .notSignedIn {
             return nil
         } catch {
@@ -80,12 +87,20 @@ final class AccountSync: AccountSyncing {
         }
     }
 
-    /// The avatar to send. A photo still on this phone (`file://`) can't be sent until photo
-    /// upload exists, so the server keeps whatever it has, or gets a starter emoji.
-    private static func uploadableAvatar(_ avatar: Avatar?, api: APIClient) async throws -> Avatar {
+    /// The avatar to send. A photo still on this phone (`file://`) is uploaded first
+    /// (`PUT /v1/players/me/photo`), and its https URL is what the server, seats and every other
+    /// phone get. If the upload fails the server keeps whatever it has (or a starter emoji) and
+    /// the next sync tries again.
+    private func uploadableAvatar(_ avatar: Avatar?) async throws -> Avatar {
         switch avatar {
         case .photo(let url) where url.isFileURL:
-            // TODO(backend): photo upload endpoint; then upload and send the remote URL here.
+            if let jpeg = try? Data(contentsOf: url), !jpeg.isEmpty {
+                do {
+                    return try await api.uploadPhoto(jpeg)
+                } catch {
+                    log.info("Photo not uploaded: \(String(describing: error), privacy: .public)")
+                }
+            }
             if let current = try? await api.me().avatar { return current }
             return .randomStarter()
         case .some(let avatar):

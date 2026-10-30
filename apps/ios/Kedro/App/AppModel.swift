@@ -145,6 +145,15 @@ final class AppModel {
         return await account.uploadProfile(profile)
     }
 
+    /// A local photo finished uploading: the profile (and every seat made from now on) uses its
+    /// https URL, and the local copy goes. Ignored if the person picked another face meanwhile.
+    func adoptUploadedPhoto(local: URL, uploaded: Avatar) {
+        guard var profile, case .photo(let current) = profile.avatar, current == local else { return }
+        profile.avatar = uploaded
+        profiles.save(profile)
+        if local.isFileURL { try? FileManager.default.removeItem(at: local) }
+    }
+
     /// "Play as a guest": a local guest identity with a claim token (design §5.1).
     func playAsGuest(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

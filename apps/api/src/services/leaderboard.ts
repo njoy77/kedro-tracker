@@ -12,9 +12,11 @@ import {
   type LeaderboardSort,
   type NotYetRankedEntry,
   type NotYetRankedRow,
+  type PlayerProfileResponse,
   type PlayerSummary,
   type UUID,
 } from '@kedro/shared'
+import { notFound } from '../http.ts'
 import type { Store } from '../store/types.ts'
 import { toSummary, type PlayersService } from './players.ts'
 
@@ -64,6 +66,41 @@ export class LeaderboardService {
     }
     const mine = rows.find((row) => row.isMe) ?? notYetRanked.find((row) => row.isMe)
     if (mine) response.me = mine
+    return response
+  }
+
+  /**
+   * GET /v1/players/:playerId/profile: one player's server-side record. The rank is the global
+   * rating rank over everyone (not filtered by the caller's blocks), so every phone shows the same
+   * number for the same person.
+   */
+  async profile(caller: UUID, playerId: UUID): Promise<PlayerProfileResponse> {
+    const hidden = await this.players.hiddenFrom(caller)
+    const row = hidden.has(playerId) ? null : await this.store.getPlayer(playerId)
+    if (!row) throw notFound('No such player')
+    const subject = `p:${playerId}`
+    const everyone = await this.store.playerStats()
+    const ratings = await this.store.ratings(everyone.map((entry) => entry.subject))
+    const mine = everyone.find((entry) => entry.subject === subject)
+    const built = buildLeaderboard({ stats: everyone, ratings, sort: 'rating' })
+    const ranked = built.rows.find((entry) => entry.subject === subject)
+    const rating = ratings.get(subject)
+    const response: PlayerProfileResponse = {
+      player: toSummary(row, mine?.gamesPlayed ?? 0),
+      rating: rating ? displayRating(rating.rating) : null,
+      globalRank: ranked?.rank ?? null,
+    }
+    if (mine) {
+      response.stats = {
+        gamesPlayed: mine.gamesPlayed,
+        wins: mine.wins,
+        winRate: mine.winRate,
+        avgScore: mine.avgScore,
+        knocks: mine.knocks,
+        knocksLanded: mine.knocksLanded,
+        knockSuccess: mine.knockSuccess,
+      }
+    }
     return response
   }
 }

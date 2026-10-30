@@ -16,9 +16,10 @@ async function seeded(throughRound = 2) {
 }
 
 async function startClip(h: ReturnType<typeof harness>) {
+  const code = await h.inviteKey(ids.noah, ids.game)
   const session = await h.post<{ accessToken: string; expiresAt: string }>('/v1/clip/sessions', null, {
     gameId: ids.game.toUpperCase(),
-    tableToken: 'QR-CODE-123',
+    tableToken: code(),
     deviceId: clipPhone,
   })
   expect(session.status).toBe(200)
@@ -56,6 +57,24 @@ describe('App Clip', () => {
     expect((await callWith(h, 'GET', '/v1/players/me', token)).status).toBe(403)
     expect((await callWith(h, 'GET', `/v1/games/${ids.game}/ops`, `${token}x`)).status).toBe(401)
     expect((await h.post('/v1/clip/sessions', null, { gameId: ids.noah, tableToken: 'QR-CODE-123', deviceId: clipPhone })).status).toBe(404)
+
+  })
+
+  test('a session needs the table code, not just the game ID', async () => {
+    const { h } = await seeded()
+    const request = { gameId: ids.game, tableToken: 'QR-CODE-123', deviceId: clipPhone }
+    // No key registered yet: nothing to check a code against.
+    expect((await h.post('/v1/clip/sessions', null, request)).status).toBe(403)
+    const code = await h.inviteKey(ids.noah, ids.game)
+    expect((await h.post('/v1/clip/sessions', null, request)).status).toBe(403)
+    // An old code (ten minutes ago) has rotated out.
+    expect((await h.post('/v1/clip/sessions', null, { ...request, tableToken: code(Date.now() - 10 * 60_000) })).status).toBe(403)
+    expect((await h.post('/v1/clip/sessions', null, { ...request, tableToken: code() })).status).toBe(200)
+    // The first key stays; only seated people register one.
+    expect((await h.put(`/v1/games/${ids.game}/invite-key`, ids.noah, { key: Buffer.alloc(32, 9).toString('base64url') })).status).toBe(409)
+    const stranger = '000000aa-0000-4000-8000-000000000009'
+    await h.profile(stranger, 'Pat', 'pat')
+    expect((await h.put(`/v1/games/${ids.game}/invite-key`, stranger, { key: Buffer.alloc(32, 9).toString('base64url') })).status).toBe(403)
   })
 
   test('sits in a guest seat, reports for it, and gets a claim token once', async () => {

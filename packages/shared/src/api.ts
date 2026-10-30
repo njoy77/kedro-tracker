@@ -47,8 +47,15 @@ export type WireOperation = {
 
 export const MAX_OPS_PER_REQUEST = 500
 
-/** POST /v1/ops */
-export type PostOpsRequest = { ops: WireOperation[] }
+/**
+ * POST /v1/ops. `invites` maps a game ID to the table's current rotating invite code (the QR's
+ * `k`, see InviteKeyRequest): a phone seating itself at a game the server doesn't seat it in yet
+ * must send one that matches the key the table registered.
+ */
+export type PostOpsRequest = { ops: WireOperation[]; invites?: Record<UUID, string> }
+
+/** How far ahead of the server's clock an op's HLC may be (clock skew); later ops are refused as `clockAhead`. */
+export const MAX_CLOCK_AHEAD_MS = 5 * 60 * 1000
 
 export type OpRejectionReason =
   /** Malformed, or a payload that doesn't match its type. Retrying won't help. */
@@ -72,6 +79,15 @@ export type OpRejectionReason =
    * hand, react, send a canned taunt).
    */
   | 'notAllowed'
+  /**
+   * Seating would put people who blocked each other at one table (design §5.9 "Rules"), or the
+   * seat is for the uploader's blocker.
+   */
+  | 'blocked'
+  /** The op's HLC is more than MAX_CLOCK_AHEAD_MS ahead of the server's clock. Retry once the phone's clock is right. */
+  | 'clockAhead'
+  /** Seating yourself needs the table's current invite code (`invites`). */
+  | 'inviteRequired'
 
 export type RejectedOp = { opId: string | null; reason: OpRejectionReason; message?: string }
 
@@ -135,6 +151,63 @@ export type PlayedWithResponse = { players: PlayedWithRow[] }
 /** GET /v1/players/me/guests?name= (an addition: `PlayerDirectory.guestSuggestions`). */
 export type GuestSuggestion = { guestId: UUID; name: string; gamesTogether: number }
 export type GuestSuggestionsResponse = { guests: GuestSuggestion[] }
+
+/**
+ * GET /v1/players/:playerId/profile: the public profile with server-computed stats (one source of
+ * truth for every phone, PRD §5.1). `stats`/`rating` are absent before the first finished game;
+ * `globalRank` is null until ranked (5 games).
+ */
+export type PlayerProfileResponse = {
+  player: PlayerSummary
+  rating: number | null
+  globalRank: number | null
+  stats?: {
+    gamesPlayed: number
+    wins: number
+    winRate: number
+    avgScore: number
+    knocks: number
+    knocksLanded: number
+    knockSuccess: number | null
+  }
+}
+
+/** GET /v1/players/me/games: every game the caller is seated in (directly or through a claimed guest), newest first. */
+export type MyGamesResponse = {
+  games: { gameId: UUID; status: string; finishedAt?: string }[]
+  /** Guests the caller claimed: the phone counts those seats as the caller's (stats aliases). */
+  claimedGuestIds: UUID[]
+}
+
+/** PUT /v1/players/me/photo: a JPEG or PNG body (≤ 512 KB). The response's avatar is what to send in profile updates and seats. */
+export const MAX_PHOTO_BYTES = 512 * 1024
+export type PhotoUploadResponse = { avatar: Avatar }
+
+// MARK: Tables
+
+/**
+ * PUT /v1/games/:gameId/invite-key: the table registers the key its rotating invite codes are
+ * made with (an HMAC key derived from the table secret on the phones, never the secret itself),
+ * so the server can check the codes phones and App Clips present when they seat themselves.
+ * Only the game's creator or someone seated may register it, and the first key stays.
+ */
+export const inviteKeySchema = z.object({ key: z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'Expected 32 bytes, base64url') })
+export type InviteKeyRequest = z.infer<typeof inviteKeySchema>
+
+/**
+ * POST /v1/link/attestations: a short-lived, server-signed statement that this account owns the
+ * device key `publicKey` (Ed25519, raw 32 bytes base64url). Hubs check it offline against the key
+ * from GET /link/key before admitting a phone by identity (design §5.3).
+ */
+export const linkAttestationSchema = z.object({
+  deviceId: uuidSchema,
+  publicKey: z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'Expected 32 bytes, base64url'),
+})
+export type LinkAttestationRequest = z.infer<typeof linkAttestationSchema>
+/** `attestation` is `<payload>.<signature>`, both base64url; payload JSON `{p, d, k, e}` (player, device, device key, expiry ms). */
+export type LinkAttestationResponse = { attestation: string; expiresAt: string }
+/** GET /link/key (no auth): the server's Ed25519 attestation key, raw 32 bytes base64url. */
+export type LinkKeyResponse = { publicKey: string }
 
 // MARK: Claims
 

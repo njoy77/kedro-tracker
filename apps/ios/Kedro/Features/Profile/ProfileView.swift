@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var receiptGame: ReceiptTarget?
     @State private var playAgainFailed = false
     @State private var blockRequest: BlockRequest?
+    @State private var server = ServerStats.shared
 
     private var stats: StatsModel { .shared(for: app.store) }
     private var voice: Voice { app.voice }
@@ -22,6 +23,18 @@ struct ProfileView: View {
         Group {
             if let record = snapshot.record(player) {
                 content(record: record, identity: identity, snapshot: snapshot)
+            } else if let remote = server.profile(player), let remoteStats = remote.stats {
+                // Someone this phone has never finished a game with (opened from Search): their
+                // record from the server.
+                ScrollView {
+                    VStack(spacing: 24) {
+                        header(identity: identity, snapshot: snapshot, record: nil)
+                        if !isMe { actions(identity: identity, snapshot: snapshot) }
+                        lifetime(remoteStats)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 32)
+                }
             } else if stats.isLoaded {
                 ScrollView {
                     header(identity: identity, snapshot: snapshot, record: nil)
@@ -69,6 +82,8 @@ struct ProfileView: View {
             Text("Make sure you have a profile, then try again.")
         }
         .task { await stats.follow(app.store, viewer: me) }
+        .task(id: player) { await server.loadProfile(api: app.api, player: player) }
+        .refreshable { await server.loadProfile(api: app.api, player: player, force: true) }
     }
 
     private func identity(in snapshot: StatsSnapshot) -> StatsParticipant {
@@ -84,6 +99,9 @@ struct ProfileView: View {
         }
         if isMe, let profile = app.profile {
             return StatsParticipant(ref: profile.identity, seatedAs: profile.identity, name: profile.displayName, avatar: profile.avatar, handle: profile.handle, titleID: profile.titleID)
+        }
+        if let remote = server.profile(player)?.player {
+            return StatsParticipant(ref: player, seatedAs: player, name: remote.displayName, avatar: remote.avatar, handle: remote.handle, titleID: remote.titleID)
         }
         return StatsParticipant(ref: player, seatedAs: player, name: "Someone")
     }
@@ -122,6 +140,9 @@ struct ProfileView: View {
                 .foregroundStyle(.cream)
                 .accessibilityAddTraits(.isHeader)
             titleLine(identity: identity, snapshot: snapshot)
+            if record == nil, let remote = server.profile(player) {
+                serverRankLine(remote)
+            }
             if let record {
                 rankLine(record: record, snapshot: snapshot)
                 if !record.isRanked {
@@ -173,18 +194,21 @@ struct ProfileView: View {
         }
     }
 
-    /// "#13 GLOBAL · 1,086 · +18 TONIGHT"
+    /// "#13 GLOBAL · 1,086 · +18 TONIGHT". The rank and rating are the server's when loaded (the
+    /// same on every phone); this phone's replay of its own games stands in offline.
     @ViewBuilder
     private func rankLine(record: PlayerRecord, snapshot: StatsSnapshot) -> some View {
-        if record.isRanked {
-            let rank = snapshot.ratingRank(of: player, scope: .global)
+        let remote = server.profile(player)
+        if record.isRanked || remote?.globalRank != nil {
+            let globalRank = remote?.globalRank.map { "\($0)" } ?? snapshot.ratingRank(of: player, scope: .global)?.label
+            let rating = remote?.rating ?? record.displayRating
             let last = record.results.last
             HStack(spacing: 6) {
-                if let rank {
-                    Text("#\(rank.label) Global").foregroundStyle(.silver)
+                if let globalRank {
+                    Text("#\(globalRank) Global").foregroundStyle(.silver)
                     Text("·").foregroundStyle(.silverDim)
                 }
-                Text(record.displayRating.formatted()).foregroundStyle(.cream)
+                Text(rating.formatted()).foregroundStyle(.cream)
                 if let last, last.gamesBefore + 1 > Ratings.rankedAfterGames {
                     Text("·").foregroundStyle(.silverDim)
                     Text("\(ScoreFormat.signed(last.ratingDelta)) \(Calendar.current.isDateInToday(last.date) ? "tonight" : "last game")")
@@ -193,6 +217,38 @@ struct ProfileView: View {
             }
             .kedroFont(.label)
             .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// The server's rank line for someone with no games on this phone.
+    @ViewBuilder
+    private func serverRankLine(_ remote: PlayerProfileResponse) -> some View {
+        if let rating = remote.rating {
+            HStack(spacing: 6) {
+                if let rank = remote.globalRank {
+                    Text("#\(rank) Global").foregroundStyle(.silver)
+                    Text("·").foregroundStyle(.silverDim)
+                }
+                Text(rating.formatted()).foregroundStyle(.cream)
+            }
+            .kedroFont(.label)
+            .accessibilityElement(children: .combine)
+        }
+        if let games = remote.stats?.gamesPlayed, games < Ratings.rankedAfterGames {
+            ProgressMeter(value: games)
+        }
+    }
+
+    /// Lifetime numbers from the server (every finished game, not just this phone's).
+    private func lifetime(_ stats: PlayerProfileResponse.Stats) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            StatsSectionHeader(title: "At a glance")
+            HStack(spacing: 8) {
+                StatTile(value: "\(stats.gamesPlayed)", caption: "Games", info: .gamesPlayed)
+                StatTile(value: "\(stats.wins)", caption: "Wins", info: .wins)
+                StatTile(value: StatsFormat.percent(stats.winRate), caption: "Win rate", info: .winRate)
+                StatTile(value: stats.knockSuccess.map { StatsFormat.percent($0) } ?? "–", caption: "Knocks", info: .knockSuccess)
+            }
         }
     }
 

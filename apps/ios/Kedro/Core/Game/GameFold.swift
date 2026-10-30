@@ -323,6 +323,14 @@ private nonisolated struct GameReducer {
     }
 
     private mutating func applyGameFinished(_ p: Op.GameFinished, _ op: GameOperation, _ actor: GameActor) {
+        // finalRounds is authoritative, so it gets the same checks as RoundRecorded: every round
+        // numbered from 1 with no repeats, every hand keyed by a seat and the knocker seated.
+        // A malformed finish is refused whole rather than trusted (or trapping on a bad number).
+        let finalNumbers = p.finalRounds.map(\.number)
+        guard Set(finalNumbers).count == finalNumbers.count,
+              p.finalRounds.allSatisfy({ $0.number >= 1 && isValid($0) }) else {
+            return refuse(op, actor, .invalid)
+        }
         if !p.finalRounds.isEmpty {
             let current = state.rounds.map(\.round)
             if current != p.finalRounds {
@@ -330,7 +338,7 @@ private nonisolated struct GameReducer {
                 // finisher didn't see is surfaced as late (H-05).
                 let numbers = Set(current.map(\.number)).union(p.finalRounds.map(\.number))
                 for number in numbers.sorted() {
-                    let mine = number <= current.count ? current[number - 1] : nil
+                    let mine = current.first { $0.number == number }
                     let theirs = p.finalRounds.first { $0.number == number }
                     if mine != theirs, let touch = lastTouch[number], touch.opId != op.opId {
                         refuse(touch, resolveActor(touch), .afterFinish)

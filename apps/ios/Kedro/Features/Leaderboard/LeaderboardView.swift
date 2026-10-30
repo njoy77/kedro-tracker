@@ -11,13 +11,24 @@ struct LeaderboardView: View {
     @State private var isViewerRowVisible = false
     @State private var record: RecordKind?
 
+    @State private var server = ServerStats.shared
+
     private var stats: StatsModel { .shared(for: app.store) }
     private var viewer: PlayerRef? { app.profile?.identity }
     private var voice: Voice { app.voice }
 
+    /// Global is the server's board over every finished game (one source of truth); this phone's
+    /// own history stands in only while it's offline or has no account.
+    private func board(_ snapshot: StatsSnapshot) -> Leaderboard {
+        if effectiveScope == .global, let remote = server.global[sort] { return remote }
+        return snapshot.leaderboard(scope: effectiveScope, sort: sort, viewer: viewer)
+    }
+
+    private var isShowingLocalGlobal: Bool { effectiveScope == .global && server.global[sort] == nil }
+
     var body: some View {
         let snapshot = stats.snapshot
-        let board = snapshot.leaderboard(scope: effectiveScope, sort: sort, viewer: viewer)
+        let board = board(snapshot)
         ScrollViewReader { proxy in
             List {
                 header
@@ -43,6 +54,13 @@ struct LeaderboardView: View {
         .animation(.smooth, value: sort)
         .animation(.smooth, value: scope)
         .task { await stats.follow(app.store, viewer: viewer) }
+        .task(id: GlobalKey(scope: effectiveScope, sort: sort)) {
+            guard effectiveScope == .global else { return }
+            await server.loadGlobal(api: app.api, sort: sort, viewer: viewer)
+        }
+        .refreshable {
+            if effectiveScope == .global { await server.loadGlobal(api: app.api, sort: sort, viewer: viewer, force: true) }
+        }
         .onChange(of: scope) { showsWholeGlobalBoard = false }
     }
 
@@ -64,11 +82,23 @@ struct LeaderboardView: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
             }
         } footer: {
-            Text("\(effectiveScope.label) · \(sort.headerLabel)")
-                .kedroFont(.label)
-                .foregroundStyle(.silver)
-                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(effectiveScope.label) · \(sort.headerLabel)")
+                    .kedroFont(.label)
+                    .foregroundStyle(.silver)
+                    .accessibilityAddTraits(.isHeader)
+                if isShowingLocalGlobal {
+                    Text("Offline: people from games on this phone.")
+                        .font(.caption)
+                        .foregroundStyle(.silverDim)
+                }
+            }
         }
+    }
+
+    private struct GlobalKey: Hashable {
+        var scope: LeaderboardScope
+        var sort: LeaderboardSort
     }
 
     private var sortMenu: some ToolbarContent {

@@ -41,8 +41,15 @@ export const CURATED_AVATAR_IDS = [
 
 export const EMOJI_COLOR_COUNT = 12
 
+/** https anywhere, or http on this machine (local development of the API). */
+export function isServablePhotoURL(url: string): boolean {
+  return url.startsWith('https://') || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)
+}
+
 export const avatarSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('photo'), url: z.string().url().max(2048) }),
+  // Photos are uploaded (PUT /v1/players/me/photo) and referenced by https URL; a phone's local
+  // file:// path is never accepted (other phones couldn't load it, and it leaks the path).
+  z.object({ kind: z.literal('photo'), url: z.string().url().max(2048).refine(isServablePhotoURL, 'Photos must be https URLs') }),
   z.object({
     kind: z.literal('emoji'),
     emoji: z.string().min(1).max(32),

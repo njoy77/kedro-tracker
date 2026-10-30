@@ -7,6 +7,7 @@
 
 import {
   ALLOWED_AFTER_FINISH,
+  MAX_CLOCK_AHEAD_MS,
   RESTORE_WINDOW_MS,
   compareFoldOrder,
   compareHlc,
@@ -34,6 +35,7 @@ import type { LiveActivityBroadcaster } from '../push/liveActivity.ts'
 import type { Notifier } from '../push/notifications.ts'
 import type { ClipSession } from './clip.ts'
 import type { GameRow, GuestRegistration, OpRow, SeatRow, Store } from '../store/types.ts'
+import { isValidInviteCode } from './invites.ts'
 import { KeyedLock } from './lock.ts'
 import type { TauntFilter } from './moderation.ts'
 import type { RatingsService } from './ratings.ts'
@@ -46,6 +48,21 @@ export const FILTER_RETRACTION_REASON = 'filtered'
 
 export const DEFAULT_OPS_PAGE = 2000
 export const MAX_OPS_PAGE = 5000
+
+/**
+ * Slack on the 15-minute windows when they're judged by the server's receive times (upload
+ * latency from a phone that was briefly offline).
+ */
+export const RECEIVE_GRACE_MS = 5 * 60 * 1000
+
+/** Server receive times the finish/abandon windows are judged against (see `admission`). */
+export type AdmissionTiming = {
+  nowMs: number
+  /** When the server received the op that finished the game (null when not finished). */
+  finishReceivedMs: number | null
+  /** When the server received the op that abandoned the game (null when not abandoned). */
+  abandonReceivedMs: number | null
+}
 
 /** Ops that can change whether a game is finished or abandoned (the admission check re-folds after them). */
 const STATUS_TYPES = new Set<OperationType>(['GameCreated', 'GameStarted', 'GameFinished', 'GameAbandoned', 'GameRestored'])
@@ -72,7 +89,7 @@ export class OpsService {
 
   // MARK: Ingest
 
-  async ingest(caller: UUID, input: readonly unknown[]): Promise<PostOpsResponse> {
+  async ingest(caller: UUID, input: readonly unknown[], invites: Readonly<Record<string, string>> = {}): Promise<PostOpsResponse> {
     const response: PostOpsResponse = { accepted: [], duplicates: [], rejected: [] }
     const byGame = new Map<UUID, ParsedOperation[]>()
     const seen = new Set<UUID>()
@@ -89,7 +106,8 @@ export class OpsService {
     }
 
     for (const [gameId, ops] of byGame) {
-      const result = await this.lock.run(gameId, () => this.ingestGame(caller, gameId, ops))
+      const invite = invites[gameId] ?? invites[gameId.toUpperCase()]
+      const result = await this.lock.run(gameId, () => this.ingestGame(caller, gameId, ops, invite))
       response.accepted.push(...result.accepted)
       response.duplicates.push(...result.duplicates)
       response.rejected.push(...result.rejected)
@@ -97,7 +115,7 @@ export class OpsService {
     return response
   }
 
-  private async ingestGame(caller: UUID, gameId: UUID, ops: ParsedOperation[]): Promise<PostOpsResponse> {
+  private async ingestGame(caller: UUID, gameId: UUID, ops: ParsedOperation[], invite: string | undefined): Promise<PostOpsResponse> {
     const { store } = this.deps
     const result: PostOpsResponse = { accepted: [], duplicates: [], rejected: [] }
     const reject = (op: Operation, reason: OpRejectionReason, message?: string) => {
@@ -107,10 +125,19 @@ export class OpsService {
     }
 
     const existing = await store.existingOpIds(ops.map(({ operation }) => operation.opId))
+    const nowMs = this.now()
     const fresh = ops.filter(({ operation }) => {
-      if (!existing.has(operation.opId)) return true
-      result.duplicates.push(operation.opId)
-      return false
+      if (existing.has(operation.opId)) {
+        result.duplicates.push(operation.opId)
+        return false
+      }
+      // Every time window (and the rating replay order) hangs off op time, so an op dated in the
+      // future is refused rather than allowed to hold a window open.
+      if (operation.hlc.wallMs > nowMs + MAX_CLOCK_AHEAD_MS) {
+        reject(operation, 'clockAhead', "This phone's clock is ahead of the server's")
+        return false
+      }
+      return true
     })
     if (fresh.length === 0) return result
 
@@ -123,13 +150,22 @@ export class OpsService {
         return result
       }
     } else {
-      // Joining: whoever holds the game ID (shared by QR code or nearby discovery) may seat
-      // themselves, as long as the fold actually takes the seat (seats lock after Round 1).
-      const joins = fresh.map(({ operation }) => operation).filter((op) => isSeatFor(op, caller))
-      const joined = joins.length > 0 && foldGame([...stored, ...joins], gameId).seats.some((seat) => isPlayer(seat.player, caller))
-      if (!joined && !(await store.isSeated(gameId, caller))) {
-        for (const { operation } of fresh) reject(operation, 'notSeated')
-        return result
+      // Joining: a phone may seat itself with the table's current invite code (the QR's `k`,
+      // which every admitted phone can make), checked against the key the table registered. The
+      // game ID alone is public (it's in the Bonjour record), so it is not enough. The fold must
+      // also actually take the seat (seats lock after Round 1).
+      if (!(await store.isSeated(gameId, caller))) {
+        const joins = fresh.map(({ operation }) => operation).filter((op) => isSeatFor(op, caller))
+        const takesSeat = joins.length > 0 && foldGame([...stored, ...joins], gameId).seats.some((seat) => isPlayer(seat.player, caller))
+        if (!takesSeat) {
+          for (const { operation } of fresh) reject(operation, 'notSeated')
+          return result
+        }
+        const key = await store.inviteKey(gameId)
+        if (!invite || !key || !isValidInviteCode(invite, key, gameId, nowMs)) {
+          for (const { operation } of fresh) reject(operation, 'inviteRequired', 'Scan the table code again to sit down')
+          return result
+        }
       }
     }
 
@@ -143,19 +179,26 @@ export class OpsService {
 
     const admitted: ParsedOperation[] = []
     let state = foldGame(stored, gameId)
+    const received = await store.receivedAt(stored.filter((op) => op.type === 'GameFinished' || op.type === 'GameAbandoned').map((op) => op.opId))
+    const timing = (): AdmissionTiming => ({
+      nowMs,
+      finishReceivedMs: receivedTime(state.finishedAtMs, 'GameFinished', stored, received, nowMs),
+      abandonReceivedMs: receivedTime(state.abandonedAtMs, 'GameAbandoned', stored, received, nowMs),
+    })
+    const blocks = new BlockCheck(store, caller)
     for (const parsed of [...fresh].sort((a, b) => compareFoldOrder(a.operation, b.operation))) {
       const op = parsed.operation
       if (op.actorPlayerId && !actors.has(op.actorPlayerId)) {
         reject(op, 'invalidActor', 'actorPlayerId is not seated in this game')
         continue
       }
-      const refusal = admission(state, op) ?? tauntLimitRefusal(state, admitted, op)
+      const refusal = admission(state, op, timing()) ?? tauntLimitRefusal(state, admitted, op) ?? (await blocks.refusal(state, op))
       if (refusal) {
         reject(op, refusal.reason, refusal.message)
         continue
       }
       admitted.push(parsed)
-      if (STATUS_TYPES.has(op.type)) state = foldGame([...stored, ...admitted.map(({ operation }) => operation)], gameId)
+      if (STATUS_TYPES.has(op.type) || op.type === 'PlayerSeated') state = foldGame([...stored, ...admitted.map(({ operation }) => operation)], gameId)
     }
     if (admitted.length === 0) return result
 
@@ -189,8 +232,15 @@ export class OpsService {
     if (!notifier || after.status !== 'lobby' || !after.created) return
     const known = new Set(before.seats.map((seat) => seatIdOf(seat.player)))
     const host = after.seats.find((seat) => seatIdOf(seat.player) === after.hostSeat)
+    // Never across a block, either way, with the uploader or the host (it would be a channel
+    // for the blocked person to reach their blocker).
+    const hidden = await hiddenFrom(this.deps.store, caller)
+    if (host?.player.kind === 'player' && host.player.id !== caller) {
+      for (const id of await hiddenFrom(this.deps.store, host.player.id)) hidden.add(id)
+    }
     for (const seat of after.seats) {
       if (known.has(seatIdOf(seat.player)) || seat.player.kind !== 'player' || seat.deviceId || seat.player.id === caller) continue
+      if (hidden.has(seat.player.id)) continue
       await notifier
         .savedSeat({ playerId: seat.player.id, gameId: after.gameId, hostName: host?.displayName ?? 'Someone', tableWord: after.config.tableWord })
         .catch((error: unknown) => this.log(`saved-seat push failed: ${String(error)}`))
@@ -379,22 +429,91 @@ export class OpsService {
 
 // MARK: Rules
 
-/** Why a game in this state refuses this op, or null to admit it. */
-export function admission(state: FoldedGame, op: Operation): { reason: OpRejectionReason; message: string } | null {
+/**
+ * Why a game in this state refuses this op, or null to admit it.
+ *
+ * The 15-minute windows (abandon a finished game, restore an abandoned one) must hold both by the
+ * ops' own clocks (as the phones' folds judge them) and, when `timing` is given, by the server's
+ * receive times: op time comes from the phone, so a backdated abandon days later would otherwise
+ * void a finished game's ratings.
+ */
+export function admission(state: FoldedGame, op: Operation, timing?: AdmissionTiming): { reason: OpRejectionReason; message: string } | null {
+  const withinReceiveWindow = (since: number | null | undefined) =>
+    !timing || since === null || since === undefined || timing.nowMs - since <= RESTORE_WINDOW_MS + RECEIVE_GRACE_MS
   if (state.status === 'finished') {
     if (ALLOWED_AFTER_FINISH.has(op.type) || op.type === 'GameFinished') return null
-    if (op.type === 'GameAbandoned' && state.finishedAtMs !== null && op.hlc.wallMs - state.finishedAtMs <= RESTORE_WINDOW_MS) return null
+    if (
+      op.type === 'GameAbandoned' &&
+      state.finishedAtMs !== null &&
+      op.hlc.wallMs - state.finishedAtMs <= RESTORE_WINDOW_MS &&
+      withinReceiveWindow(timing?.finishReceivedMs)
+    ) return null
     return { reason: 'gameFinished', message: 'This game is finished' }
   }
   if (state.status === 'abandoned') {
     if (op.type === 'GameAbandoned' || op.type === 'TauntRetracted') return null
     if (op.type === 'GameRestored') {
-      if (state.abandonedAtMs !== null && op.hlc.wallMs - state.abandonedAtMs <= RESTORE_WINDOW_MS) return null
+      if (state.abandonedAtMs !== null && op.hlc.wallMs - state.abandonedAtMs <= RESTORE_WINDOW_MS && withinReceiveWindow(timing?.abandonReceivedMs)) return null
       return { reason: 'gameAbandoned', message: 'The 15-minute restore window has passed' }
     }
     return { reason: 'gameAbandoned', message: 'This game was abandoned' }
   }
   return null
+}
+
+/**
+ * When the server received the op that set a finish/abandon time: the earliest-received stored op
+ * of that type at that time, or now when it is in this request (not stored yet).
+ */
+function receivedTime(atMs: number | null, type: 'GameFinished' | 'GameAbandoned', stored: readonly Operation[], received: ReadonlyMap<UUID, number>, nowMs: number): number | null {
+  if (atMs === null) return null
+  const times = stored.filter((op) => op.type === type && op.hlc.wallMs === atMs).flatMap((op) => {
+    const time = received.get(op.opId)
+    return time === undefined ? [] : [time]
+  })
+  return times.length > 0 ? Math.min(...times) : nowMs
+}
+
+/** Players `playerId` blocked or was blocked by. */
+async function hiddenFrom(store: Store, playerId: UUID): Promise<Set<UUID>> {
+  const { blocked, blockedBy } = await store.blockRelations(playerId)
+  return new Set([...blocked, ...blockedBy])
+}
+
+/**
+ * The block safeguard (design §5.9 "Rules", §8.3): someone can never be seated at a table with a
+ * person they blocked or who blocked them, whoever uploads the seat.
+ */
+class BlockCheck {
+  private readonly cache = new Map<UUID, Promise<Set<UUID>>>()
+
+  constructor(
+    private readonly store: Store,
+    private readonly caller: UUID,
+  ) {}
+
+  async refusal(state: FoldedGame, op: Operation): Promise<{ reason: OpRejectionReason; message: string } | null> {
+    if (op.type !== 'PlayerSeated' || op.payload.seat.player.kind !== 'player') return null
+    const newcomer = op.payload.seat.player.id
+    if (state.seats.some((seat) => isPlayer(seat.player, newcomer))) return null // an update to an existing seat
+    const hidden = await this.hidden(newcomer)
+    const others = new Set<UUID>([this.caller])
+    for (const seat of state.seats) if (seat.player.kind === 'player') others.add(seat.player.id)
+    others.delete(newcomer)
+    for (const other of others) {
+      if (hidden.has(other)) return { reason: 'blocked', message: 'They can’t be seated at this table' }
+    }
+    return null
+  }
+
+  private hidden(playerId: UUID): Promise<Set<UUID>> {
+    let entry = this.cache.get(playerId)
+    if (!entry) {
+      entry = hiddenFrom(this.store, playerId)
+      this.cache.set(playerId, entry)
+    }
+    return entry
+  }
 }
 
 /** Taunts per sender per round (design §8.3), the same limits the phones apply on receipt. */
@@ -433,6 +552,7 @@ export function clipRefusal(state: FoldedGame, op: Operation, clip: ClipSession)
   const mySeat = mine ? seatIdOf(mine.player) : null
   switch (op.type) {
     case 'PlayerSeated': {
+      if (state.status === 'finished' || state.status === 'abandoned') return refuse('This table is closed')
       const next = op.payload.seat
       const current = state.seats.find((seat) => seatIdOf(seat.player) === seatIdOf(next.player))
       if (!current || current.player.kind !== 'guest') return refuse('Pick one of the guest seats')

@@ -128,7 +128,7 @@ final class NearbyTableDiscovery: TableDiscovery {
                     )
                 },
                 guestCount: ad.guestCount,
-                isPlayedWith: ad.hostPlayer.map { playedWith[$0] != nil } ?? false,
+                isPlayedWith: Self.knownHost(ad, playedWith: playedWith) != nil,
                 roundsPlayed: ad.roundsPlayed
             )
         }
@@ -152,8 +152,16 @@ final class NearbyTableDiscovery: TableDiscovery {
         }
     }
 
+    /// The host among the people this phone has played with, matched by handle (the host's player
+    /// ID isn't advertised; see `TableAdvertisement.txtDictionary`).
+    static func knownHost(_ ad: TableAdvertisement, playedWith: [PlayerID: PlayedWith]) -> PlayedWith? {
+        if let host = ad.hostPlayer, let known = playedWith[host] { return known }
+        guard let handle = ad.hostHandle else { return nil }
+        return playedWith.values.first { $0.player.handle == handle }
+    }
+
     private func hostSummary(_ ad: TableAdvertisement, playedWith: [PlayerID: PlayedWith]) -> PlayerSummary {
-        if let host = ad.hostPlayer, let known = playedWith[host] { return known.player }
+        if let known = Self.knownHost(ad, playedWith: playedWith) { return known.player }
         // A guest-mode host has no player ID; the hub's device ID stands in so the card has an identity.
         return PlayerSummary(
             id: ad.hostPlayer ?? PlayerID(ad.hub.rawValue),

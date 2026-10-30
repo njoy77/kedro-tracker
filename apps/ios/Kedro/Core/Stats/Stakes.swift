@@ -147,7 +147,8 @@ extension StatsSnapshot {
 extension StatsSnapshot {
     func tonightsStakes(for me: PlayerRef, table: [PlayerRef], voice: Voice) -> TonightStakes {
         let me = options.canonical(me)
-        let table = table.map(options.canonical).filter { $0 != me && !options.excluded.contains($0) }
+        var seen: Set<PlayerRef> = []
+        let table = table.map(options.canonical).filter { $0 != me && !options.excluded.contains($0) && seen.insert($0).inserted }
         let record = record(me)
         let games = record?.gamesPlayed ?? 0
         let meter = games < Ratings.rankedAfterGames ? games : nil

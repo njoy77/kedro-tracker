@@ -115,7 +115,7 @@ struct OnboardingFlow: View {
 
 // MARK: - Steps
 
-/// The welcome (mockup frame 1): logo, O-01, O-02, Play as a Guest, Sign in with Apple (Soon),
+/// The welcome (mockup frame 1): logo, O-01, O-02, Play as a Guest, Sign in with Apple,
 /// the Learn link (O-04) and "Got a claim code?".
 struct WelcomeStep: View {
     var onPlayAsGuest: () -> Void
@@ -151,16 +151,8 @@ struct WelcomeStep: View {
                 Button(Literal.text("button.playAsGuest"), action: onPlayAsGuest)
                     .buttonStyle(.kedroPrimary)
 
-                // Sign in with Apple is waiting on the developer account (PRD §3.1): shown, dimmed.
-                Label("Sign in with Apple · Soon", systemImage: "applelogo")
-                    .font(.headline)
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(.white, in: .capsule)
-                    .opacity(0.4)
-                    .accessibilityLabel("Sign in with Apple, coming soon")
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityRemoveTraits(.isImage)
+                // Sign in with Apple (PRD §3.1). Signing in moves on through `onSignedIn` below.
+                AppleSignInButton()
 
                 #if DEBUG
                 Button("Continue as Test User") {

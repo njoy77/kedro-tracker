@@ -50,6 +50,17 @@ nonisolated struct StatsRound: Hashable, Sendable {
         outcome = Scoring.knockOutcome(hands: hands, knocker: knocker)
     }
 
+    /// A round whose scores were already worked out by seat (the game's own scoring), keyed by
+    /// person after the fact. Used when a seat is dropped as a duplicate of the same person, so
+    /// the remaining seats keep the scores they actually got at the table.
+    init(number: Int, hands: [PlayerRef: Int], knocker: PlayerRef, scores: [PlayerRef: Int], outcome: KnockOutcome?) {
+        self.number = number
+        self.hands = hands
+        self.knocker = knocker
+        self.scores = scores
+        self.outcome = outcome
+    }
+
     var knockerHand: Int? { hands[knocker] }
 
     /// The lowest hand among everyone but the knocker.
@@ -115,20 +126,36 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
         finishedAt = state.finishedAt ?? state.latestHLC?.date ?? state.createdAt ?? .distantPast
         finishReason = state.finishReason
 
-        participants = state.seats.map { seat in
+        // One participant per person. A claimed guest seated beside the account that later
+        // claimed it counts once, as the account's own seat (the server's ratedGames does the
+        // same), so its hands and score are dropped instead of being merged in.
+        let counted = Self.countedSeats(state.seats, options: options)
+        participants = counted.map { seat in
             StatsParticipant(
                 ref: options.canonical(seat.player), seatedAs: seat.player, name: seat.displayName,
                 avatar: seat.avatar, handle: seat.handle, titleID: seat.titleID
             )
         }
+        let countedIDs = Set(counted.map(\.id))
         let map = Dictionary(state.seats.map { ($0.id, options.canonical($0.player)) }, uniquingKeysWith: { first, _ in first })
         func person(_ seat: SeatID) -> PlayerRef { map[seat] ?? options.canonical(seat.playerRef) }
 
         rounds = state.rounds.map { record in
-            let hands = Dictionary(record.round.hands.map { (person($0.key), $0.value) }, uniquingKeysWith: +)
-            return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker))
+            if countedIDs.count == state.seats.count {
+                let hands = Dictionary(record.round.hands.map { (person($0.key), $0.value) }, uniquingKeysWith: +)
+                return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker))
+            }
+            let hands = Dictionary(
+                record.round.hands.filter { countedIDs.contains($0.key) }.map { (person($0.key), $0.value) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            let scores = Dictionary(
+                record.scores.filter { countedIDs.contains($0.key) }.map { (person($0.key), $0.value) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker), scores: scores, outcome: record.outcome)
         }
-        var running: [PlayerRef: Int] = Dictionary(uniqueKeysWithValues: participants.map { ($0.ref, 0) })
+        var running: [PlayerRef: Int] = Dictionary(participants.map { ($0.ref, 0) }, uniquingKeysWith: { first, _ in first })
         var cumulative: [[PlayerRef: Int]] = []
         for round in rounds {
             for (ref, score) in round.scores { running[ref, default: 0] += score }
@@ -143,6 +170,22 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
             let target: PlayerRef? = if case .seat(let seat) = taunt.target { person(seat) } else { nil }
             return StatsTaunt(from: person(from), target: target, content: taunt.content)
         }
+    }
+
+    /// The seats that count, in seat order: the first seat for each person, preferring a seat
+    /// held under the person's own identity over one that maps to them through a claim.
+    static func countedSeats(_ seats: [Seat], options: StatsOptions) -> [Seat] {
+        var chosen: [PlayerRef: Seat] = [:]
+        for seat in seats {
+            let ref = options.canonical(seat.player)
+            guard let existing = chosen[ref] else {
+                chosen[ref] = seat
+                continue
+            }
+            if existing.player != ref, seat.player == ref { chosen[ref] = seat }
+        }
+        let keep = Set(chosen.values.map(\.id))
+        return seats.filter { keep.contains($0.id) }
     }
 
     /// Normalizes and orders a store's finished games (oldest first, ties by game ID).

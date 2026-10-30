@@ -37,6 +37,11 @@ private struct PlayScreen: View {
 
     private var me: PlayerRef? { app.profile?.identity }
 
+    /// "Is this Sam?" (design §5.7).
+    private var guestSeatQuestion: String {
+        "Is this \(model.guestSeatConfirmation?.seat.displayName ?? "you")?"
+    }
+
     var body: some View {
         List {
             liveGameSection
@@ -70,6 +75,17 @@ private struct PlayScreen: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.45, bounce: 0.15), value: model.card?.id)
         .newTableSheet($lobby)
         .sheet(isPresented: $isJoiningWithCode) { JoinWithCodeSheet(model: model) }
+        .confirmationDialog(
+            guestSeatQuestion,
+            isPresented: Binding(get: { model.guestSeatConfirmation != nil }, set: { if !$0 { model.guestSeatConfirmation = nil } }),
+            titleVisibility: .visible,
+            presenting: model.guestSeatConfirmation
+        ) { _ in
+            Button(Literal.text("button.thatsMe")) { Task { await model.confirmGuestSeat() } }
+            Button("Not Me") { Task { await model.declineGuestSeat() } }
+        } message: { confirmation in
+            Text("\(confirmation.seat.displayName) has a seat at this table with no phone. Your phone takes it over.")
+        }
         .sheet(isPresented: $isShowingOtherTables) {
             OtherTablesSheet(tables: model.otherTables) { table in
                 model.showCard(for: table)

@@ -19,10 +19,18 @@ nonisolated struct LocalProfile: Hashable, Sendable {
     var seatID: SeatID { identity.seatID }
     var isGuest: Bool { identity.isGuest }
 
+    /// The avatar other phones can show. A photo still only on this phone (`file://`, before
+    /// `PUT /v1/players/me/photo` swaps in its https URL) is never sent: no other phone could load
+    /// it, and the path would leak. They see the initial until the upload lands.
+    var shareableAvatar: Avatar? {
+        if case .photo(let url) = avatar, url.isFileURL { return nil }
+        return avatar
+    }
+
     /// A seat for this person at a new table.
     func seat(order: Int, device: DeviceID, languageLevel: LanguageLevel, gamesPlayed: Int?) -> Seat {
         Seat(
-            player: identity, displayName: displayName, order: order, handle: handle, avatar: avatar,
+            player: identity, displayName: displayName, order: order, handle: handle, avatar: shareableAvatar,
             deviceID: device, languageLevel: languageLevel, titleID: titleID, gamesPlayed: gamesPlayed,
             claimTokenHash: isGuest ? claimToken.map(Self.claimTokenHash) : nil
         )

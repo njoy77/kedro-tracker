@@ -84,7 +84,7 @@ nonisolated struct TableAdvertisement: Hashable, Sendable {
     // MARK: TXT record
 
     private enum Key {
-        static let version = "v", game = "t", word = "w", hostName = "h", hostPlayer = "hp", hostHandle = "hh"
+        static let version = "v", game = "t", word = "w", hostName = "h", hostHandle = "hh"
         static let hostAvatar = "ha", seats = "n", guests = "g", rounds = "r", started = "st", finished = "f", hub = "hub", hubOrder = "ho"
         static func seated(_ index: Int) -> String { "s\(index)" }
     }
@@ -103,7 +103,8 @@ nonisolated struct TableAdvertisement: Hashable, Sendable {
             Key.finished: isFinished ? "1" : "0",
             Key.hub: hub.uuidString,
         ]
-        txt[Key.hostPlayer] = hostPlayer?.uuidString
+        // The host's player ID is not advertised (`hp` is no longer written): it let anyone nearby
+        // claim to be the host. Discovery recognizes the host by handle instead.
         txt[Key.hostHandle] = hostHandle?.rawValue
         txt[Key.hubOrder] = hubSeatOrder.map(String.init)
         if let hostAvatar, let data = try? KedroJSON.encoder().encode(hostAvatar), data.count <= 200 {
@@ -130,7 +131,7 @@ nonisolated struct TableAdvertisement: Hashable, Sendable {
         self.hub = hub
         tableWord = word
         self.hostName = hostName
-        hostPlayer = txt[Key.hostPlayer].flatMap(PlayerID.init(uuidString:))
+        hostPlayer = nil // never advertised (see `txtDictionary`); `hp` from older builds is ignored
         hostHandle = txt[Key.hostHandle].flatMap(Handle.init)
         hostAvatar = txt[Key.hostAvatar].flatMap { try? KedroJSON.decoder().decode(Avatar.self, from: Data($0.utf8)) }
         seatCount = txt[Key.seats].flatMap(Int.init) ?? 0

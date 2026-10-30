@@ -27,6 +27,7 @@ import {
   type GuestSuggestionRow,
   type OpRow,
   type PlayedWithRow,
+  type PlayerGameRow,
   type PlayerRow,
   type PlayerUpdate,
   type PushTokenRow,
@@ -113,7 +114,7 @@ export class SupabaseStore implements Store {
     return row ? toGameRow(row) : null
   }
 
-  async ensureGame(gameId: UUID, createdBy: UUID): Promise<void> {
+  async ensureGame(gameId: UUID, createdBy: UUID | null): Promise<void> {
     must(await this.db.from('games').upsert({ id: gameId, created_by: createdBy }, { onConflict: 'id', ignoreDuplicates: true }))
   }
 
@@ -156,6 +157,56 @@ export class SupabaseStore implements Store {
     if (guestIds.length === 0) return false
     const claimed = must(await this.db.from('guests').select('id').in('id', guestIds).eq('claimed_by', playerId).limit(1))
     return claimed.length > 0
+  }
+
+  async gamesFor(playerId: UUID): Promise<PlayerGameRow[]> {
+    const direct = must(await this.db.from('seats').select('game_id').eq('player_id', playerId))
+    const guests = must(await this.db.from('guests').select('id').eq('claimed_by', playerId))
+    const guestIds = guests.map((row) => String(row.id))
+    const viaGuests: Row[] = []
+    for (const ids of chunks(guestIds, IN_CHUNK)) {
+      viaGuests.push(...must(await this.db.from('seats').select('game_id').in('guest_id', ids)))
+    }
+    const gameIds = [...new Set([...direct, ...viaGuests].map((row) => String(row.game_id)))]
+    const games: PlayerGameRow[] = []
+    for (const ids of chunks(gameIds, IN_CHUNK)) {
+      const rows = must(await this.db.from('games').select('id, status, finished_at, last_hlc').in('id', ids))
+      games.push(...rows.map((row) => ({
+        gameId: String(row.id),
+        status: row.status as GameStatus,
+        finishedAt: (row.finished_at as string | null) ?? null,
+        lastHlc: (row.last_hlc as string | null) ?? null,
+      })))
+    }
+    return games.sort((a, b) => (b.lastHlc ?? '').localeCompare(a.lastHlc ?? '') || a.gameId.localeCompare(b.gameId))
+  }
+
+  async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
+    const rows = must(await this.db.from('guests').select('id').eq('claimed_by', playerId))
+    return rows.map((row) => String(row.id)).sort()
+  }
+
+  async receivedAt(opIds: readonly UUID[]): Promise<Map<UUID, number>> {
+    const found = new Map<UUID, number>()
+    for (const ids of chunks(opIds, IN_CHUNK)) {
+      const rows = must(await this.db.from('ops').select('op_id, received_at').in('op_id', ids))
+      for (const row of rows) found.set(String(row.op_id), Date.parse(String(row.received_at)))
+    }
+    return found
+  }
+
+  async inviteKey(gameId: UUID): Promise<string | null> {
+    const row = maybe(await this.db.from('game_invite_keys').select('invite_key').eq('game_id', gameId).maybeSingle())
+    return row ? String(row.invite_key) : null
+  }
+
+  async setInviteKey(gameId: UUID, key: string, registeredBy: UUID): Promise<string> {
+    must(
+      await this.db
+        .from('game_invite_keys')
+        .upsert({ game_id: gameId, invite_key: key, registered_by: registeredBy }, { onConflict: 'game_id', ignoreDuplicates: true }),
+    )
+    return (await this.inviteKey(gameId)) ?? key
   }
 
   // MARK: Finished games and ratings
@@ -446,6 +497,27 @@ export class SupabaseStore implements Store {
       kind: row.kind as PushTokenRow['kind'],
       gameId: (row.game_id as string | null) ?? null,
     }))
+  }
+
+  // MARK: Photos
+
+  async putPhoto(playerId: UUID, photo: { bytes: Uint8Array; contentType: string }): Promise<string> {
+    const version = new Bun.CryptoHasher('sha256').update(photo.bytes).digest('hex').slice(0, 16)
+    must(
+      await this.db.from('player_photos').upsert(
+        { player_id: playerId, photo: `\\x${Buffer.from(photo.bytes).toString('hex')}`, content_type: photo.contentType, version },
+        { onConflict: 'player_id' },
+      ),
+    )
+    return version
+  }
+
+  async getPhoto(playerId: UUID): Promise<{ bytes: Uint8Array; contentType: string; version: string } | null> {
+    const row = maybe(await this.db.from('player_photos').select('photo, content_type, version').eq('player_id', playerId).maybeSingle())
+    if (!row) return null
+    // PostgREST returns bytea as "\x<hex>".
+    const hex = String(row.photo).replace(/^\\x/, '')
+    return { bytes: new Uint8Array(Buffer.from(hex, 'hex')), contentType: String(row.content_type), version: String(row.version) }
   }
 
   // MARK: Helpers

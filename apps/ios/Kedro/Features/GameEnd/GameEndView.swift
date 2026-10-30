@@ -22,6 +22,8 @@ struct GameEndView: View {
     @State private var isStartingRematch = false
     @State private var isComposingReceipt = false
     @State private var shareImage: Image?
+    /// Claim codes for guests this phone added by name.
+    var claimCodeStore: any GuestClaimCodeStoring = KeychainGuestClaimCodes.shared
 
     var body: some View {
         let state = session.state
@@ -38,6 +40,7 @@ struct GameEndView: View {
                     badges(voice: voice)
                     hallOfShame(voice: voice)
                     finishNote(voice: voice)
+                    claimCodes()
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -260,6 +263,31 @@ struct GameEndView: View {
             note(voice.line("G-02"))
         case .completed, nil:
             EmptyView()
+        }
+    }
+
+    /// "Send Sam their claim code" for each guest this phone typed in (their seat carries the
+    /// code's hash): AirDrop or a text, and the history follows them when they sign up.
+    @ViewBuilder
+    private func claimCodes() -> some View {
+        let codes = session.state.seats.compactMap { seat -> (Seat, String)? in
+            guard case .guest(let guest) = seat.player, seat.id != session.mySeatID,
+                  let code = claimCodeStore.code(for: guest) else { return nil }
+            return (seat, code)
+        }
+        if !codes.isEmpty {
+            section(TableText.text("label.claimCodes")) {
+                Text(TableText.text("label.claimCodesHint"))
+                    .font(.footnote)
+                    .foregroundStyle(.silver)
+                ForEach(codes, id: \.0.id) { seat, code in
+                    ShareLink(item: GuestClaimCodes.message(name: seat.displayName, code: code)) {
+                        Label(TableText.text("button.sendClaimCode", ["name": seat.displayName]), systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                    .foregroundStyle(.cream)
+                }
+            }
         }
     }
 

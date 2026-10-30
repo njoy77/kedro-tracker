@@ -5,6 +5,7 @@ import { createApp } from '../src/app.ts'
 import { DevTokenVerifier } from '../src/auth.ts'
 import { StubLiveActivityBroadcaster } from '../src/push/liveActivity.ts'
 import { MemoryStore } from '../src/store/memory.ts'
+import { INVITE_WINDOW_MS, inviteCode } from '../src/services/invites.ts'
 
 export { fixedUUID, ids, sampleSeats, sampleWireOperations, seats, OperationBuilder, SAMPLE_START_MS } from '../../../packages/shared/test/fixtures/sampleGame.ts'
 
@@ -47,8 +48,15 @@ export function harness(options: { now?: () => number } = {}) {
       if (result.status !== 200) throw new Error(`profile ${handle}: ${JSON.stringify(result.body)}`)
       return result.body
     },
-    async upload(as: string, ops: WireOperation[]) {
-      return call<{ accepted: string[]; duplicates: string[]; rejected: { opId: string | null; reason: string }[] }>('POST', '/v1/ops', as, { ops })
+    async upload(as: string, ops: WireOperation[], invites?: Record<string, string>) {
+      return call<{ accepted: string[]; duplicates: string[]; rejected: { opId: string | null; reason: string }[] }>('POST', '/v1/ops', as, invites ? { ops, invites } : { ops })
+    },
+    /** Registers a table invite key as `as` (seated) and returns a function making the current code. */
+    async inviteKey(as: string, gameId: string) {
+      const key = Buffer.alloc(32, 7)
+      const result = await call('PUT', `/v1/games/${gameId}/invite-key`, as, { key: key.toString('base64url') })
+      if (result.status !== 200) throw new Error(`invite key: ${JSON.stringify(result.body)}`)
+      return (atMs: number = Date.now()) => inviteCode(key, gameId, Math.floor(atMs / INVITE_WINDOW_MS))
     },
   }
 }

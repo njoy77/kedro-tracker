@@ -32,6 +32,8 @@ final class NetworkServices {
     let push: PushService
     let account: AccountSync
     let path: any NetworkPathMonitoring
+    /// Signs this phone's table-link hellos and checks other phones' (design §5.3).
+    let linkIdentity: LinkIdentityService
 
     @ObservationIgnored private weak var app: AppModel?
     @ObservationIgnored private let auth: AuthStore?
@@ -67,17 +69,26 @@ final class NetworkServices {
         self.directory = directory
 
         let bonjour = BonjourLinkNetworking()
+        let linkIdentity = LinkIdentityService()
+        self.linkIdentity = linkIdentity
         let link = TableLink(
             store: store,
             identity: identity,
             secrets: secrets,
             networking: bonjour,
             fallback: MultipeerLinkNetworking(device: app.deviceID),
-            isPlayedWith: { await directory.hasPlayedWith($0) }
+            isPlayedWith: { await directory.hasPlayedWith($0) },
+            isBlocked: { TalkServices.shared.moderation.isBlocked($0) },
+            linkIdentity: linkIdentity
         )
         self.link = link
 
         let sync = BackendSync(api: api, store: store, storage: syncStorage)
+        sync.tableInvite = { game in
+            guard let secret = secrets.secret(for: game) else { return nil }
+            return (TableKey.inviteKey(secret: secret, game: game), TableKey.inviteCode(secret: secret, game: game))
+        }
+        sync.onClaimedGuests = { ClaimedGuests.shared.record($0) }
         self.sync = sync
         let transport = NetworkedTransport(store: store, link: link, sync: sync, path: path, identity: identity, clock: app.clock)
         self.transport = transport
@@ -87,10 +98,17 @@ final class NetworkServices {
         push.isAtLiveTable = isAtLiveTable
         self.push = push
 
-        account = AccountSync(api: api) { _ in
-            // Claimed games now seat the account: pull the ones this phone follows again.
+        let accountSync = AccountSync(api: api) { _ in
+            // Claimed games now seat the account: pull the ones this phone follows again, and
+            // download the rest (games the guest played on other phones, migrated web games).
             for game in sync.connectedGames { await sync.pull(game, full: true) }
+            await sync.pullAccountHistory()
         }
+
+        accountSync.onPhotoUploaded = { [weak app] local, uploaded in
+            app?.adoptUploadedPhoto(local: local, uploaded: uploaded)
+        }
+        account = accountSync
 
         let preferences = app.preferences
         let alerts = NearbyAlertService(
@@ -129,6 +147,9 @@ final class NetworkServices {
         await push.refreshAuthorization()
         alerts.refresh()
         await sync.reachabilityChanged()
+        await refreshLinkIdentity()
+        // A new or reinstalled phone starts empty: bring down the account's history.
+        await sync.pullAccountHistory()
         await withDiscardingTaskGroup { group in
             group.addTask { await self.followAccount() }
             group.addTask { await self.followNearbyOptIn() }
@@ -142,8 +163,17 @@ final class NetworkServices {
         for await user in Observations({ auth.signedInUser }) where user != last {
             last = user
             await sync.reachabilityChanged()
+            await refreshLinkIdentity()
+            await sync.pullAccountHistory()
             await push.accountChanged()
         }
+    }
+
+    /// Fetches the server's link key and this account's attestation while online, so the phone can
+    /// prove who it is at a table that has no internet.
+    private func refreshLinkIdentity() async {
+        guard let app else { return }
+        await linkIdentity.refresh(api: api, player: app.identity.player?.playerID, device: app.deviceID)
     }
 
     private func followNearbyOptIn() async {
@@ -174,7 +204,9 @@ final class NetworkServices {
     func claimGuestHistory(token: String) async -> ClaimResult? {
         do {
             let result = try await api.claim(token: token)
+            ClaimedGuests.shared.record([result.guestId])
             for game in sync.connectedGames { await sync.pull(game, full: true) }
+            await sync.pullAccountHistory()
             return result
         } catch {
             log.info("Claim failed: \(String(describing: error), privacy: .public)")

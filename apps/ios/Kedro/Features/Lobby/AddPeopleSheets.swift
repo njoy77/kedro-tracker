@@ -17,7 +17,7 @@ struct PlayedWithSheet: View {
     private var visible: [PlayedWith] {
         let needle = filter.trimmingCharacters(in: .whitespaces).lowercased()
         return people.filter { person in
-            !model.isSeated(person.player.ref)
+            !model.isSeated(person.player.ref) && !model.hasBlocked(person.player.ref)
                 && (needle.isEmpty || person.player.displayName.lowercased().contains(needle) || person.player.handle.rawValue.contains(needle))
         }
     }
@@ -84,7 +84,7 @@ struct SearchKedroSheet: View {
         NavigationStack {
             PlayerSearchList(
                 caption: { player in PlayerRow.playedCaption(model.playedTogether[player.id]) },
-                isExcluded: { model.isSeated($0.ref) },
+                isExcluded: { model.isSeated($0.ref) || model.hasBlocked($0.ref) },
                 placement: .navigationBarDrawer(displayMode: .always)
             ) { player in
                 Task {
@@ -129,7 +129,7 @@ struct GuestSheet: View {
                 } footer: {
                     Text("No app needed. Someone at the table reports for them.")
                 }
-                let reusable = suggestions.filter { !model.isSeated(.guest($0.guestID)) }
+                let reusable = suggestions.filter { !model.isSeated(.guest($0.guestID)) && !model.hasBlocked(.guest($0.guestID)) }
                 if !reusable.isEmpty {
                     Section("Played before") {
                         ForEach(reusable) { guest in

@@ -38,7 +38,8 @@ nonisolated enum Ratings {
     ///     so pass it whenever the result must match another device or the server exactly.
     /// - Returns: The change for every player in `totals`. The changes sum to zero.
     static func deltas<Key: Hashable>(totals: [Key: Int], ratings: [Key: Double], gamesBefore: [Key: Int], order: [Key]? = nil) -> [Key: Double] {
-        let players = order.map { order in order.filter { totals[$0] != nil } } ?? Array(totals.keys)
+        var seen: Set<Key> = []
+        let players = (order.map { order in order.filter { totals[$0] != nil } } ?? Array(totals.keys)).filter { seen.insert($0).inserted }
         var deltas = Dictionary(uniqueKeysWithValues: players.map { ($0, 0.0) })
         guard players.count >= 2 else { return deltas }
         let scale = 1 / Double(players.count - 1)

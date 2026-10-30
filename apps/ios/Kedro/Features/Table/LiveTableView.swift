@@ -269,6 +269,12 @@ struct LiveTableView: View {
 
     private var moreMenu: some View {
         Menu {
+            // Seats stay open until Round 1 (and a guest's late phone can take over its seat any
+            // time), so the rotating QR stays reachable after Deal for App Clip guests and phones
+            // that can't see the table (design §5.9 rows 5, 8 and 10).
+            if state.status.isLive {
+                Button(TableText.text("button.invite"), systemImage: "qrcode") { sheet = .invite }
+            }
             Button(TableText.text("button.tableDisplay"), systemImage: "rectangle.landscape.rotate") { displayModeChoice = true }
             if session.canEdit {
                 Button(TableText.text("button.changeDealer"), systemImage: "arrow.triangle.2.circlepath") { sheet = .dealer }
@@ -402,6 +408,12 @@ struct LiveTableView: View {
             HandOffSheet(session: session)
         case .extend:
             ExtendSheet(session: session)
+        case .invite:
+            InviteQRSheet(
+                token: TableTokenVault.token(for: session.gameID),
+                tableWord: state.config.tableWord,
+                hostName: state.hostSeat.flatMap { state.seat($0)?.displayName } ?? session.mySeat?.displayName ?? ""
+            )
         case .receipt:
             ReceiptComposer(gameID: session.gameID)
         }

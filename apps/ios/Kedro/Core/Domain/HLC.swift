@@ -80,9 +80,18 @@ nonisolated final class HybridLogicalClock: Sendable {
         }
     }
 
+    /// The most a remote clock may pull this one ahead of the phone's own time (the server's
+    /// `MAX_CLOCK_AHEAD_MS`). An op dated further ahead still folds, but it can't drag this
+    /// device's clock with it, so the 15-minute checks (`finishIfIdle`, `canRestore`) keep working.
+    static let maxRemoteDriftMs: Int64 = 5 * 60 * 1000
+
     /// Merges a remote timestamp so later local events sort after everything this device has seen.
+    /// Remote time is capped at `maxRemoteDriftMs` past the physical clock.
     func receive(_ remote: HLC) {
         let physical = now()
+        let remote = remote.wallMs > physical + Self.maxRemoteDriftMs
+            ? HLC(wallMs: physical + Self.maxRemoteDriftMs, counter: 0, node: remote.node)
+            : remote
         last.withLock { last in
             let wall = max(last.wallMs, remote.wallMs, physical)
             let counter: Int

@@ -46,6 +46,10 @@ final class LobbyModel {
     let hostSeatID: SeatID
 
     @ObservationIgnored private let app: AppModel
+    /// Claim codes for guests this phone adds by name (game end sends them, design §5.9 row 9).
+    @ObservationIgnored let claimCodes: any GuestClaimCodeStoring
+    /// People this phone's person blocked: never seated at their table (design §5.9 "Rules").
+    @ObservationIgnored private let isBlocked: (PlayerRef) -> Bool
     @ObservationIgnored private var finished: [GameState] = []
     /// Seats this phone added, so arrivals from other phones can be announced (J-03).
     @ObservationIgnored private var knownSeats: Set<SeatID> = []
@@ -55,9 +59,16 @@ final class LobbyModel {
 
     /// A fresh table, or a rematch (Run It Back: same people, rounds and mode; the first deal
     /// rotates one seat).
-    init(app: AppModel, rematchOf previous: GameState? = nil) throws {
+    init(
+        app: AppModel,
+        rematchOf previous: GameState? = nil,
+        claimCodes: any GuestClaimCodeStoring = KeychainGuestClaimCodes.shared,
+        isBlocked: @escaping (PlayerRef) -> Bool = { TalkServices.shared.moderation.isBlocked($0) }
+    ) throws {
         guard let profile = app.profile else { throw LobbyError.noProfile }
         self.app = app
+        self.claimCodes = claimCodes
+        self.isBlocked = isBlocked
         let host = profile.seat(order: 0, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: app.gamesPlayed(by: profile.identity))
         hostSeatID = host.id
         var config = GameConfig(plannedRounds: app.preferences.lastPlannedRounds, scoringMode: app.preferences.lastScoringMode)
@@ -69,10 +80,11 @@ final class LobbyModel {
             config.scoringMode = plan.config.scoringMode
             config.tableWord = plan.config.tableWord
             config.houseVoiceCap = plan.config.houseVoiceCap
-            for var seat in plan.others {
+            for var seat in plan.others where !isBlocked(seat.player) {
                 seat.deviceID = nil // a seat saved for them; their phone links it again
                 seat.languageLevel = nil
                 seat.gamesPlayed = app.gamesPlayed(by: seat.player) ?? seat.gamesPlayed
+                seat = Self.withClaimCode(seat, codes: claimCodes)
                 if let next = LobbyRules.adding(seat, to: seats) { seats = next }
             }
             firstDealer = plan.config.firstDealerSeat.flatMap { id in seats.contains { $0.id == id } ? id : nil }
@@ -83,9 +95,16 @@ final class LobbyModel {
     }
 
     /// Reopens a lobby this phone already opened (the live game, still in the lobby).
-    init(app: AppModel, session: GameSession) throws {
+    init(
+        app: AppModel,
+        session: GameSession,
+        claimCodes: any GuestClaimCodeStoring = KeychainGuestClaimCodes.shared,
+        isBlocked: @escaping (PlayerRef) -> Bool = { TalkServices.shared.moderation.isBlocked($0) }
+    ) throws {
         guard let host = session.state.hostSeat else { throw LobbyError.noProfile }
         self.app = app
+        self.claimCodes = claimCodes
+        self.isBlocked = isBlocked
         self.session = session
         hostSeatID = host
         draftSeats = session.state.seats
@@ -174,7 +193,11 @@ final class LobbyModel {
     /// Seats a person (Played With, Search, Guest, or Let {name} In). Adding someone from
     /// Played With or Search is the host vouching: they're admitted without asking.
     func add(_ seat: Seat) async {
-        var seat = seat
+        guard !isBlocked(seat.player) else {
+            log.info("Not seating someone this phone's person blocked")
+            return
+        }
+        var seat = Self.withClaimCode(seat, codes: claimCodes)
         if seat.gamesPlayed == nil { seat.gamesPlayed = app.gamesPlayed(by: seat.player) }
         guard let updated = LobbyRules.adding(withReporterIfNeeded(seat), to: seats) else { return }
         knownSeats.insert(seat.id)
@@ -190,6 +213,18 @@ final class LobbyModel {
 
     func add(_ player: PlayerSummary) async {
         await add(Seat(player, order: seats.count))
+    }
+
+    /// Whether this phone's person blocked someone (Played With and Search hide them).
+    func hasBlocked(_ person: PlayerRef) -> Bool { isBlocked(person) }
+
+    /// A guest seat with no claim hash gets one, its code kept on this phone (PRD §3.2): the guest
+    /// the host typed in is the commonest guest, and the code is how their history reaches them.
+    static func withClaimCode(_ seat: Seat, codes: any GuestClaimCodeStoring) -> Seat {
+        guard case .guest(let guest) = seat.player, seat.claimTokenHash == nil else { return seat }
+        var seat = seat
+        seat.claimTokenHash = LocalProfile.claimTokenHash(codes.codeCreatingIfNeeded(for: guest))
+        return seat
     }
 
     func remove(_ id: SeatID) async {
@@ -370,8 +405,15 @@ final class LobbyModel {
 
     /// New seats that arrived from other phones since the last call (J-03 toasts).
     func takeArrivals() -> [Seat] {
-        let arrivals = seats.filter { !knownSeats.contains($0.id) && $0.deviceID != app.deviceID }
+        var arrivals = seats.filter { !knownSeats.contains($0.id) && $0.deviceID != app.deviceID }
         knownSeats.formUnion(seats.map(\.id))
+        // Someone the host blocked who sat down anyway (another phone let them in, or they hid
+        // who they are when asking) is taken off the table before Deal (design §5.9 "Rules").
+        let blocked = arrivals.filter { isBlocked($0.player) && $0.id != hostSeatID }
+        if !blocked.isEmpty, let session, session.state.rounds.isEmpty {
+            arrivals.removeAll { seat in blocked.contains { $0.id == seat.id } }
+            Task { for seat in blocked { await remove(seat.id) } }
+        }
         if !arrivals.isEmpty { refreshStakes() }
         return arrivals
     }

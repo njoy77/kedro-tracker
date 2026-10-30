@@ -70,6 +70,11 @@ final class TableLink {
     @ObservationIgnored private let fallback: (any TableLinkNetworking)?
     @ObservationIgnored private let isFallbackEnabled: () -> Bool
     @ObservationIgnored private let isPlayedWith: (PlayerRef) async -> Bool
+    /// People this phone's person blocked: never admitted, and never put to the table as a seat
+    /// request (design §5.9 "Rules", §8.3).
+    @ObservationIgnored private let isBlocked: (PlayerRef) -> Bool
+    /// Signs this phone's hellos and checks other phones' (nil: no identity admission at all).
+    @ObservationIgnored private let linkIdentity: LinkIdentityService?
     @ObservationIgnored private let timing: TableLinkTiming
     /// Answers Nearby Interaction token exchanges from phones peeking at this table.
     @ObservationIgnored var nearbyTokens: (any NearbyTokenExchange)?
@@ -107,8 +112,12 @@ final class TableLink {
         fallback: (any TableLinkNetworking)? = nil,
         isFallbackEnabled: @escaping () -> Bool = { NetworkFlags.multipeerFallback },
         isPlayedWith: @escaping (PlayerRef) async -> Bool = { _ in false },
+        isBlocked: @escaping (PlayerRef) -> Bool = { _ in false },
+        linkIdentity: LinkIdentityService? = nil,
         timing: TableLinkTiming = .standard
     ) {
+        self.isBlocked = isBlocked
+        self.linkIdentity = linkIdentity
         self.store = store
         self.identity = identity
         self.secrets = secrets
@@ -330,7 +339,8 @@ final class TableLink {
         let proof = secrets.secret(for: game).map { TableKey.membershipProof(secret: $0, game: game, device: me.deviceID) }
         let hello = LinkHello(
             purpose: .join, game: game, device: me.deviceID, person: me.player, displayName: me.displayName,
-            proof: proof, inviteCode: inviteCodes[game]
+            proof: proof, inviteCode: inviteCodes[game],
+            identity: linkIdentity?.proof(game: game, device: me.deviceID, person: me.player)
         )
         do {
             try await channel.send(.hello(hello))
@@ -362,7 +372,12 @@ final class TableLink {
                 case .operations(let operations):
                     await ingest(operations, game: game, from: channel.id)
                 case .seatRequest(let request):
-                    if !seatRequests.contains(where: { $0.id == request.id }) { seatRequests.append(request) }
+                    if let person = request.person, isBlocked(person) {
+                        // Someone this phone's person blocked never sits with them: say no for them.
+                        try await channel.send(.seatDecision(requestID: request.id, admit: false))
+                    } else if !seatRequests.contains(where: { $0.id == request.id }) {
+                        seatRequests.append(request)
+                    }
                 case .seatRequestResolved(let id):
                     seatRequests.removeAll { $0.id == id }
                 case .ping(let nonce):
@@ -502,9 +517,13 @@ final class TableLink {
             return true
         }
         let state = try? await store.gameState(game)
-        if await shouldAdmit(hello, state: state, game: game) {
+        switch await admission(for: hello, state: state, game: game) {
+        case .admit:
             try await welcome(channel, hello: hello, state: state, game: game)
-        } else {
+        case .refuse:
+            try await channel.send(.refused(.declined))
+            return false
+        case .ask:
             let request = SeatRequest(id: UUID(), game: game, device: hello.device, person: hello.person, displayName: hello.displayName)
             pendingAdmissions[request.id] = channel.id
             seatRequests.append(request)
@@ -514,19 +533,28 @@ final class TableLink {
         return true
     }
 
-    private func shouldAdmit(_ hello: LinkHello, state: GameState?, game: GameID) async -> Bool {
+    enum Admission: Equatable { case admit, ask, refuse }
+
+    /// Who gets in (design §5.3):
+    /// - never someone this phone's person blocked;
+    /// - a phone that was admitted before (membership proof) or holds the QR code;
+    /// - by identity (already seated, or played with), only with a verified identity proof: the
+    ///   person in a hello is otherwise just what the other phone says;
+    /// - everyone else asks to sit.
+    func admission(for hello: LinkHello, state: GameState?, game: GameID) async -> Admission {
+        if let person = hello.person, isBlocked(person) { return .refuse }
         if let proof = hello.proof, let secret = secrets.secret(for: game),
            TableKey.isValidProof(proof, secret: secret, game: game, device: hello.device) {
-            return true
+            return .admit
         }
         if let code = hello.inviteCode, let secret = secrets.secret(for: game),
            TableKey.isValidInviteCode(code, secret: secret, game: game) {
-            return true
+            return .admit
         }
-        guard let person = hello.person else { return false }
+        guard let person = hello.person, person.playerID != nil, linkIdentity?.verifies(hello) == true else { return .ask }
         // Seated already (the host added them, or they're rejoining): matched by account (§5.7).
-        if state?.seat(for: person) != nil { return true }
-        return await isPlayedWith(person)
+        if state?.seat(for: person) != nil { return .admit }
+        return await isPlayedWith(person) ? .admit : .ask
     }
 
     private func welcome(_ channel: any LinkChannel, hello: LinkHello, state: GameState?, game: GameID) async throws {

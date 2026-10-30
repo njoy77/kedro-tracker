@@ -46,6 +46,13 @@ final class BackendSync {
     @ObservationIgnored private let policy: SyncRetryPolicy
     /// Called with operations the server refused (already removed from the queue).
     @ObservationIgnored var onRefused: ([GameOperation]) -> Void = { _ in }
+    /// The table invite of a game this phone was admitted to: the key its codes are made with
+    /// (registered with the server so it can check codes) and the current code (sent with uploads,
+    /// so the server seats a phone that sat down over the link). nil when this phone has no secret.
+    @ObservationIgnored var tableInvite: (GameID) -> (key: Data, code: String)? = { _ in nil }
+    @ObservationIgnored private var registeredInviteKeys: Set<GameID> = []
+    /// Guests the account claimed, as the server lists them (`pullAccountHistory`).
+    @ObservationIgnored var onClaimedGuests: ([GuestID]) -> Void = { _ in }
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "Sync")
 
     // MARK: State
@@ -140,6 +147,33 @@ final class BackendSync {
         hasAccount = await api.hasAccount()
     }
 
+    /// Downloads every game the account is seated in that this phone doesn't hold yet (PRD §3.2,
+    /// §6.4): games played on other phones, guest history moved here by a claim, migrated web
+    /// games, and the whole history on a new or reinstalled phone. Finished games already pulled
+    /// are skipped. Returns how many games were pulled.
+    @discardableResult
+    func pullAccountHistory() async -> Int {
+        await refreshAccount()
+        guard hasAccount else { return 0 }
+        let games: [MyGamesResponse.Game]
+        do {
+            let response = try await api.myGames()
+            games = response.games
+            onClaimedGuests(response.claimedGuestIds)
+        } catch {
+            log.info("History list failed: \(String(describing: error), privacy: .public)")
+            return 0
+        }
+        var pulled = 0
+        for game in games where !Task.isCancelled {
+            let settled = game.status == "finished" || game.status == "abandoned"
+            if settled, cursors[game.gameId] != nil { continue }
+            await pull(game.gameId, full: cursors[game.gameId] == nil)
+            pulled += 1
+        }
+        return pulled
+    }
+
     /// Fetches a game's operations (`full` ignores the cursor), stores them and yields the new ones.
     func pull(_ game: GameID, full: Bool = false) async {
         await refreshAccount()
@@ -185,10 +219,11 @@ final class BackendSync {
         while !queue.isEmpty, !Task.isCancelled {
             let batch = queue.nextBatch(limit: policy.batchSize)
             do {
-                let result = try await api.uploadOperations(batch)
+                let result = try await api.uploadOperations(batch, invites: invites(for: batch))
                 failures = 0
                 lastError = nil
-                handle(result, for: batch)
+                await registerInviteKeys(for: batch)
+                if handle(result, for: batch) { return scheduleRetry() }
             } catch let error as APIError {
                 lastError = error
                 if case .notSignedIn = error { hasAccount = false }
@@ -209,15 +244,45 @@ final class BackendSync {
     }
 
     /// Applies an upload answer: stored operations leave the queue; refused ones too, reported.
-    private func handle(_ result: OpsUploadResult, for batch: [GameOperation]) {
+    /// Ops refused only because this phone's clock ran ahead stay queued. Returns true when some
+    /// did (retry later, with backoff, rather than straight away).
+    @discardableResult
+    private func handle(_ result: OpsUploadResult, for batch: [GameOperation]) -> Bool {
         let stored = result.stored
-        let refused = batch.filter { !stored.contains($0.opId) }
-        queue.remove(Set(batch.map(\.opId)))
+        let later = result.clockAhead
+        let refused = batch.filter { !stored.contains($0.opId) && !later.contains($0.opId) }
+        queue.remove(Set(batch.map(\.opId)).subtracting(later))
         storage.saveQueue(queue.operations)
         pendingCount = queue.count
         if !refused.isEmpty {
             log.notice("The server refused \(refused.count) operation(s)")
             onRefused(refused)
+        }
+        return !later.isEmpty
+    }
+
+    /// Current invite codes for the games in a batch this phone holds a table secret for.
+    private func invites(for batch: [GameOperation]) -> [GameID: String] {
+        var result: [GameID: String] = [:]
+        for game in Set(batch.map(\.gameId)) {
+            if let invite = tableInvite(game) { result[game] = invite.code }
+        }
+        return result
+    }
+
+    /// Registers each table's invite key once the server knows the game (first key wins on the
+    /// server; refusals such as "not seated yet" are retried with a later batch).
+    private func registerInviteKeys(for batch: [GameOperation]) async {
+        for game in Set(batch.map(\.gameId)) where !registeredInviteKeys.contains(game) {
+            guard let invite = tableInvite(game) else { continue }
+            do {
+                try await api.registerInviteKey(invite.key, for: game)
+                registeredInviteKeys.insert(game)
+            } catch APIError.badStatus(409) {
+                registeredInviteKeys.insert(game) // another phone at the table registered first
+            } catch {
+                log.info("Invite key not registered yet: \(String(describing: error), privacy: .public)")
+            }
         }
     }
 
@@ -226,7 +291,7 @@ final class BackendSync {
     private func uploadIndividually(_ batch: [GameOperation]) async -> Bool {
         for operation in batch {
             do {
-                let result = try await api.uploadOperations([operation])
+                let result = try await api.uploadOperations([operation], invites: invites(for: [operation]))
                 handle(result, for: [operation])
             } catch let error as APIError where error.isRetryable || error == .badStatus(404) {
                 scheduleRetry()

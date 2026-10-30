@@ -113,12 +113,66 @@ final class PlayModel {
         defer { isJoining = false }
         do {
             let action = card.action
-            try await TableJoiner(app: app).perform(action, at: card.id, inviteCode: card.inviteCode)
-            if action == .askToSit {
-                askedTable = card.id
-            } else {
-                linkedTable = nil
+            switch try await TableJoiner(app: app).perform(action, at: card.id, inviteCode: card.inviteCode) {
+            case .confirmGuestSeat(let session, let seat):
+                guestSeatConfirmation = GuestSeatConfirmation(session: session, seat: seat, fallback: action)
+            case .done:
+                if action == .askToSit {
+                    askedTable = card.id
+                } else {
+                    linkedTable = nil
+                }
             }
+        } catch {
+            app.toasts.show(error.localizedDescription)
+        }
+    }
+
+    /// "Is this Sam?" for a guest seat the host typed in with this phone's name.
+    var guestSeatConfirmation: GuestSeatConfirmation?
+
+    struct GuestSeatConfirmation: Identifiable {
+        let session: GameSession
+        let seat: Seat
+        /// What the card would have done otherwise ("Not me").
+        let fallback: SitDownAction
+        var id: SeatID { seat.id }
+    }
+
+    /// "Yes, that's me": takes over the guest seat.
+    func confirmGuestSeat() async {
+        guard let confirmation = guestSeatConfirmation else { return }
+        guestSeatConfirmation = nil
+        do {
+            try await TableJoiner(app: app).takeOver(confirmation.seat, in: confirmation.session)
+            linkedTable = nil
+        } catch {
+            app.toasts.show(error.localizedDescription)
+        }
+    }
+
+    /// Not them: the card's own action after all (a seat of their own, Ask to Sit, or Watch).
+    func declineGuestSeat() async {
+        guard let confirmation = guestSeatConfirmation, let card else { return }
+        guestSeatConfirmation = nil
+        guard let profile = app.profile else { return }
+        do {
+            let session = confirmation.session
+            switch confirmation.fallback {
+            case .watch:
+                app.toasts.show(app.voice.line("J-04"))
+            case .sitDown:
+                guard session.state.seats.count < GameConfig.seatRange.upperBound else { throw TableJoiner.JoinError.tableFull }
+                let seat = profile.seat(order: session.state.seats.count, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: app.gamesPlayed(by: profile.identity))
+                try await session.send(.playerSeated(.init(seat: seat)))
+            case .askToSit:
+                guard let requests = app.discovery as? any SeatRequesting else { throw TableJoiner.JoinError.cantAsk }
+                let seat = profile.seat(order: session.state.seats.count, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: app.gamesPlayed(by: profile.identity))
+                try await requests.requestSeat(seat, at: card.id)
+                askedTable = card.id
+                return
+            }
+            linkedTable = nil
         } catch {
             app.toasts.show(error.localizedDescription)
         }

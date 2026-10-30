@@ -54,25 +54,38 @@ struct TableJoiner {
         case noProfile
         case tableFull
         case cantAsk
+        case blockedAtTable
 
         var errorDescription: String? {
             switch self {
             case .noProfile: "Set up your profile first."
             case .tableFull: "That table's full. Watch this one; you're in the rematch."
             case .cantAsk: "Couldn't reach the table to ask. Scan the host's QR code instead."
+            case .blockedAtTable: "Someone you blocked is at that table."
             }
         }
     }
 
+    /// What happened at the card.
+    enum Outcome {
+        /// Seated (or watching, or asked): the session is the live game.
+        case done(GameSession)
+        /// The host typed this person in as a guest with this phone's name and no phone linked:
+        /// "Is this Sam? · Yes, that's me" (design §5.7, §5.9 row 10). `takeOver` links it.
+        case confirmGuestSeat(GameSession, Seat)
+    }
+
     let app: AppModel
+    /// People this phone's person blocked: never sat with (design §5.9 "Rules").
+    var isBlocked: (PlayerRef) -> Bool = { TalkServices.shared.moderation.isBlocked($0) }
     private let log = Logger(subsystem: "com.njoy77.kedro", category: "Join")
 
     /// How long to wait for the table's operations to arrive before seating.
     static let syncWait: Duration = .seconds(2)
 
-    /// Performs the card's action. Returns the session (now the live game, presented).
+    /// Performs the card's action. The session is now the live game (presented unless asking).
     @discardableResult
-    func perform(_ action: SitDownAction, at game: GameID, inviteCode: String? = nil) async throws -> GameSession {
+    func perform(_ action: SitDownAction, at game: GameID, inviteCode: String? = nil) async throws -> Outcome {
         guard let profile = app.profile else { throw JoinError.noProfile }
         if let inviteCode, let inviting = app.discovery as? any TableInviting {
             // The scanned QR code admits this phone to the table's link (no Ask to Sit).
@@ -87,6 +100,14 @@ struct TableJoiner {
         // for this person) is folded in; the card presents the Table when it arrives.
         app.startLiveGame(session, present: action != .askToSit)
         await waitForSync(session)
+
+        if session.state.seats.contains(where: { $0.player != profile.identity && isBlocked($0.player) }) {
+            app.closeLiveGame()
+            throw JoinError.blockedAtTable
+        }
+        if session.state.seat(for: profile.identity) == nil, let guestSeat = Self.guestSeat(matching: profile, in: session.state) {
+            return .confirmGuestSeat(session, guestSeat)
+        }
 
         switch action {
         case .watch:
@@ -107,7 +128,34 @@ struct TableJoiner {
             guard let requests = app.discovery as? any SeatRequesting else { throw JoinError.cantAsk }
             try await requests.requestSeat(mySeat(profile, order: session.state.seats.count), at: game)
         }
-        return session
+        return .done(session)
+    }
+
+    /// "Yes, that's me": links this phone to the guest seat the host typed in (logged by the fold
+    /// as a new phone on the seat), and counts that guest as this person from now on so the history
+    /// doesn't split across two identities (`ClaimedGuests`; the host's claim code moves it on the
+    /// server).
+    func takeOver(_ guestSeat: Seat, in session: GameSession) async throws {
+        var seat = guestSeat
+        seat.deviceID = app.deviceID
+        seat.languageLevel = app.preferences.effectiveLanguageLevel
+        try await session.send(.playerSeated(.init(seat: seat)))
+        if case .guest(let guest) = guestSeat.player { ClaimedGuests.shared.record([guest]) }
+        app.presentTable()
+    }
+
+    /// A guest seat with no phone linked whose name is this person's (case and accents aside).
+    static func guestSeat(matching profile: LocalProfile, in state: GameState) -> Seat? {
+        let name = normalizedName(profile.displayName)
+        guard !name.isEmpty else { return nil }
+        return state.seats.first { seat in
+            seat.isGuest && seat.deviceID == nil && seat.player != profile.identity && normalizedName(seat.displayName) == name
+        }
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US"))
     }
 
     private func mySeat(_ profile: LocalProfile, order: Int) -> Seat {

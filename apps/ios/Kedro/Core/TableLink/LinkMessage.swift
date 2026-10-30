@@ -53,6 +53,9 @@ nonisolated struct LinkHello: Hashable, Sendable, Codable {
     var proof: Data?
     /// The rotating code from the table's QR link (`TableKey.inviteCode`): admits without asking.
     var inviteCode: String?
+    /// Proves `person` (an account) is who this phone says: needed before a hub admits by identity
+    /// (seated already, or played with). `LinkIdentityProof`.
+    var identity: LinkIdentityProof?
 }
 
 nonisolated struct LinkWelcome: Hashable, Sendable, Codable {

@@ -73,13 +73,17 @@ struct ConvergenceTests {
         let storeB = InMemoryGameStore(operations: shared + onlyB)
         let host = LocalIdentity(deviceID: game.deviceA, player: game.seats[0].player, displayName: "P0")
         let guest = LocalIdentity(deviceID: game.deviceB, player: game.seats[1].player, displayName: "P1")
+        // Seated people are admitted by identity, which needs a verified (server-attested) hello.
+        let server = TestLinkServer()
         let linkA = TableLink(
             store: storeA, identity: { host }, secrets: InMemoryTableSecretStore(),
-            networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false }, timing: .fast
+            networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false },
+            linkIdentity: try server.identityService(for: host), timing: .fast
         )
         let linkB = TableLink(
             store: storeB, identity: { guest }, secrets: InMemoryTableSecretStore(),
-            networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false }, timing: .fast
+            networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false },
+            linkIdentity: try server.identityService(for: guest), timing: .fast
         )
         defer {
             linkA.leave()
@@ -127,16 +131,18 @@ struct ConvergenceTests {
         game.setUp()
         let deviceC = DeviceID()
         let air = InMemoryTableAir()
-        func makeLink(_ device: DeviceID, seat: Int) -> TableLink {
+        let server = TestLinkServer()
+        func makeLink(_ device: DeviceID, seat: Int) throws -> TableLink {
             let me = LocalIdentity(deviceID: device, player: game.seats[seat].player, displayName: "P\(seat)")
             return TableLink(
                 store: InMemoryGameStore(operations: game.operations), identity: { me }, secrets: InMemoryTableSecretStore(),
-                networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false }, timing: .fast
+                networking: InMemoryLinkNetworking(air: air), isFallbackEnabled: { false },
+                linkIdentity: try server.identityService(for: me), timing: .fast
             )
         }
-        let hub = makeLink(game.deviceA, seat: 0)
-        let seat1 = makeLink(game.deviceB, seat: 1)
-        let seat2 = makeLink(deviceC, seat: 2)
+        let hub = try makeLink(game.deviceA, seat: 0)
+        let seat1 = try makeLink(game.deviceB, seat: 1)
+        let seat2 = try makeLink(deviceC, seat: 2)
         defer {
             hub.leave()
             seat1.leave()
