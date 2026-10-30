@@ -35,24 +35,6 @@ struct SnapshotProvider: TimelineProvider {
     }
 }
 
-/// Literal widget strings that aren't in the copy deck yet.
-/// TODO(copy): move these to `docs/kedro-ios-copy.md` §20 (literal) and the deck.
-enum WidgetCopy {
-    static let standing = "Standing"
-    static let rivalry = "Rivalry"
-    static let nextBadge = "Next Badge"
-    static let notRanked = "Not ranked yet"
-    static let noRival = "Play a few games. Somebody will start to bother you."
-    static let noBadge = "Every badge is yours. Go outside."
-    static let you = "You"
-
-    static func meter(_ n: Int) -> String { "\(n) of \(StandingSnapshot.gamesToRank)" }
-
-    static func movement(_ places: Int) -> String {
-        places == 0 ? "Same as last week" : "\(abs(places)) this week"
-    }
-}
-
 /// The small header every widget shares: the K mark and a label.
 struct WidgetHeader: View {
     let title: String

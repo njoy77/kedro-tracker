@@ -34,12 +34,17 @@ struct LiveGameLockScreenView: View {
     private var header: some View {
         HStack(spacing: 6) {
             KMark(height: 16)
-            Text("\(attributes.tableWord) · \(state.metadataLine)")
+            Text("\(attributes.tableWord.uppercased()) · \(state.metadataLine)")
                 .kedroFont(.label)
                 .foregroundStyle(.cream)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 0)
+            if state.phase == .active {
+                Text(LiveActivityCopy.live)
+                    .kedroFont(.label)
+                    .foregroundStyle(isStale ? Color.silverDim : Color.kedroRed)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -48,7 +53,7 @@ struct LiveGameLockScreenView: View {
         HStack(spacing: 10) {
             Group {
                 if isStale {
-                    Text(state.staleLine).foregroundStyle(.silver)
+                    Text(state.staleLine()).foregroundStyle(.silver)
                 } else if let line = state.statusLine {
                     Text(line).foregroundStyle(.cream)
                 }

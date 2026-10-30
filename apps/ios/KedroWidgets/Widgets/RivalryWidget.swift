@@ -10,7 +10,7 @@ struct RivalryWidget: Widget {
                 .widgetURL(KedroLink.widget(kind: KedroWidgetKind.rivalry).url)
         }
         .configurationDisplayName(WidgetCopy.rivalry)
-        .description("You against the person you play most.")
+        .description(WidgetCopy.rivalryDescription)
         .supportedFamilies([.systemMedium, .accessoryRectangular])
     }
 }

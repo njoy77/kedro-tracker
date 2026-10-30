@@ -10,7 +10,7 @@ struct StandingWidget: Widget {
                 .widgetURL(KedroLink.widget(kind: KedroWidgetKind.standing).url)
         }
         .configurationDisplayName(WidgetCopy.standing)
-        .description("Your rank, rating and how you moved this week.")
+        .description(WidgetCopy.standingDescription)
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
     }
 }
@@ -21,7 +21,7 @@ struct StandingWidgetView: View {
 
     private var standing: StandingSnapshot {
         entry.snapshot.standing
-            ?? StandingSnapshot(rank: nil, scopeLabel: "Global", rating: nil, weeklyMovement: 0, gamesPlayed: 0)
+            ?? StandingSnapshot(rank: nil, scopeLabel: WidgetCopy.global, rating: nil, weeklyMovement: 0, gamesPlayed: 0)
     }
 
     var body: some View {
@@ -79,6 +79,8 @@ struct StandingWidgetView: View {
         }
         .font(.caption2.weight(.semibold))
         .foregroundStyle(places > 0 ? Color.kedroRed : Color.silver)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WidgetCopy.movementAccessibility(places))
     }
 
     // MARK: Lock Screen

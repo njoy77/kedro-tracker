@@ -54,7 +54,7 @@ struct LiveGameActivityWidget: Widget {
                         }
                         .opacity(context.isStale ? 0.5 : 1)
                         HStack(spacing: 8) {
-                            Text(context.isStale ? state.staleLine : (state.statusLine ?? ""))
+                            Text(context.isStale ? state.staleLine() : (state.statusLine ?? ""))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(context.isStale ? Color.silver : Color.cream)
                                 .lineLimit(2)

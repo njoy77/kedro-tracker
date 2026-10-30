@@ -2,7 +2,7 @@ import Foundation
 
 /// The design spec's sample game (§17) as Live Activity content and widget snapshots, for
 /// previews and the widget gallery placeholder. The app builds the real thing from the fold.
-enum WidgetSamples {
+nonisolated enum WidgetSamples {
     static let attributes = LiveGameAttributes(
         gameID: "00000000-0000-4000-8000-000000000001",
         tableWord: "Cold Deck",
@@ -15,9 +15,8 @@ enum WidgetSamples {
         avatar: LiveAvatar
     ) -> LiveStandingRow {
         LiveStandingRow(
-            id: id, name: name, rank: rank, rankLabel: "\(rank)", ordinal: ordinal, score: score, delta: delta,
-            outcome: outcome, isMe: isMe, isLeader: isLeader, isDealer: isDealer, avatar: avatar,
-            accessibilityLabel: "\(name), \(ordinal) place, \(score) points"
+            id: id, name: name, rankLabel: "\(rank)", ordinal: ordinal, score: score, delta: delta,
+            outcome: outcome, isMe: isMe, isLeader: isLeader, isDealer: isDealer, avatar: avatar
         )
     }
 
@@ -38,9 +37,9 @@ enum WidgetSamples {
         rows: afterRound5Rows,
         factLine: "Round 5. Noah knocked on 2.",
         liveKnockLine: nil,
-        staleLine: "Last update 9:46 · Open Kedro to catch up",
+        staleTemplate: "Last update {time} · Open Kedro to catch up",
         action: LiveActivityButton(kind: .recordRound, title: "Record Round 6"),
-        updatedAt: .now
+        updatedAt: Int(Date.now.timeIntervalSince1970)
     )
 
     static var liveKnock: LiveGameAttributes.ContentState {
@@ -79,6 +78,7 @@ enum WidgetSamples {
         playerName: "Noah",
         standing: StandingSnapshot(rank: 13, scopeLabel: "Global", rating: 1086, weeklyMovement: 2, gamesPlayed: 41),
         rivalry: RivalrySnapshot(
+            rivalID: "p:00000000-0000-4000-8000-000000000002",
             rivalName: "Ana",
             rivalAvatar: .emoji(emoji: "🦊", colorIndex: 0),
             myAvatar: .curated(id: "crow"),

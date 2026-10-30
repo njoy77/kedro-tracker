@@ -16,7 +16,7 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     var nextBadge: BadgeSnapshot?
 
     /// Shown when nothing has been written yet (fresh install, or the widget gallery).
-    static let empty = WidgetSnapshot(generatedAt: .distantPast, playerName: "", standing: nil, rivalry: nil, nextBadge: nil)
+    static let empty = WidgetSnapshot(generatedAt: Date(timeIntervalSince1970: 0), playerName: "", standing: nil, rivalry: nil, nextBadge: nil)
 }
 
 /// The Standing widget: rank, rating and weekly movement, or the 5-step meter before game 5.
@@ -42,6 +42,8 @@ nonisolated struct StandingSnapshot: Codable, Hashable, Sendable {
 
 /// The Rivalry widget: "You vs Ana · 5–12" plus the rivalry line.
 nonisolated struct RivalrySnapshot: Codable, Hashable, Sendable {
+    /// The rival's `SeatID` raw value (`p:<uuid>` / `g:<uuid>`): a tap opens the head-to-head.
+    var rivalID: String?
     var rivalName: String
     var rivalAvatar: LiveAvatar
     var myAvatar: LiveAvatar

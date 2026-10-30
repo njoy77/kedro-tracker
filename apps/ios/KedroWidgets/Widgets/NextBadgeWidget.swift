@@ -10,7 +10,7 @@ struct NextBadgeWidget: Widget {
                 .widgetURL(KedroLink.widget(kind: KedroWidgetKind.nextBadge).url)
         }
         .configurationDisplayName(WidgetCopy.nextBadge)
-        .description("The badge you're closest to.")
+        .description(WidgetCopy.nextBadgeDescription)
         .supportedFamilies([.systemSmall])
     }
 }

@@ -5,8 +5,8 @@ import Foundation
 /// and KedroWidgets (which draws it).
 ///
 /// Every string is rendered by the app in the player's language level before it gets here, so the
-/// extension never needs the copy deck. The server's broadcast pushes (APNs channel per game) must
-/// send the same `ContentState` JSON; the shape is documented on each type and pinned by
+/// extension never needs the copy deck. The server's broadcast pushes (one APNs channel per game)
+/// must send the same `ContentState` JSON; the shape is documented on each type and pinned by
 /// `LiveActivityContentTests`.
 nonisolated struct LiveGameAttributes: ActivityAttributes {
     /// The game (`GameID`, lowercase UUID string).
@@ -16,8 +16,14 @@ nonisolated struct LiveGameAttributes: ActivityAttributes {
     /// This phone's seat (`SeatID` raw value, `p:<uuid>` / `g:<uuid>`), nil for watchers.
     var mySeatID: String?
 
-    /// What changes during the game. Kept well under ActivityKit's 4 KB payload limit: 8 rows of
-    /// short strings plus a few lines.
+    /// What changes during the game. Kept well under ActivityKit's 4 KB limit (8 rows of short
+    /// strings and a few lines; `LiveActivityContentTests` checks the worst case).
+    ///
+    /// JSON (default `JSONEncoder`, the format ActivityKit and the push payload's `content-state`
+    /// use): `{"phase":"active","roundNumber":6,"plannedRounds":8,"metadataLine":"ROUND 6 OF 8 · NOAH DEALS",
+    /// "rows":[…],"factLine":"Round 5. Noah knocked on 2.","staleTemplate":"Last update {time} · Open Kedro to catch up",
+    /// "action":{"kind":"recordRound","title":"Record Round 6"},"updatedAt":1761868000}` plus
+    /// `liveKnockLine` while a knock is marked. Optional keys are omitted when nil.
     struct ContentState: Codable, Hashable, Sendable {
         var phase: LiveGamePhase
         /// The round being played (the last one once all are in).
@@ -31,12 +37,15 @@ nonisolated struct LiveGameAttributes: ActivityAttributes {
         var factLine: String?
         /// "Noah knocked · last turns" (K-23) while a live knock is marked; replaces the fact line.
         var liveKnockLine: String?
-        /// "Last update 9:46 · Open Kedro to catch up" (N-06), shown once the content is stale.
-        var staleLine: String
-        /// The button on the Lock Screen and in the expanded Island, nil for watchers and finished games.
+        /// N-06 with a `{time}` placeholder: "Last update {time} · Open Kedro to catch up". The
+        /// extension fills in `updatedAt` in the phone's own time format.
+        var staleTemplate: String
+        /// The button on the Lock Screen and in the expanded Island; nil for watchers, between
+        /// the last round and the finish, and for finished games.
         var action: LiveActivityButton?
-        /// When the app (or server) produced this content.
-        var updatedAt: Date
+        /// When this content was produced, in whole seconds since 1970 (server-friendly; a
+        /// `Date` would encode as seconds since 2001 with ActivityKit's coder).
+        var updatedAt: Int
 
         /// The live knock line if a knock is marked, else the fact line.
         var statusLine: String? { liveKnockLine ?? factLine }
@@ -44,11 +53,15 @@ nonisolated struct LiveGameAttributes: ActivityAttributes {
         /// This phone's row.
         var myRow: LiveStandingRow? { rows.first(where: \.isMe) }
 
-        /// The leading row(s): the first row, or every row sharing the lead.
-        var leaders: [LiveStandingRow] { rows.filter(\.isLeader) }
-
         /// "R6/8" for the compact Island.
         var compactRound: String { "R\(roundNumber)/\(plannedRounds)" }
+
+        var updatedDate: Date { Date(timeIntervalSince1970: TimeInterval(updatedAt)) }
+
+        /// "Last update 9:46 · Open Kedro to catch up".
+        func staleLine(timeFormat: (Date) -> String = { $0.formatted(date: .omitted, time: .shortened) }) -> String {
+            staleTemplate.replacingOccurrences(of: "{time}", with: timeFormat(updatedDate))
+        }
     }
 }
 
@@ -61,18 +74,15 @@ nonisolated enum LiveGamePhase: String, Codable, Hashable, Sendable {
 
 /// One row of the Live Activity standings.
 ///
-/// JSON: `{"id":"p:…","name":"Ana","rank":2,"rankLabel":"2","ordinal":"2nd","score":"29",
-/// "delta":"+9","isMe":false,"isLeader":false,"isDealer":true,"avatar":{…},
-/// "accessibilityLabel":"Ana, 2nd place, 29 points, last round plus 9"}` plus `outcome` for the
-/// last round's knocker.
+/// JSON: `{"id":"p:…","name":"Ana","rankLabel":"2","ordinal":"2nd","score":"29","delta":"+9",
+/// "isMe":false,"isLeader":false,"isDealer":true,"avatar":{…}}` plus `outcome` for the last
+/// round's knocker. `delta` is omitted before Round 1.
 nonisolated struct LiveStandingRow: Codable, Hashable, Sendable, Identifiable {
     /// `SeatID` raw value.
     var id: String
     /// Real casing.
     var name: String
-    /// Competition rank position (1-based; shared ranks repeat).
-    var rank: Int
-    /// "1", "2=".
+    /// "1", "2=" (competition ranking; shared ranks repeat).
     var rankLabel: String
     /// "1st", "2nd" (the Island's "1st · 26").
     var ordinal: String
@@ -87,8 +97,17 @@ nonisolated struct LiveStandingRow: Codable, Hashable, Sendable, Identifiable {
     var isLeader: Bool
     var isDealer: Bool
     var avatar: LiveAvatar
-    /// One VoiceOver element per row (design §14).
-    var accessibilityLabel: String
+
+    /// One VoiceOver element per row (design §14): "Ana, 2nd place, 29 points, last round +9".
+    /// VoiceOver reads the true minus as "minus".
+    var accessibilityLabel: String {
+        var parts = ["\(name), \(ordinal) place, \(score) points"]
+        if let delta {
+            parts.append("last round \(outcome.map { "\($0.word) " } ?? "")\(delta)")
+        }
+        if isDealer { parts.append("deals") }
+        return parts.joined(separator: ", ")
+    }
 }
 
 /// The knock outcome glyphs (design §3.6). JSON: `"landed"` | `"tied"` | `"failed"`.
@@ -102,9 +121,12 @@ nonisolated enum LiveKnockOutcome: String, Codable, Hashable, Sendable {
         case .failed: "xmark"
         }
     }
+
+    /// Literal word for VoiceOver (nothing by glyph alone).
+    var word: String { rawValue }
 }
 
-/// A 20 pt avatar the extension can draw without the network: photos fall back to the initial.
+/// A small avatar the extension can draw without the network: photos fall back to the initial.
 ///
 /// JSON: `{"emoji":{"emoji":"🦊","colorIndex":0}}`, `{"curated":{"id":"bull"}}`,
 /// `{"initial":{"letter":"S","isGuest":true}}`.
