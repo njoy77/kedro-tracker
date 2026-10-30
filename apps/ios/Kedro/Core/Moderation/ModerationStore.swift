@@ -120,10 +120,19 @@ final class ModerationStore {
         save()
     }
 
-    func unmute(_ seat: SeatID, in game: GameID) {
+    /// Mute Their Taunts from a profile (no game): always.
+    func muteAlways(_ seat: SeatID) {
+        mutedAlways.insert(seat)
+        save()
+    }
+
+    /// Lifts the "always" mute and, with a game, that game's mute.
+    func unmute(_ seat: SeatID, in game: GameID?) {
         mutedAlways.remove(seat)
-        mutedInGame[game]?.remove(seat)
-        if mutedInGame[game]?.isEmpty == true { mutedInGame[game] = nil }
+        if let game {
+            mutedInGame[game]?.remove(seat)
+            if mutedInGame[game]?.isEmpty == true { mutedInGame[game] = nil }
+        }
         save()
     }
 
