@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { foldGame, gameTotals, outcomeOf, parseOperation, projectFinishedGame, seatIdOf, type Operation } from '@kedro/shared'
+import { LEADERBOARD_SORTS, foldGame, gameTotals, legacyFinishedAtMs, legacyLeaderboard, legacyRounds, outcomeOf, parseOperation, projectFinishedGame, seatIdOf, type Operation } from '@kedro/shared'
 import { convertLegacy, readLegacyExport, type LegacyExport } from '../src/legacy/convert.ts'
 import { importLegacy } from '../src/legacy/importer.ts'
+import { seedFromLegacy } from '../src/dev/seed.ts'
 import { harness } from './support.ts'
 
 const players = [
@@ -125,5 +126,52 @@ describe('legacy web history', () => {
     const report = await importLegacy(data, { store: h.store, services: h.services, apply: true })
     expect(report.imported).toBe(1)
     expect(h.store.finished.size).toBe(0)
+  })
+
+  test("the web app's leaderboard (legacyLeaderboard) is the server's board for the same history", async () => {
+    // Six varied games with a tie, a knock of each kind, an inherent knock, a deleted player's
+    // seat and a short game, so ratings, minimums and Not Yet Ranked all come into play.
+    const dan = { id: 'lp4', username: 'dan', emoji: '🎲', deleted: true }
+    const scores = [[3, 9, 5], [-10, 4, 6], [7, 7, 2], [0, 5, -1], [16, 2, 8], [4, 4, 9]]
+    const games = Array.from({ length: 7 }, (_, index) =>
+      legacyGame(`g${index}`, scores.slice(0, index === 6 ? 2 : 3 + (index % 3)).map((round, r) => ({
+        scores: round.map((score) => score + index - r),
+        knockedBy: r === 1 ? players[index % 3].id : null,
+        knockResult: r === 1 ? 'incorrect' : undefined,
+      }))),
+    )
+    games[2].players[2] = { ...dan, total: 0 }
+    for (const round of games[2].rounds) round.scores[2].playerId = dan.id
+    games[3].rounds[0].inherentKnock = 'lp1'
+    const data = { players: [...players, dan], games }
+
+    const h = harness()
+    await seedFromLegacy({ kedro_players: data.players, kedro_games: data.games }, h)
+    const viewer = (await h.store.listPlayers({ offset: 0, limit: 10 }))[0].id
+    const names = new Map(data.players.map((player) => [player.id, player.username]))
+    for (const sort of LEADERBOARD_SORTS) {
+      const server = (await h.get(`/v1/leaderboard?scope=global&sort=${sort}`, viewer)).body
+      const web = legacyLeaderboard(data, sort)
+      const webRows = web.rows.map((row) => [names.get(row.subject.slice(2)), row.rank, row.value, row.rating, row.stats.wins, row.stats.knocks] as const)
+      const serverRows = server.rows.map((row: any) => [row.player.displayName, row.rank, row.value, row.rating, row.wins, row.knocks] as const)
+      // Same rows with the same ranks. Within a tie the order falls back to IDs, which differ
+      // between the legacy history and the server, so tied rows are compared as a group.
+      const grouped = (rows: readonly (readonly unknown[])[]) => rows.map((row) => `${row[1] ?? '–'}|${row.join('|')}`).sort()
+      expect(grouped(webRows)).toEqual(grouped(serverRows))
+      expect(webRows.map((row) => row[1])).toEqual(serverRows.map((row: any) => row[1]))
+      expect(web.notYetRanked.map((row) => names.get(row.subject.slice(2))).sort()).toEqual(server.notYetRanked.map((row: any) => row.player.displayName).sort())
+    }
+    expect(legacyLeaderboard(data, 'rating').rows.length).toBeGreaterThan(0)
+  })
+
+  test('legacyFinishedAtMs matches the finish time the imported op log folds to', () => {
+    const game = legacyGame('timing', [{ scores: [3, 9, 5] }, { scores: [4, 2, 6] }, { scores: [5, 7, 1] }])
+    const [converted] = convertLegacy({ players, games: [game] }, () => 'a'.repeat(64)).games
+    const rounds = legacyRounds(game, (id) => seatIdOf({ kind: 'guest', id }))
+    if ('skipped' in rounds) throw new Error(rounds.skipped)
+    expect(fold(converted).finishedAtMs).toBe(legacyFinishedAtMs(game, rounds.timestamps))
+    expect(fold(converted).finishedAtMs).toBe(game.endedAt)
+    const unended = { ...game, endedAt: undefined }
+    expect(fold(convertLegacy({ players, games: [unended] }, () => 'a'.repeat(64)).games[0]).finishedAtMs).toBe(legacyFinishedAtMs(unended, rounds.timestamps))
   })
 })
