@@ -10,8 +10,12 @@ enum AppTab: Hashable {
 ///
 /// Each tab's `NavigationStack` is created by `MainTabView` and resolves these with
 /// `.appRouteDestinations()`, so feature root views must not create their own `NavigationStack`.
-/// Feature-internal pushes may use their own `Hashable` values with their own
-/// `.navigationDestination(for:)`.
+/// A sheet that hosts route destinations (Rules, the Knock Calculator, Learn) wraps them in its
+/// own `NavigationStack` and applies `.appRouteDestinations()` itself.
+///
+/// Every push on a tab's stack must be an `AppRoute`: the tabs bind a typed `[AppRoute]` path, so
+/// a `NavigationLink(value:)` of any other type can't join it and silently never pushes. Add a case
+/// here instead of a feature-specific route type.
 enum AppRoute: Hashable {
     /// A player's profile (PRD §5.1; guests only in game context).
     case profile(PlayerRef)
@@ -23,7 +27,13 @@ enum AppRoute: Hashable {
     /// A stored game's history (read-only once finished).
     case gameHistory(GameID)
     case settings
+    /// Settings → the profile editor.
+    case editProfile
     case learn
+    /// Learn → the 2-minute cards ending in the knock-gamble quiz.
+    case learnCards
+    /// Learn → the Score a Round drill.
+    case scoreRoundDrill
     case rules
     /// The Knock Calculator, optionally prefilled from a round (design §13.1).
     case knockCalculator(Round?)
@@ -51,7 +61,10 @@ struct AppRouteDestination: View {
         case .wrapped(let year): WrappedView(year: year)
         case .gameHistory(let game): GameRecordView(gameID: game)
         case .settings: SettingsView()
+        case .editProfile: ProfileEditView()
         case .learn: LearnView()
+        case .learnCards: LearnCardsView()
+        case .scoreRoundDrill: ScoreRoundDrill()
         case .rules: RulesSheet()
         case .knockCalculator(let round): KnockCalculatorView(prefill: round)
         }

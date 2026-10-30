@@ -400,11 +400,11 @@ struct LiveTableView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         case .rules:
-            NavigationStack { RulesSheet() }
+            NavigationStack { RulesSheet().appRouteDestinations() }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         case .why(let round):
-            NavigationStack { KnockCalculatorView(prefill: round) }
+            NavigationStack { KnockCalculatorView(prefill: round).appRouteDestinations() }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         case .dealer:
