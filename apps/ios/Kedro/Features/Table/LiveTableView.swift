@@ -11,6 +11,8 @@ struct LiveTableView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(LiveActivityController.self) private var liveActivity: LiveActivityController?
+    @State private var talk = TalkServices.shared
     @State private var sheet: TableSheet?
     @State private var confirmation: Confirmation?
     @State private var nextDealerNudge: String?
@@ -62,6 +64,19 @@ struct LiveTableView: View {
         }
         .selfReportAutoCommit(session)
         .keepsScreenAwake()
+        // A tapped taunt toast (Talk) asks for the feed: open History on the Feed tab.
+        .onChange(of: talk.feedRequest, initial: true) { _, request in
+            guard request == session.gameID else { return }
+            talk.feedRequest = nil
+            sheet = .history(.feed)
+        }
+        // Live Activity buttons (Record Round / Report Your Hand) land here.
+        .onChange(of: liveActivity?.pendingAction, initial: true) {
+            takeLiveActivityAction()
+        }
+        .onChange(of: isDisplayMode, initial: true) { _, isOn in
+            displayModeChanged(isOn)
+        }
         .onChange(of: verticalSizeClass) { displayModeChoice = nil }
         .onChange(of: session.state.rounds.count) { old, new in
             guard new > old, let dealer = session.state.currentDealer else {
@@ -85,7 +100,34 @@ struct LiveTableView: View {
             withAnimation(.smooth(duration: 0.35)) { revealClock = .now }
         }
         .task(id: session.state.isAwaitingFinish) { await autoFinish() }
-        .onDisappear { app.toasts.isDeferring = false }
+        .onDisappear {
+            app.toasts.isDeferring = false
+            talk.bannerGames.remove(session.gameID)
+        }
+    }
+
+    // MARK: System hooks
+
+    private func takeLiveActivityAction() {
+        guard let action = liveActivity?.takePendingAction(for: session.gameID) else { return }
+        switch action {
+        case .recordRound, .reportHand:
+            if canRecord { sheet = .record }
+        case .openTable:
+            break
+        }
+    }
+
+    /// Display mode shows taunts as banners (Talk skips the toast) and claims the table speaker,
+    /// because the propped-up phone is the one everyone hears (design §3.8, §6.3).
+    private func displayModeChanged(_ isOn: Bool) {
+        if isOn {
+            talk.bannerGames.insert(session.gameID)
+            guard state.tableSpeaker != app.deviceID, state.status.isLive else { return }
+            run { try await session.claimTableSpeaker() }
+        } else {
+            talk.bannerGames.remove(session.gameID)
+        }
     }
 
     // MARK: Layout
@@ -338,6 +380,7 @@ struct LiveTableView: View {
                         }
                     }
             }
+            .toastHost(app.toasts)
             .presentationDragIndicator(.visible)
         case .talk(let target):
             TalkSheet(session: session, target: target)
@@ -360,7 +403,7 @@ struct LiveTableView: View {
         case .extend:
             ExtendSheet(session: session)
         case .receipt:
-            NavigationStack { ReceiptComposer(gameID: session.gameID) }
+            ReceiptComposer(gameID: session.gameID)
         }
     }
 

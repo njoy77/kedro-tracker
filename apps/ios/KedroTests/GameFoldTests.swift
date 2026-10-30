@@ -167,6 +167,25 @@ struct GameFoldTests {
         #expect(expired.state.status == .abandoned)
     }
 
+    @Test("GameConfigured changes the lobby's word, mode and cap, and is refused after Deal")
+    func gameConfigured() {
+        var lobby = TestGame()
+        lobby.setUp(start: false)
+        lobby.add(.gameConfigured(.init(tableWord: " Last Call ", scoringMode: .selfReport, houseVoiceCap: .clean)))
+        #expect(lobby.state.config.tableWord == "Last Call")
+        #expect(lobby.state.config.scoringMode == .selfReport)
+        #expect(lobby.state.config.houseVoiceCap == .clean)
+        lobby.add(.gameConfigured(.init(tableWord: "Last Call", scoringMode: .scorekeeper, houseVoiceCap: nil)))
+        #expect(lobby.state.config.houseVoiceCap == nil)
+
+        var dealt = TestGame()
+        dealt.setUp()
+        let word = dealt.state.config.tableWord
+        dealt.add(.gameConfigured(.init(tableWord: "Too Late", scoringMode: .selfReport, houseVoiceCap: nil)))
+        #expect(dealt.state.config.tableWord == word)
+        #expect(dealt.state.lateOperations.last?.reason == .afterDeal)
+    }
+
     @Test("Seats are fixed after Round 1, and a table holds at most 8")
     func seatRules() {
         var game = TestGame()

@@ -6,6 +6,7 @@ struct WrappedView: View {
     let year: Int
 
     @Environment(AppModel.self) private var app
+    @Environment(AppPreferences.self) private var prefs
     @State private var page: WrappedCard = .cover
     @State private var shareImage: Image?
     /// Outbound images are Clean unless you choose your own level.
@@ -83,6 +84,7 @@ struct WrappedView: View {
                 .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom) { controls(summary, cards: cards) }
+        .onAppear { sharesInMyLevel = !prefs.outboundImagesClean }
         .task(id: ShareKey(page: page, inMyLevel: sharesInMyLevel)) { render(summary) }
         .preferredColorScheme(.dark)
     }

@@ -26,6 +26,7 @@ struct OnboardingFlow: View {
     @State private var avatar: Avatar?
     @State private var handleText = ""
     @State private var handle: Handle?
+    @State private var isSaving = false
 
     private var isSignedIn: Bool {
         if case .signedIn = auth.state { true } else { false }
@@ -96,10 +97,19 @@ struct OnboardingFlow: View {
             profile.avatar = avatar ?? profile.avatar ?? .randomStarter()
             if let handle { profile.handle = handle }
             app.profiles.save(profile)
-            // TODO(networking): PUT /v1/players/me {displayName, handle, avatar}; a 409 means the
-            // handle was taken in the meantime, so reopen the handle step.
         }
-        prefs.hasCompletedOnboarding = true
+        // PUT /v1/players/me. A 409 means the handle was taken in the meantime: stay on the
+        // handle step with the field cleared. Offline, the profile is sent on the next edit.
+        isSaving = true
+        Task {
+            defer { isSaving = false }
+            if await app.syncProfile() == .handleTaken {
+                handle = nil
+                app.toasts.show(HandleProblem.taken.message)
+                return
+            }
+            prefs.hasCompletedOnboarding = true
+        }
     }
 }
 

@@ -10,7 +10,9 @@ import OSLog
 /// Ordering: closest first when distances are known; otherwise most played-with overlap, then
 /// the table word (so the same list reads the same on every phone).
 final class NearbyTableDiscovery: TableDiscovery {
-    private let link: TableLink
+    let link: TableLink
+    /// Where seats land; lets Ask to Sit admit a phone once it's seated (nil in tests).
+    let store: (any GameStore)?
     private let networking: any TableLinkNetworking
     private let directory: any PlayerDirectory
     private let identity: () -> LocalIdentity
@@ -24,9 +26,11 @@ final class NearbyTableDiscovery: TableDiscovery {
         directory: any PlayerDirectory,
         identity: @escaping () -> LocalIdentity,
         ranger: NearbyRanger? = NearbyRanger.isSupported ? NearbyRanger() : nil,
-        alerts: NearbyAlertService? = nil
+        alerts: NearbyAlertService? = nil,
+        store: (any GameStore)? = nil
     ) {
         self.link = link
+        self.store = store
         self.networking = networking
         self.directory = directory
         self.identity = identity

@@ -10,7 +10,7 @@ struct SettingsView: View {
     @Environment(AppPreferences.self) private var prefs
     @Environment(AuthStore.self) private var auth
     @Environment(\.soundPreview) private var soundPreview
-    @AppStorage(SettingsKeys.outboundImagesClean) private var outboundImagesClean = SettingsKeys.outboundImagesCleanDefault
+    @Environment(NetworkServices.self) private var network: NetworkServices?
     @State private var isClaiming = false
     @State private var isConfirmingSignOut = false
 
@@ -56,7 +56,7 @@ struct SettingsView: View {
             soundsSection(sounds: sounds)
 
             Section {
-                Toggle("Share images in Clean", isOn: $outboundImagesClean)
+                Toggle("Share images in Clean", isOn: $prefs.outboundImagesClean)
             } header: {
                 Text("Sharing")
             } footer: {
@@ -65,11 +65,17 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Tables nearby", isOn: $prefs.nearbyAlertsEnabled)
+                    .onChange(of: prefs.nearbyAlertsEnabled) { _, isOn in
+                        guard isOn, let push = network?.push else { return }
+                        // The footer (J-14) is the primer; the system asks next. Turning it on also
+                        // starts the Bluetooth beacon and scan (NetworkServices follows the switch).
+                        Task {
+                            if await !push.requestAuthorization() { prefs.nearbyAlertsEnabled = false }
+                        }
+                    }
             } header: {
                 Text("Notifications")
             } footer: {
-                // TODO(networking/push): request notification permission (with a primer) when this
-                // turns on, and start the background scan (design §5.4).
                 Text(app.voice.line("J-14"))
             }
 

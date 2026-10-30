@@ -11,6 +11,7 @@ struct GameEndView: View {
     let session: GameSession
 
     @Environment(AppModel.self) private var app
+    @Environment(AppPreferences.self) private var prefs
     @Environment(\.tableInsights) private var tableInsights
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -55,7 +56,7 @@ struct GameEndView: View {
             insights = await tableInsights.gameEnd(session.state)
         }
         .task {
-            shareImage = ShareResultsCard.render(state: session.state)
+            shareImage = ShareResultsCard.render(state: session.state, level: prefs.outboundImageLevel)
         }
         .onAppear {
             if reduceMotion {
@@ -71,7 +72,7 @@ struct GameEndView: View {
             Text(voice.line("G-06", ["n": state.config.plannedRounds]))
         }
         .sheet(isPresented: $isComposingReceipt) {
-            NavigationStack { ReceiptComposer(gameID: session.gameID) }
+            ReceiptComposer(gameID: session.gameID)
         }
     }
 
@@ -341,19 +342,16 @@ struct GameEndView: View {
         }
     }
 
+    /// Run It Back is an invitation (design §5.7, §10): the lobby opens on Play with everyone's
+    /// seat saved, the same rounds and mode, and the first deal rotated one seat. Each phone gets
+    /// the Table card with Sit Down (one tap to accept); the host deals when they're in.
     private func runItBack() {
-        guard let me = session.mySeatID, let plan = Rematch(from: session.state, host: me) else { return }
+        guard session.mySeatID != nil else { return }
         isStartingRematch = true
-        Task {
-            defer { isStartingRematch = false }
-            do {
-                let next = try await app.createGame(config: plan.config, others: plan.others)
-                try await next.start(firstDealer: plan.config.firstDealerSeat)
-                app.startLiveGame(next, present: true)
-            } catch {
-                app.toasts.show(error.localizedDescription)
-            }
-        }
+        let finished = session.state
+        app.closeLiveGame()
+        app.selectedTab = .play
+        app.rematchRequest = finished
     }
 }
 
@@ -362,7 +360,7 @@ struct GameEndView: View {
 private struct GameEndRow: View {
     let standing: Standing
     var record: GameEndSummary.KnockRecord?
-    var rating: RatingChange?
+    var rating: GameEndRatingChange?
 
     var body: some View {
         let isWinner = standing.isLeader
@@ -430,9 +428,9 @@ private struct GameEndRow: View {
         .environment(\.tableInsights, TableInsights(gameEnd: { _ in
             GameEndInsights(
                 ratings: [
-                    PreviewData.noahSeat: RatingChange(before: 1068, after: 1086, isDebut: false),
-                    PreviewData.anaSeat: RatingChange(before: 1138, after: 1142, isDebut: false),
-                    PreviewData.benSeat: RatingChange(before: nil, after: 986, isDebut: true),
+                    PreviewData.noahSeat: GameEndRatingChange(before: 1068, after: 1086, isDebut: false),
+                    PreviewData.anaSeat: GameEndRatingChange(before: 1138, after: 1142, isDebut: false),
+                    PreviewData.benSeat: GameEndRatingChange(before: nil, after: 986, isDebut: true),
                 ],
                 badges: [
                     EarnedBadge(seat: PreviewData.noahSeat, name: "Comeback Kid"),

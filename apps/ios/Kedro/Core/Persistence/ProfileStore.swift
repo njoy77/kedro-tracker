@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import OSLog
@@ -22,8 +23,14 @@ nonisolated struct LocalProfile: Hashable, Sendable {
     func seat(order: Int, device: DeviceID, languageLevel: LanguageLevel, gamesPlayed: Int?) -> Seat {
         Seat(
             player: identity, displayName: displayName, order: order, handle: handle, avatar: avatar,
-            deviceID: device, languageLevel: languageLevel, titleID: titleID, gamesPlayed: gamesPlayed
+            deviceID: device, languageLevel: languageLevel, titleID: titleID, gamesPlayed: gamesPlayed,
+            claimTokenHash: isGuest ? claimToken.map(Self.claimTokenHash) : nil
         )
+    }
+
+    /// Lowercase hex SHA-256 of a claim token, as the server stores it.
+    static func claimTokenHash(_ token: String) -> String {
+        SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }
 

@@ -15,6 +15,8 @@ nonisolated struct TableCardContent: Hashable, Sendable, Identifiable {
     var roundsPlayed: Int
     /// The host added you (Played With or Search): Sit Down seats you, no asking (§5.5).
     var hasSavedSeat: Bool
+    /// The rotating code from a scanned QR or AirDrop link (`k`), which admits this phone.
+    var inviteCode: String?
 
     init(table: NearbyTable, hasSavedSeat: Bool = false) {
         id = table.id
@@ -48,6 +50,7 @@ nonisolated struct TableCardContent: Hashable, Sendable, Identifiable {
         // A link someone handed you (QR, AirDrop) is the host vouching, like a saved seat.
         isPlayedWith = hasSavedSeat || link?.kind == .table
         roundsPlayed = state?.rounds.count ?? 0
+        inviteCode = link?.token
     }
 
     var action: SitDownAction {

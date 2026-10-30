@@ -60,6 +60,7 @@ struct OperationCodingTests {
         let payload: OperationPayload = switch type {
         case .gameCreated: .gameCreated(.init(config: GameConfig(tableWord: "Cold Deck", houseVoiceCap: .spicy), host: seat))
         case .gameStarted: .gameStarted(.init(seatOrder: [seat], firstDealer: seat))
+        case .gameConfigured: .gameConfigured(.init(tableWord: "Last Call", scoringMode: .selfReport, houseVoiceCap: .clean))
         case .playerSeated: .playerSeated(.init(seat: PreviewData.sampleSeats[4]))
         case .seatRemoved: .seatRemoved(.init(seatId: seat))
         case .scorekeeperChanged: .scorekeeperChanged(.init(seatId: seat))

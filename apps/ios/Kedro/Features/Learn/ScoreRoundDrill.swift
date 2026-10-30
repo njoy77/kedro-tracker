@@ -167,6 +167,7 @@ struct ScoreRoundDrill: View {
             Button(Literal.text("button.done")) { dismiss() }
                 .buttonStyle(.kedroPrimary)
         }
+        .onAppear { LearnCompletion.mark(.drill) }
     }
 
     // MARK: Helpers

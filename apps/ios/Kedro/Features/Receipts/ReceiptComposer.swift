@@ -132,6 +132,7 @@ private struct ReceiptComposerContent: View {
             .task(id: ShareKey(rival: rival.id, option: option.key, level: shareLevel, scale: displayScale)) {
                 shareImage = ReceiptCard.image(state: state, option: option, sender: me, rival: rival, level: shareLevel, scale: displayScale)
             }
+            .onAppear { shareLevel = prefs.outboundImageLevel }
             .onChange(of: rival.id) {
                 optionKey = nil
                 errorText = nil

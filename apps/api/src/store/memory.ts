@@ -131,6 +131,7 @@ export class MemoryStore implements Store {
         seatId: seat.seatId,
         playerId: seat.playerId,
         guestId: seat.guestId,
+        seatOrder: seat.seatOrder,
         total: seat.total,
       })),
     )
@@ -172,6 +173,7 @@ export class MemoryStore implements Store {
         playerId: seat.playerId,
         guestId: seat.guestId,
         displayName: seat.displayName,
+        seatOrder: seat.seatOrder,
         total: seat.total,
         isWinner: seat.isWinner,
         roundsPlayed: seat.roundsPlayed,
@@ -242,6 +244,11 @@ export class MemoryStore implements Store {
         existing.claimTokenHash = guest.claimTokenHash
       }
     }
+  }
+
+  async guestClaimTokenHash(guestId: UUID): Promise<string | null | undefined> {
+    const guest = this.guests.get(guestId)
+    return guest ? guest.claimTokenHash : undefined
   }
 
   async claimGuest(claimTokenHash: string, playerId: UUID): Promise<ClaimResult> {

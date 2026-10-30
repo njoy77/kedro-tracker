@@ -22,6 +22,8 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_kedro-table._tcp</string>
+		<string>_kedro-mc._tcp</string>
+		<string>_kedro-mc._udp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Kedro uses the camera to scan a table's QR code and to take your profile photo.</string>

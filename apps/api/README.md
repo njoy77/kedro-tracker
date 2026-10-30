@@ -44,6 +44,16 @@ Every `/v1` route needs `Authorization: Bearer <Supabase access token>`. Errors 
 | `POST /v1/receipts` | `{gameId, toPlayerId, receiptKey}` → `{ok}` | both must have been seated; one per rival per game |
 | `POST /v1/push/tokens` | `{token, kind, gameId?}` → `{ok}` | hex token; a per-game token needs a seat |
 | `GET /v1/leaderboard?scope=&sort=&limit=` | → `{scope, sort, rows, notYetRanked, notYetRankedCount, me?}` | |
+| `GET /v1/games/:gameId/live-activity` | → `{channelId}` | addition; the APNs broadcast channel (null until APNs is set up); seated players only |
+| `POST /v1/clip/sessions` | `{gameId, tableToken, deviceId}` → `{accessToken, expiresAt}` | addition, no Authorization; a 6-hour token for one game and one phone (`KEDRO_CLIP_SECRET`) |
+| `POST /v1/clip/claims` | `{gameId, seatId}` → `{claimToken}` | addition, clip token only; the guest seat linked to the clip's phone; 409 when it already has one |
+
+An App Clip token works only on `POST /v1/ops`, `GET /v1/games/:gameId/ops` (its own game) and
+`POST /v1/clip/claims`. Its uploads may only link the phone to an existing guest seat and act for
+that seat (HandReported, ReactionAdded, a canned TauntSent); anything else is rejected `notAllowed`.
+Taunts are limited to 3 per sender per round (1 custom) for every caller. A player seated in the
+lobby without a phone gets N-01 "saved you a seat" (built by `push/notifications.ts`; not sent
+until APNs is configured).
 
 ### Op ingest
 

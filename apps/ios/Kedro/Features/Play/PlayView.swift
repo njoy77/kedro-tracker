@@ -29,6 +29,7 @@ private struct PlayScreen: View {
     let model: PlayModel
 
     @Environment(AppModel.self) private var app
+    @Environment(NetworkServices.self) private var network: NetworkServices?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lobby: LobbyStart?
     @State private var isJoiningWithCode = false
@@ -83,7 +84,45 @@ private struct PlayScreen: View {
                 if await model.open(url) { app.selectedTab = .play }
             }
         }
+        // Run It Back from game end: open the lobby once the Table's cover has gone.
+        .task(id: app.rematchRequest?.gameID) {
+            guard let previous = app.rematchRequest else { return }
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            app.rematchRequest = nil
+            lobby = .rematch(previous)
+        }
+        // A tapped push (N-01 saved seat, N-07 nearby) or a table link the app was opened with.
+        .onChange(of: network?.push.pendingInvite, initial: true) { _, invite in
+            guard let invite else { return }
+            network?.push.consumeInvite()
+            Task {
+                if await model.open(Self.link(for: invite).url) { app.selectedTab = .play }
+            }
+        }
+        // Stats reload off the main actor; refresh the digest, stakes and Wrapped when they land.
+        .onChange(of: StatsKey(stats: StatsModel.shared(for: app.store))) { model.refreshInsights() }
         .onDisappear { model.markLooked() }
+    }
+
+    private struct StatsKey: Equatable {
+        var isLoaded: Bool
+        var games: Int
+
+        init(stats: StatsModel) {
+            isLoaded = stats.isLoaded
+            games = stats.snapshot.games.count
+        }
+    }
+
+    private static func link(for invite: TableInvite) -> TableInviteLink {
+        TableInviteLink(
+            kind: invite.source == .link ? .table : .savedSeat,
+            gameID: invite.gameID,
+            token: invite.inviteCode,
+            hostName: invite.hostName,
+            tableWord: invite.tableWord
+        )
     }
 
     // MARK: The Table card
@@ -158,6 +197,8 @@ private struct PlayScreen: View {
     @ViewBuilder
     private func digestRow(_ item: DigestItem) -> some View {
         switch item {
+        case .stats(let line):
+            statsDigestRow(line)
         case let .lastGame(gameID, word, rank, isWin):
             NavigationLink(value: AppRoute.gameHistory(gameID)) {
                 HStack(spacing: 12) {
@@ -190,6 +231,26 @@ private struct PlayScreen: View {
                         .font(.subheadline)
                         .foregroundStyle(.cream)
                 }
+            }
+        }
+    }
+
+    /// A Core/Stats line, linked to where it happened.
+    @ViewBuilder
+    private func statsDigestRow(_ item: SinceYouLastLookedItem) -> some View {
+        let text = Text(item.text).font(.subheadline).foregroundStyle(.cream)
+        switch item.kind {
+        case .lastGame(let game):
+            NavigationLink(value: AppRoute.gameHistory(game)) { text }
+        case .passed(let person), .rivalryFlipped(let person), .titleLost(_, by: let person):
+            NavigationLink(value: me.map { AppRoute.headToHead($0, person) } ?? AppRoute.profile(person)) { text }
+        case .hallOfShame:
+            NavigationLink(value: AppRoute.hallOfShame) { text }
+        case .closestBadge:
+            if let me {
+                NavigationLink(value: AppRoute.badges(me)) { text }
+            } else {
+                text
             }
         }
     }
@@ -231,6 +292,28 @@ private struct PlayScreen: View {
 
     @ViewBuilder
     private var wrappedSection: some View {
+        if let slot = model.wrapped {
+            Section {
+                NavigationLink(value: AppRoute.wrapped(year: slot.year)) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Kedro Wrapped \(String(slot.year))")
+                            .kedroFont(.headline)
+                            .foregroundStyle(.gold)
+                        Text(slot.text)
+                            .font(.subheadline)
+                            .foregroundStyle(.cream)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        } else if !StatsModel.shared(for: app.store).isLoaded {
+            fallbackWrappedSection
+        }
+    }
+
+    /// Before stats have loaded: the December card from finished games.
+    @ViewBuilder
+    private var fallbackWrappedSection: some View {
         let calendar = Calendar.current
         let now = Date.now
         if calendar.component(.month, from: now) == 12 {

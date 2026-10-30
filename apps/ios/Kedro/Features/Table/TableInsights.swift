@@ -26,7 +26,7 @@ nonisolated struct TableInsights: Sendable {
 
 /// Ratings, badges and Hall of Shame inductions for a finished game (design §10 items 4 and 5).
 nonisolated struct GameEndInsights: Hashable, Sendable {
-    var ratings: [SeatID: RatingChange] = [:]
+    var ratings: [SeatID: GameEndRatingChange] = [:]
     var badges: [EarnedBadge] = []
     var hallOfShame: [ShameInduction] = []
 
@@ -35,7 +35,7 @@ nonisolated struct GameEndInsights: Hashable, Sendable {
     var isEmpty: Bool { ratings.isEmpty && badges.isEmpty && hallOfShame.isEmpty }
 }
 
-nonisolated struct RatingChange: Hashable, Sendable {
+nonisolated struct GameEndRatingChange: Hashable, Sendable {
     /// nil before the player's 5th game (not yet ranked).
     var before: Int?
     var after: Int

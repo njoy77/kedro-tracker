@@ -314,7 +314,7 @@ private struct LobbyForm: View {
                     Text(app.voice.line("J-15", ["level": model.houseLevel.displayName]))
                 }
                 if !model.canChangeTableShape {
-                    Text("Someone's sat down, so the table word, scoring and house voice are set.")
+                    Text("The cards are dealt, so the table word, scoring and house voice are set.")
                 }
             }
         }

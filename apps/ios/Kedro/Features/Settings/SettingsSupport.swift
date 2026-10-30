@@ -23,20 +23,11 @@ extension EnvironmentValues {
     @Entry var soundPreview: SoundPreviewAction?
 }
 
-/// Preferences Settings adds on top of `AppPreferences` (foundation-owned). Stored in
-/// `UserDefaults` under these keys so other features can read them with `@AppStorage`.
-nonisolated enum SettingsKeys {
-    /// Outbound images (receipts, share cards, Wrapped) render Clean by default, because the
-    /// group chat didn't opt in (design §8.5, §12.9). Off: they use the sender's level.
-    /// Shared need: move into `AppPreferences` as `outboundImagesClean`, keeping this key.
-    static let outboundImagesClean = "kedro.outboundImagesClean"
-    static let outboundImagesCleanDefault = true
-}
-
-/// The level an outbound image renders in for this phone (receipts, share cards, Wrapped).
+/// The level an outbound image renders in for this phone (receipts, share cards, Wrapped). Reads
+/// `AppPreferences.outboundImagesClean`; kept as a helper for code that has only a level.
 nonisolated enum OutboundImageVoice {
     static func level(preferences level: LanguageLevel, defaults: UserDefaults = .standard) -> LanguageLevel {
-        let clean = defaults.object(forKey: SettingsKeys.outboundImagesClean) as? Bool ?? SettingsKeys.outboundImagesCleanDefault
+        let clean = defaults.object(forKey: AppPreferences.Key.outboundImagesClean) as? Bool ?? true
         return clean ? .clean : level
     }
 }

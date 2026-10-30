@@ -25,7 +25,7 @@ if (config.supabase) {
   )
 }
 
-const { app } = createApp({ store, verifier, log, logRequests: true })
+const { app } = createApp({ store, verifier, log, logRequests: true, clipSecret: config.clipSecret })
 
 export default {
   port: config.port,

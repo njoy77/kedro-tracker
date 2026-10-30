@@ -86,41 +86,47 @@ struct LobbyModelTests {
         #expect(lobby.canDeal)
     }
 
-    @Test("Changing the table word after opening reopens the table with the same seats")
-    func reopen() async throws {
+    @Test("Changing the table word after opening sends GameConfigured on the same table")
+    func configureOpenTable() async throws {
         let app = makeApp()
         let lobby = try LobbyModel(app: app)
         await lobby.add(PreviewData.ana)
         await lobby.add(PreviewData.ben)
-        let first = try await lobby.open()
+        let session = try await lobby.open()
         #expect(lobby.isOpen)
-        #expect(lobby.inviteToken?.gameID == first.gameID)
+        #expect(lobby.inviteToken?.gameID == session.gameID)
         let word = lobby.config.tableWord
 
         await lobby.regenerateTableWord()
-        let second = try #require(app.liveGame)
-        #expect(second.gameID != first.gameID)
-        #expect(second.state.config.tableWord != word)
-        #expect(second.state.seats.map(\.displayName) == ["Noah", "Ana", "Ben"])
-        #expect(first.state.status == .abandoned)
+        #expect(app.liveGame?.gameID == session.gameID)
+        #expect(session.state.config.tableWord != word)
+        #expect(session.operations.last?.type == .gameConfigured)
+        #expect(session.state.seats.map(\.displayName) == ["Noah", "Ana", "Ben"])
         #expect(lobby.canChangeTableShape)
     }
 
-    @Test("Once another phone sits down, the table shape locks")
-    func locksWhenSomeoneSits() async throws {
+    @Test("Settings stay editable after another phone sits down, and lock at Deal")
+    func editableUntilDeal() async throws {
         let app = makeApp()
         let lobby = try LobbyModel(app: app)
         await lobby.add(PreviewData.ana)
+        await lobby.add(PreviewData.ben)
         let session = try await lobby.open()
         var anaSeat = try #require(session.state.seat(PreviewData.anaSeat))
         anaSeat.deviceID = PreviewData.anaPhone
         try await session.send(.playerSeated(.init(seat: anaSeat)))
         #expect(lobby.otherPhonesSeated)
+        #expect(lobby.canChangeTableShape)
+        await lobby.setScoringMode(.selfReport)
+        #expect(session.state.config.scoringMode == .selfReport)
+        await lobby.capHouseVoice(at: .clean)
+        #expect(session.state.config.houseVoiceCap == .clean)
+
+        try await lobby.deal()
         #expect(!lobby.canChangeTableShape)
-        let word = lobby.config.tableWord
+        let word = session.state.config.tableWord
         await lobby.regenerateTableWord()
-        #expect(lobby.config.tableWord == word)
-        #expect(app.liveGame?.gameID == session.gameID)
+        #expect(session.state.config.tableWord == word)
     }
 
     @Test("Cancel abandons an open lobby and leaves it")

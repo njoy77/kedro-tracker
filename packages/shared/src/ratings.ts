@@ -3,6 +3,7 @@
 // - Every pair at a table is a match: finishing ahead (lower total) is a win, equal is a draw.
 // - Everyone starts at 1,000.
 // - K is scaled by 1/(n−1) for an n-player table, and doubled for a player's first 10 games.
+//   Each pair uses the larger of its two players' K, so every game is zero-sum.
 // - All of a game's changes are computed from the ratings before that game, then applied together.
 // - Ratings are never stored as running counters: they are rebuilt by replaying every finished,
 //   non-abandoned game in (finishedAt, gameId) order, so edits, claims and migrated history
@@ -48,16 +49,20 @@ export function replayRatings(games: readonly RatedGame[]): RatingReplay {
     const placements = dedupe(game.placements)
     if (placements.length < 2) continue
     const before = placements.map(({ subject }) => ratings.get(subject) ?? { subject, rating: RATING_START, games: 0, lastGameId: null })
-    const deltas = placements.map((me, i) => {
-      const k = kFactor(before[i].games, placements.length)
-      let sum = 0
-      placements.forEach((them, j) => {
-        if (i === j) return
-        const actual = me.total < them.total ? 1 : me.total === them.total ? 0.5 : 0
-        sum += actual - expectedScore(before[i].rating, before[j].rating)
-      })
-      return k * sum
-    })
+    // Pairs in seat order, each with the larger of the two players' K, so every game is
+    // zero-sum and the sums match the iOS app's float for float (Core/Stats/Ratings.swift).
+    const deltas = placements.map(() => 0)
+    for (let i = 0; i < placements.length; i++) {
+      for (let j = i + 1; j < placements.length; j++) {
+        const a = placements[i].total
+        const b = placements[j].total
+        const actual = a < b ? 1 : a === b ? 0.5 : 0
+        const k = Math.max(kFactor(before[i].games, placements.length), kFactor(before[j].games, placements.length))
+        const change = k * (actual - expectedScore(before[i].rating, before[j].rating))
+        deltas[i] += change
+        deltas[j] -= change
+      }
+    }
     placements.forEach(({ subject }, i) => {
       const previous = before[i]
       const after = previous.rating + deltas[i]

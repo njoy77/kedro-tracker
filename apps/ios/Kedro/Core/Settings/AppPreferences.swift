@@ -6,7 +6,7 @@ import Observation
 /// prefer reading `@Environment(AppPreferences.self)` so every screen updates together.
 @Observable
 final class AppPreferences {
-    enum Key {
+    nonisolated enum Key {
         static let languageLevel = "kedro.languageLevel"
         static let isUnder18 = "kedro.isUnder18"
         static let customTauntsEnabled = "kedro.customTauntsEnabled"
@@ -17,6 +17,7 @@ final class AppPreferences {
         static let hasCompletedOnboarding = "kedro.hasCompletedOnboarding"
         static let nearbyAlertsEnabled = "kedro.nearbyAlertsEnabled"
         static let lastLookedAt = "kedro.lastLookedAt"
+        static let outboundImagesClean = "kedro.outboundImagesClean"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -75,6 +76,12 @@ final class AppPreferences {
         didSet { defaults.set(lastLookedAt, forKey: Key.lastLookedAt) }
     }
 
+    /// Outbound images (receipts, share cards, Wrapped) render Clean by default, because the
+    /// group chat didn't opt in (design §8.5, §12.9). Off: they use this player's level.
+    var outboundImagesClean: Bool {
+        didSet { defaults.set(outboundImagesClean, forKey: Key.outboundImagesClean) }
+    }
+
     /// Sound pack settings.
     let sounds: SoundSettings
 
@@ -91,11 +98,15 @@ final class AppPreferences {
         hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         nearbyAlertsEnabled = defaults.bool(forKey: Key.nearbyAlertsEnabled)
         lastLookedAt = defaults.object(forKey: Key.lastLookedAt) as? Date
+        outboundImagesClean = defaults.object(forKey: Key.outboundImagesClean) as? Bool ?? true
         sounds = SoundSettings(defaults: defaults)
     }
 
     /// The level to render this player's personal surfaces in: Clean when under 18.
     var effectiveLanguageLevel: LanguageLevel { isUnder18 ? .clean : languageLevel }
+
+    /// The level an outbound image renders in: Clean unless the player turned that off.
+    var outboundImageLevel: LanguageLevel { outboundImagesClean ? .clean : effectiveLanguageLevel }
 
     /// Custom taunts are off (both ways) under 18.
     var effectiveCustomTaunts: Bool { customTauntsEnabled && !isUnder18 }

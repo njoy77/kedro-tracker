@@ -204,3 +204,12 @@ nonisolated enum AvatarUnlocks {
         }
     }
 }
+
+extension StatsSnapshot {
+    /// The secret curated avatars a person has unlocked (the Ghost with Exorcism, the Hustler
+    /// with Nothing to See Here), for the avatar picker.
+    func unlockedSecretAvatars(for ref: PlayerRef) -> Set<CuratedAvatarID> {
+        let earned = Set(record(ref)?.badges.keys.map { $0 } ?? [])
+        return Set(AvatarUnlocks.available(earned: earned).filter(\.isSecret))
+    }
+}

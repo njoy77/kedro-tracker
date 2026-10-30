@@ -11,6 +11,7 @@
 //   2. On every change, POST https://api.push.apple.com/4/broadcasts/apps/<bundleId> with
 //      apns-channel-id, apns-push-type: liveactivity, apns-priority: 5 (10 for a live knock) and
 //      {"aps":{"timestamp":…,"event":"update","content-state":<LiveActivityContentState>,"stale-date":+180s}}.
+//      The content state is the iOS `LiveGameAttributes.ContentState` JSON (packages/shared/src/live.ts).
 //   3. On finish or abandon, send "event":"end" with a dismissal-date, then delete the channel.
 // The keys belong in Vercel (APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY, APNS_BUNDLE_ID) and in
 // scripts/env.ts TARGETS for apps/api once they exist.
@@ -27,13 +28,10 @@ export interface LiveActivityBroadcaster {
 export type BroadcastMessage = { gameId: string; event: LiveActivityEvent; contentState: LiveActivityContentState }
 
 /** Builds the message for a game; null when there is nothing to show (lobby). */
-export function broadcastMessage(game: FoldedGame): BroadcastMessage | null {
-  if (game.status === 'lobby' && game.rounds.length === 0) return null
-  return {
-    gameId: game.gameId,
-    event: isLive(game.status) ? 'update' : 'end',
-    contentState: liveActivityContentState(game),
-  }
+export function broadcastMessage(game: FoldedGame, nowMs?: number): BroadcastMessage | null {
+  const contentState = liveActivityContentState(game, nowMs)
+  if (!contentState) return null
+  return { gameId: game.gameId, event: isLive(game.status) ? 'update' : 'end', contentState }
 }
 
 /**

@@ -14,6 +14,7 @@ extension View {
 
 private struct LiveGameActivityHost: ViewModifier {
     @Environment(AppModel.self) private var app
+    @Environment(NetworkServices.self) private var network: NetworkServices?
     @Environment(\.scenePhase) private var scenePhase
     @State private var controller = LiveActivityController()
     @State private var widgets = WidgetSnapshotPublisher()
@@ -26,6 +27,10 @@ private struct LiveGameActivityHost: ViewModifier {
             .environment(controller)
             .environment(widgets)
             .task {
+                if let push = network?.push {
+                    controller.channelProvider = { await push.liveActivityChannel(for: $0) }
+                    controller.onPushToStartToken = { await push.registerPushToStartToken($0) }
+                }
                 controller.installActionHandler()
                 await controller.observePushToStartTokens()
             }

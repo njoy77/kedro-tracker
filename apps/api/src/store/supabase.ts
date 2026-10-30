@@ -200,8 +200,8 @@ export class SupabaseStore implements Store {
   }
 
   async finishedSeatRows(): Promise<FinishedSeatRow[]> {
-    return (await this.finishedSeats()).map(({ gameId, finishedAtMs, seatId, playerId, guestId, total }) => ({
-      gameId, finishedAtMs, seatId, playerId, guestId, total,
+    return (await this.finishedSeats()).map(({ gameId, finishedAtMs, seatId, playerId, guestId, seatOrder, total }) => ({
+      gameId, finishedAtMs, seatId, playerId, guestId, seatOrder, total,
     }))
   }
 
@@ -265,7 +265,7 @@ export class SupabaseStore implements Store {
   /** Seats of finished, non-abandoned games: all of them, or only those matching `filter`. */
   private async finishedSeats(filter?: { column: 'player_id' | 'game_id'; values: readonly UUID[] }): Promise<FinishedSeatDetail[]> {
     const select =
-      'game_id, seat_id, player_id, guest_id, display_name, total, is_winner, rounds_played, knocks, knocks_landed, knocks_tied, knocks_failed, finished_games!inner(finished_at_ms, is_abandoned)'
+      'game_id, seat_id, player_id, guest_id, display_name, seat_order, total, is_winner, rounds_played, knocks, knocks_landed, knocks_tied, knocks_failed, finished_games!inner(finished_at_ms, is_abandoned)'
     const fetch = (values?: readonly UUID[]) =>
       this.paged((from, to) => {
         let query = this.db.from('finished_game_seats').select(select).eq('finished_games.is_abandoned', false)
@@ -351,6 +351,12 @@ export class SupabaseStore implements Store {
         if (fill.error && fill.error.code !== UNIQUE_VIOLATION) must(fill)
       }
     }
+  }
+
+  async guestClaimTokenHash(guestId: UUID): Promise<string | null | undefined> {
+    const row = maybe(await this.db.from('guests').select('claim_token_hash').eq('id', guestId).maybeSingle())
+    if (!row) return undefined
+    return (row.claim_token_hash as string | null) ?? null
   }
 
   async claimGuest(claimTokenHash: string, playerId: UUID): Promise<ClaimResult> {
@@ -524,6 +530,7 @@ function toFinishedSeat(row: Row): FinishedSeatDetail {
     playerId: (row.player_id as string | null) ?? null,
     guestId: (row.guest_id as string | null) ?? null,
     displayName: String(row.display_name),
+    seatOrder: Number(row.seat_order ?? 0),
     total: Number(row.total),
     isWinner: Boolean(row.is_winner),
     roundsPlayed: Number(row.rounds_played),

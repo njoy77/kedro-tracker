@@ -251,6 +251,7 @@ struct KnockQuiz: View {
                 Button(Literal.text("button.done"), action: onFinish)
                     .buttonStyle(.kedroPrimary)
                     .padding(.top, 8)
+                    .onAppear { LearnCompletion.mark(.cards) }
             } else {
                 let scenario = scenarios[index]
                 Text("Question \(index + 1) of \(scenarios.count)").kedroFont(.label).foregroundStyle(.silver)

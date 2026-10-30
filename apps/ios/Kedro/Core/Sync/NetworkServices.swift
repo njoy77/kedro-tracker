@@ -30,6 +30,7 @@ final class NetworkServices {
     let discovery: NearbyTableDiscovery
     let alerts: NearbyAlertService
     let push: PushService
+    let account: AccountSync
     let path: any NetworkPathMonitoring
 
     @ObservationIgnored private weak var app: AppModel?
@@ -86,6 +87,11 @@ final class NetworkServices {
         push.isAtLiveTable = isAtLiveTable
         self.push = push
 
+        account = AccountSync(api: api) { _ in
+            // Claimed games now seat the account: pull the ones this phone follows again.
+            for game in sync.connectedGames { await sync.pull(game, full: true) }
+        }
+
         let preferences = app.preferences
         let alerts = NearbyAlertService(
             isEnabled: { preferences.nearbyAlertsEnabled },
@@ -100,7 +106,8 @@ final class NetworkServices {
         let ranger = NearbyRanger.isSupported ? NearbyRanger() : nil
         link.nearbyTokens = ranger
         discovery = NearbyTableDiscovery(
-            link: link, networking: bonjour, directory: directory, identity: identity, ranger: ranger, alerts: alerts
+            link: link, networking: bonjour, directory: directory, identity: identity, ranger: ranger, alerts: alerts,
+            store: store
         )
     }
 
@@ -112,6 +119,7 @@ final class NetworkServices {
         app.transport = services.transport
         app.directory = services.directory
         app.discovery = services.discovery
+        app.account = services.account
         return services
     }
 
@@ -160,9 +168,9 @@ final class NetworkServices {
         }
     }
 
-    /// Moves a guest's history onto the signed-in account (`POST /v1/claims`, design §5.1). Call
-    /// from `AppModel.didSignIn` with the guest profile's claim token before clearing it; on
-    /// success the claimed games are pulled again so their seats show the account.
+    /// Moves one guest's history onto the signed-in account (`POST /v1/claims`, design §5.1).
+    /// `AppModel.didSignIn` claims everything through `account` (`AccountSync`); this is the
+    /// single-token form. On success the claimed games are pulled again.
     func claimGuestHistory(token: String) async -> ClaimResult? {
         do {
             let result = try await api.claim(token: token)

@@ -88,9 +88,13 @@ struct GameSessionTests {
         let known = Set(session.operations.map(\.opId))
         let fromAna = all.filter { !known.contains($0.opId) }
         #expect(!fromAna.isEmpty)
-        try await Task.sleep(for: .milliseconds(50)) // let run() subscribe
-        transport.deliver(fromAna)
-        #expect(await eventually { session.state.rounds.count == 6 })
+        // Deliver until it lands: run() subscribes to the transport asynchronously, and a batch
+        // sent before that is dropped. Redelivering is harmless (the store de-dupes by opId).
+        #expect(await eventually(timeout: .seconds(10)) {
+            if session.state.rounds.count == 6 { return true }
+            transport.deliver(fromAna)
+            return false
+        })
         #expect(try await store.operations(for: PreviewData.sampleGameID).count == all.count)
     }
 

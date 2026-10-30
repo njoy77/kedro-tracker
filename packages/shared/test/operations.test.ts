@@ -6,6 +6,7 @@ import { fixedUUID, ids, sampleRounds, sampleSeats, seats } from './fixtures/sam
 const examples: Record<OperationType, unknown> = {
   GameCreated: { config: { plannedRounds: 6, scoringMode: 'scorekeeper', tableWord: 'Cold Deck' }, host: seats.noah },
   GameStarted: { seatOrder: [seats.noah, seats.ana], firstDealer: seats.noah },
+  GameConfigured: { tableWord: 'Last Call', scoringMode: 'selfReport', houseVoiceCap: 'clean' },
   PlayerSeated: { seat: { ...sampleSeats[0], avatar: { kind: 'emoji', emoji: '🦊', colorIndex: 3 }, titleId: 'TI-12' } },
   SeatRemoved: { seatId: seats.sam },
   ScorekeeperChanged: { seatId: seats.ana },
@@ -42,8 +43,8 @@ const envelope = (type: OperationType, payload: unknown) => ({
 })
 
 describe('operation wire contract', () => {
-  test('accepts all 22 types', () => {
-    expect(OPERATION_TYPES).toHaveLength(22)
+  test('accepts all 23 types', () => {
+    expect(OPERATION_TYPES).toHaveLength(23)
     for (const type of OPERATION_TYPES) {
       const result = parseOperation(envelope(type, examples[type]))
       if (!result.ok) throw new Error(`${type}: ${result.error}`)

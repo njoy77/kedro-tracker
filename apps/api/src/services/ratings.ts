@@ -42,14 +42,21 @@ export class RatingsService {
 
 /** Groups finished seat rows into games, one placement per subject (a claimed guest seated beside their own account counts once). */
 export function ratedGames(rows: readonly FinishedSeatRow[]): RatedGame[] {
-  const games = new Map<string, RatedGame>()
+  const games = new Map<string, RatedGame & { orders: Map<string, number> }>()
   // Own seats before claimed guest seats, so the player's own result is the one that counts.
   const sorted = [...rows].sort((a, b) => Number(a.guestId !== null) - Number(b.guestId !== null))
   for (const row of sorted) {
-    const game = games.get(row.gameId) ?? { gameId: row.gameId, finishedAtMs: row.finishedAtMs, placements: [] }
+    const game = games.get(row.gameId) ?? { gameId: row.gameId, finishedAtMs: row.finishedAtMs, placements: [] as RatedGame['placements'], orders: new Map<string, number>() }
     const subject = subjectOf(row)
-    if (!game.placements.some((placement) => placement.subject === subject)) game.placements.push({ subject, total: row.total })
+    if (!game.placements.some((placement) => placement.subject === subject)) {
+      game.placements.push({ subject, total: row.total })
+      game.orders.set(subject, row.seatOrder)
+    }
     games.set(row.gameId, game)
   }
-  return [...games.values()]
+  // Seat order, so pairs are summed in the same order as on the phones.
+  return [...games.values()].map(({ orders, ...game }) => ({
+    ...game,
+    placements: [...game.placements].sort((a, b) => (orders.get(a.subject) ?? 0) - (orders.get(b.subject) ?? 0)),
+  }))
 }

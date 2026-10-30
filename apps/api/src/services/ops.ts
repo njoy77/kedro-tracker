@@ -31,6 +31,8 @@ import {
 } from '@kedro/shared'
 import { forbidden, notFound } from '../http.ts'
 import type { LiveActivityBroadcaster } from '../push/liveActivity.ts'
+import type { Notifier } from '../push/notifications.ts'
+import type { ClipSession } from './clip.ts'
 import type { GameRow, GuestRegistration, OpRow, SeatRow, Store } from '../store/types.ts'
 import { KeyedLock } from './lock.ts'
 import type { TauntFilter } from './moderation.ts'
@@ -53,6 +55,7 @@ type Deps = {
   ratings: RatingsService
   filter: TauntFilter
   broadcaster: LiveActivityBroadcaster
+  notifier?: Notifier
   now?: () => number
   log?: (message: string) => void
 }
@@ -146,7 +149,7 @@ export class OpsService {
         reject(op, 'invalidActor', 'actorPlayerId is not seated in this game')
         continue
       }
-      const refusal = admission(state, op)
+      const refusal = admission(state, op) ?? tauntLimitRefusal(state, admitted, op)
       if (refusal) {
         reject(op, refusal.reason, refusal.message)
         continue
@@ -166,12 +169,127 @@ export class OpsService {
 
     const insertedOps = admitted.map(({ operation }) => operation).filter((op) => inserted.has(op.opId))
     await this.moderate(gameId, insertedOps, state.latestHlc)
-    await this.reproject(gameId, {
+    const before = foldGame(stored, gameId)
+    const folded = await this.reproject(gameId, {
       previousStatus: game?.status ?? null,
       changedShape: insertedOps.some((op) => isStateChanging(op.type)),
       uploader: caller,
     })
+    await this.notifySavedSeats(before, folded, caller)
     return result
+  }
+
+  /**
+   * N-01 "Maya saved you a seat at Cold Deck": a player the host added from Played With or
+   * Search (a seat for a registered player with no phone linked yet) while the table is in the
+   * lobby. Never for the uploader's own seat.
+   */
+  private async notifySavedSeats(before: FoldedGame, after: FoldedGame, caller: UUID): Promise<void> {
+    const { notifier } = this.deps
+    if (!notifier || after.status !== 'lobby' || !after.created) return
+    const known = new Set(before.seats.map((seat) => seatIdOf(seat.player)))
+    const host = after.seats.find((seat) => seatIdOf(seat.player) === after.hostSeat)
+    for (const seat of after.seats) {
+      if (known.has(seatIdOf(seat.player)) || seat.player.kind !== 'player' || seat.deviceId || seat.player.id === caller) continue
+      await notifier
+        .savedSeat({ playerId: seat.player.id, gameId: after.gameId, hostName: host?.displayName ?? 'Someone', tableWord: after.config.tableWord })
+        .catch((error: unknown) => this.log(`saved-seat push failed: ${String(error)}`))
+    }
+  }
+
+  // MARK: App Clip
+
+  /**
+   * POST /v1/ops from an App Clip session (services/clip.ts). The clip may only, for its own game:
+   * link its phone to an existing guest seat (a PlayerSeated that changes nothing but the
+   * deviceId), and act for the seat linked to its phone (HandReported, ReactionAdded, a canned
+   * TauntSent from that seat). Everything else is refused as `notAllowed`.
+   */
+  async ingestClip(clip: ClipSession, input: readonly unknown[]): Promise<PostOpsResponse> {
+    const response: PostOpsResponse = { accepted: [], duplicates: [], rejected: [] }
+    const ops: ParsedOperation[] = []
+    const seen = new Set<UUID>()
+    for (const raw of input) {
+      const result = parseOperation(raw)
+      if (!result.ok) {
+        response.rejected.push({ opId: result.opId, reason: 'invalid', message: result.error })
+        continue
+      }
+      const op = result.value.operation
+      if (seen.has(op.opId)) continue
+      seen.add(op.opId)
+      if (op.gameId !== clip.gameId) {
+        response.rejected.push({ opId: op.opId, reason: 'notAllowed', message: 'This session is for another table' })
+        continue
+      }
+      ops.push(result.value)
+    }
+    if (ops.length === 0) return response
+    const result = await this.lock.run(clip.gameId, () => this.ingestClipGame(clip, ops))
+    response.accepted.push(...result.accepted)
+    response.duplicates.push(...result.duplicates)
+    response.rejected.push(...result.rejected)
+    return response
+  }
+
+  private async ingestClipGame(clip: ClipSession, ops: ParsedOperation[]): Promise<PostOpsResponse> {
+    const { store } = this.deps
+    const result: PostOpsResponse = { accepted: [], duplicates: [], rejected: [] }
+    const existing = await store.existingOpIds(ops.map(({ operation }) => operation.opId))
+    const fresh = ops.filter(({ operation }) => {
+      if (!existing.has(operation.opId)) return true
+      result.duplicates.push(operation.opId)
+      return false
+    })
+    if (fresh.length === 0) return result
+    const game = await store.getGame(clip.gameId)
+    if (!game) {
+      for (const { operation } of fresh) result.rejected.push({ opId: operation.opId, reason: 'unknownGame' })
+      return result
+    }
+    const stored = await this.loadOperations(clip.gameId)
+    const admitted: ParsedOperation[] = []
+    let state = foldGame(stored, clip.gameId)
+    for (const parsed of [...fresh].sort((a, b) => compareFoldOrder(a.operation, b.operation))) {
+      const op = parsed.operation
+      const refusal = clipRefusal(state, op, clip) ?? admission(state, op) ?? tauntLimitRefusal(state, admitted, op)
+      if (refusal) {
+        result.rejected.push({ opId: op.opId, reason: refusal.reason, message: refusal.message })
+        continue
+      }
+      admitted.push(parsed)
+      state = foldGame([...stored, ...admitted.map(({ operation }) => operation)], clip.gameId)
+    }
+    if (admitted.length === 0) return result
+    const inserted = new Set(await store.insertOps(admitted.map((parsed) => opRow(parsed, null))))
+    for (const { operation } of admitted) {
+      if (inserted.has(operation.opId)) result.accepted.push(operation.opId)
+      else result.duplicates.push(operation.opId)
+    }
+    if (inserted.size === 0) return result
+    const insertedOps = admitted.map(({ operation }) => operation).filter((op) => inserted.has(op.opId))
+    await this.reproject(clip.gameId, {
+      previousStatus: game.status,
+      changedShape: insertedOps.some((op) => isStateChanging(op.type)),
+      uploader: null,
+    })
+    return result
+  }
+
+  /** The APNs broadcast channel for a game's Live Activity (null until APNs creates one). */
+  async liveActivityChannel(caller: UUID, gameId: UUID): Promise<string | null> {
+    const game = await this.deps.store.getGame(gameId)
+    if (!game) throw notFound('No such game')
+    if (!(await this.deps.store.isSeated(gameId, caller))) throw forbidden('You are not seated in this game')
+    return game.liveActivityChannelId
+  }
+
+  /** GET /v1/games/:gameId/ops for an App Clip session. */
+  async operationsForClip(clip: ClipSession, gameId: UUID, options: { after?: string; limit?: number }): Promise<WireOperation[]> {
+    if (gameId !== clip.gameId) throw forbidden('This session is for another table')
+    if (!(await this.deps.store.getGame(gameId))) throw notFound('No such game')
+    const limit = Math.min(Math.max(1, options.limit ?? DEFAULT_OPS_PAGE), MAX_OPS_PAGE)
+    return this.deps.store.getOps(gameId, { after: options.after, limit })
   }
 
   // MARK: Reads
@@ -279,6 +397,73 @@ export function admission(state: FoldedGame, op: Operation): { reason: OpRejecti
   return null
 }
 
+/** Taunts per sender per round (design §8.3), the same limits the phones apply on receipt. */
+export const TAUNTS_PER_ROUND = 3
+export const CUSTOM_TAUNTS_PER_ROUND = 1
+
+/**
+ * Refuses a taunt over the limits: 3 per sender per round, at most 1 of them custom. Senders are
+ * keyed by seat, or by name for watchers (as iOS `TauntRateLimit`). Counts what the game already
+ * holds plus what this request admitted before it.
+ */
+export function tauntLimitRefusal(state: FoldedGame, admitted: readonly ParsedOperation[], op: Operation): { reason: OpRejectionReason; message: string } | null {
+  if (op.type !== 'TauntSent') return null
+  const sender = (from: string | null | undefined, name: string) => from ?? `watcher:${name}`
+  const key = sender(op.payload.from, op.payload.fromName)
+  const earlier = [
+    ...state.taunts.map((taunt) => ({ round: taunt.roundNumber, sender: sender(taunt.from, taunt.fromName), custom: taunt.content.kind === 'custom' })),
+    ...admitted.flatMap(({ operation }) =>
+      operation.type === 'TauntSent'
+        ? [{ round: operation.payload.roundNumber, sender: sender(operation.payload.from, operation.payload.fromName), custom: operation.payload.content.kind === 'custom' }]
+        : [],
+    ),
+  ].filter((taunt) => taunt.round === op.payload.roundNumber && taunt.sender === key)
+  if (earlier.length >= TAUNTS_PER_ROUND) return { reason: 'notAllowed', message: 'Three taunts a round' }
+  if (op.payload.content.kind === 'custom' && earlier.filter((taunt) => taunt.custom).length >= CUSTOM_TAUNTS_PER_ROUND) {
+    return { reason: 'notAllowed', message: 'One custom taunt a round' }
+  }
+  return null
+}
+
+/** What an App Clip session may not upload (see `OpsService.ingestClip`), or null. */
+export function clipRefusal(state: FoldedGame, op: Operation, clip: ClipSession): { reason: OpRejectionReason; message: string } | null {
+  const refuse = (message: string) => ({ reason: 'notAllowed' as const, message })
+  if (op.actorPlayerId !== null) return refuse('A clip acts for a guest seat only')
+  const mine = state.seats.find((seat) => seat.deviceId === clip.deviceId)
+  const mySeat = mine ? seatIdOf(mine.player) : null
+  switch (op.type) {
+    case 'PlayerSeated': {
+      const next = op.payload.seat
+      const current = state.seats.find((seat) => seatIdOf(seat.player) === seatIdOf(next.player))
+      if (!current || current.player.kind !== 'guest') return refuse('Pick one of the guest seats')
+      if (current.deviceId && current.deviceId !== clip.deviceId) return refuse('Someone else sits there')
+      if (mySeat && mySeat !== seatIdOf(current.player)) return refuse('This phone already has a seat')
+      if (next.deviceId !== clip.deviceId) return refuse('Link the seat to this phone')
+      // The phone link and its language level (the clip is Clean) are all a clip may change.
+      const { deviceId: _next, claimTokenHash: _hash, languageLevel: _level, ...rest } = next
+      const { deviceId: _current, claimTokenHash: _currentHash, languageLevel: _currentLevel, ...currentRest } = current
+      if (JSON.stringify(sortKeys(rest)) !== JSON.stringify(sortKeys(currentRest))) return refuse('Only the phone link can change')
+      return null
+    }
+    case 'HandReported':
+      if (!mySeat || op.payload.seatId !== mySeat) return refuse('Report your own hand')
+      return null
+    case 'ReactionAdded':
+      if (!mySeat || op.payload.seatId !== mySeat) return refuse('React from your own seat')
+      return null
+    case 'TauntSent':
+      if (!mySeat || op.payload.from !== mySeat) return refuse('Taunt from your own seat')
+      if (op.payload.content.kind !== 'canned') return refuse('Canned taunts only in the clip')
+      return null
+    default:
+      return refuse('Get Kedro to do this')
+  }
+}
+
+function sortKeys(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => a.localeCompare(b)))
+}
+
 function isSeatFor(op: Operation, playerId: UUID): boolean {
   return op.type === 'PlayerSeated' && isPlayer(op.payload.seat.player, playerId)
 }
@@ -294,7 +479,7 @@ export function nextServerHlc(nowMs: number, after: HLC | null): HLC {
   return { wallMs: after.wallMs, counter: after.counter + 1, node: SERVER_DEVICE_ID }
 }
 
-function opRow({ operation, rawPayload }: ParsedOperation, receivedBy: UUID): OpRow {
+function opRow({ operation, rawPayload }: ParsedOperation, receivedBy: UUID | null): OpRow {
   const wire: WireOperation = {
     opId: operation.opId,
     gameId: operation.gameId,

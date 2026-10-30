@@ -11,10 +11,8 @@ import OSLog
 /// add → `PlayerSeated`, remove → `SeatRemoved`, reorder and reporters → `PlayerSeated` upserts,
 /// scorekeeper → `ScorekeeperChanged`, rounds → `RoundsChanged`, first deal → `GameStarted`.
 ///
-/// The table word, scoring mode and house voice cap live in `GameCreated`'s config and have no
-/// change operation. While no other phone has sat down, changing one quietly reopens the table
-/// (the empty lobby is abandoned and a new one advertised); once someone else is linked to a seat
-/// they lock (shared need: a lobby-only `GameConfigured` op would keep them editable throughout).
+/// The table word, scoring mode and house voice cap start in `GameCreated`'s config and change
+/// with the lobby-only `GameConfigured` op, so they stay editable until Deal.
 @Observable
 final class LobbyModel {
     enum LobbyError: LocalizedError {
@@ -60,22 +58,24 @@ final class LobbyModel {
     init(app: AppModel, rematchOf previous: GameState? = nil) throws {
         guard let profile = app.profile else { throw LobbyError.noProfile }
         self.app = app
-        let host = profile.seat(order: 0, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: nil)
+        let host = profile.seat(order: 0, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: app.gamesPlayed(by: profile.identity))
         hostSeatID = host.id
         var config = GameConfig(plannedRounds: app.preferences.lastPlannedRounds, scoringMode: app.preferences.lastScoringMode)
         var seats = [host]
-        if let previous {
-            config.plannedRounds = previous.config.plannedRounds
-            config.scoringMode = previous.config.scoringMode
-            for seat in previous.seats where seat.player != profile.identity {
-                var seat = seat
+        if let previous, let plan = Rematch(from: previous, host: host.id) {
+            // Run It Back (design §5.7): the same circle clockwise from the host, the same rounds,
+            // mode and house voice, a fresh table word, and the first deal rotated one seat.
+            config.plannedRounds = plan.config.plannedRounds
+            config.scoringMode = plan.config.scoringMode
+            config.tableWord = plan.config.tableWord
+            config.houseVoiceCap = plan.config.houseVoiceCap
+            for var seat in plan.others {
                 seat.deviceID = nil // a seat saved for them; their phone links it again
                 seat.languageLevel = nil
+                seat.gamesPlayed = app.gamesPlayed(by: seat.player) ?? seat.gamesPlayed
                 if let next = LobbyRules.adding(seat, to: seats) { seats = next }
             }
-            let previousOrder = previous.seats.map(\.id)
-            let rotated = LobbyRules.rotatedFirstDealer(order: previousOrder, previous: previous.dealer(forRound: 1) ?? previous.config.firstDealerSeat)
-            firstDealer = rotated.flatMap { id in seats.contains { $0.id == id } ? id : nil }
+            firstDealer = plan.config.firstDealerSeat.flatMap { id in seats.contains { $0.id == id } ? id : nil }
         }
         draftSeats = seats
         draftConfig = config
@@ -115,8 +115,8 @@ final class LobbyModel {
         seats.contains { $0.deviceID != nil && $0.deviceID != app.deviceID }
     }
 
-    /// Table word, scoring mode and house voice can change until another phone sits down.
-    var canChangeTableShape: Bool { !isOpen || !otherPhonesSeated }
+    /// Table word, scoring mode and house voice can change until Deal (`GameConfigured`).
+    var canChangeTableShape: Bool { session?.state.status ?? .lobby == .lobby }
 
     var issues: [LobbyIssue] { LobbyRules.issues(seats: seats, config: config) }
 
@@ -164,7 +164,9 @@ final class LobbyModel {
     private func refreshStakes() {
         guard let me = app.profile?.identity else { return }
         let others = Set(seats.map(\.player)).subtracting([me])
-        stakes = PlayInsights.stakes(for: me, in: finished, opponents: others)
+        let stats = StatsModel.shared(for: app.store)
+        stakes = PlayInsights.stakes(provider: stats, isLoaded: stats.isLoaded, me: me, table: Array(others), voice: app.voice)
+            ?? PlayInsights.stakes(for: me, in: finished, opponents: others)
     }
 
     // MARK: Seats
@@ -172,11 +174,14 @@ final class LobbyModel {
     /// Seats a person (Played With, Search, Guest, or Let {name} In). Adding someone from
     /// Played With or Search is the host vouching: they're admitted without asking.
     func add(_ seat: Seat) async {
+        var seat = seat
+        if seat.gamesPlayed == nil { seat.gamesPlayed = app.gamesPlayed(by: seat.player) }
         guard let updated = LobbyRules.adding(withReporterIfNeeded(seat), to: seats) else { return }
         knownSeats.insert(seat.id)
         if let session, let added = updated.last {
+            // A player with no phone linked gets "saved you a seat" (N-01) from the server when
+            // this seat syncs (apps/api OpsService.notifySavedSeats).
             await send(.playerSeated(.init(seat: added)), in: session)
-            // TODO(networking): "saved you a seat" push (N-01) for players added from Played With / Search.
         } else {
             draftSeats = updated
         }
@@ -283,8 +288,8 @@ final class LobbyModel {
         await reshape { config, _ in config.houseVoiceCap = level }
     }
 
-    /// Changes a setting carried by `GameCreated`. A draft just changes; an open table that only
-    /// this phone has joined is reopened with the new settings (same seats).
+    /// Changes the table word, scoring mode or house voice cap. A draft just changes; an open
+    /// table sends `GameConfigured` (plus any reporter changes self-report mode brings).
     private func reshape(_ change: (inout GameConfig, inout [Seat]) -> Void) async {
         guard canChangeTableShape else { return }
         var config = self.config
@@ -295,15 +300,14 @@ final class LobbyModel {
             draftSeats = seats
             return
         }
-        draftConfig = config
-        draftSeats = LobbyRules.renumbered(seats)
-        await close(session)
-        do {
-            try await open()
-        } catch {
-            log.error("Couldn't reopen the table: \(error.localizedDescription, privacy: .public)")
-            app.toasts.show(app.voice.line("E-01"))
+        await send(.gameConfigured(.init(tableWord: config.tableWord, scoringMode: config.scoringMode, houseVoiceCap: config.houseVoiceCap)), in: session)
+        for seat in seats where seat != session.state.seat(seat.id) {
+            await send(.playerSeated(.init(seat: seat)), in: session)
         }
+        await app.discovery.advertise(AdvertisedTable(
+            gameID: session.gameID, hostName: hostName, tableWord: config.tableWord,
+            seatCount: seats.count, roundsPlayed: 0
+        ))
     }
 
     // MARK: Opening, dealing, leaving

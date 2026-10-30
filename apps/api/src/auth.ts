@@ -10,6 +10,7 @@ import { createMiddleware } from 'hono/factory'
 import { createRemoteJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify, type JWTPayload } from 'jose'
 import { isUUID, type UUID } from '@kedro/shared'
 import { HttpError } from './http.ts'
+import { ClipTokens, type ClipSession } from './services/clip.ts'
 
 export type AuthUser = {
   id: UUID
@@ -22,14 +23,40 @@ export interface TokenVerifier {
   verify(token: string): Promise<AuthUser | null>
 }
 
-export type AuthEnv = { Variables: { user: AuthUser } }
+/**
+ * `user` is set for account tokens. An App Clip token sets `clip` instead (and no `user`); it is
+ * accepted only on the routes in `CLIP_ROUTES`, so every other handler can rely on `user`.
+ */
+export type AuthEnv = { Variables: { user: AuthUser; clip?: ClipSession } }
 
-export function requireAuth(verifier: TokenVerifier) {
+/** Routes an App Clip session may call (method and path under /v1). */
+const CLIP_ROUTES: { method: string; path: RegExp }[] = [
+  { method: 'POST', path: /^\/v1\/ops$/ },
+  { method: 'GET', path: /^\/v1\/games\/[^/]+\/ops$/ },
+  { method: 'POST', path: /^\/v1\/clip\/claims$/ },
+]
+
+/** Routes that need no token at all. */
+const PUBLIC_ROUTES: { method: string; path: RegExp }[] = [{ method: 'POST', path: /^\/v1\/clip\/sessions$/ }]
+
+const matches = (routes: { method: string; path: RegExp }[], method: string, path: string) =>
+  routes.some((route) => route.method === method && route.path.test(path))
+
+export function requireAuth(verifier: TokenVerifier, clipTokens?: ClipTokens) {
   return createMiddleware<AuthEnv>(async (c, next) => {
+    if (matches(PUBLIC_ROUTES, c.req.method, c.req.path)) return next()
     const header = c.req.header('authorization') ?? ''
     const match = /^Bearer\s+(.+)$/i.exec(header)
     if (!match) throw new HttpError(401, 'unauthorized', 'Sign in to use this')
-    const user = await verifier.verify(match[1].trim())
+    const token = match[1].trim()
+    if (ClipTokens.isClipToken(token)) {
+      const clip = clipTokens?.verify(token)
+      if (!clip) throw new HttpError(401, 'unauthorized', 'This table link expired. Scan the code again.')
+      if (!matches(CLIP_ROUTES, c.req.method, c.req.path)) throw new HttpError(403, 'forbidden', 'Get Kedro to do this')
+      c.set('clip', clip)
+      return next()
+    }
+    const user = await verifier.verify(token)
     if (!user) throw new HttpError(401, 'unauthorized', 'Your session expired. Sign in again.')
     c.set('user', user)
     await next()

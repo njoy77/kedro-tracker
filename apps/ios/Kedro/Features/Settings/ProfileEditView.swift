@@ -33,10 +33,14 @@ struct ProfileEditView: View {
                         .listRowInsets(EdgeInsets())
                 }
                 Section("Face") {
-                    AvatarPicker(avatar: $avatar, name: trimmedName.isEmpty ? "You" : trimmedName)
-                        .padding(.vertical, 12)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
+                    AvatarPicker(
+                        avatar: $avatar,
+                        name: trimmedName.isEmpty ? "You" : trimmedName,
+                        unlocked: profile.map { StatsModel.shared(for: app.store).snapshot.unlockedSecretAvatars(for: $0.identity) } ?? []
+                    )
+                    .padding(.vertical, 12)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 }
             } else {
                 Section {
@@ -73,9 +77,16 @@ struct ProfileEditView: View {
             updated.handle = handle ?? updated.handle
         }
         app.profiles.save(updated)
-        // TODO(networking): PUT /v1/players/me {displayName, handle, avatar}; upload a local photo
-        // first and swap in its URL. A 409 means the handle was taken meanwhile.
-        dismiss()
+        // PUT /v1/players/me (a local photo stays on the phone until photo upload exists). A 409
+        // means the handle was taken meanwhile: keep the sheet open so another can be picked.
+        Task {
+            if await app.syncProfile() == .handleTaken {
+                handle = nil
+                app.toasts.show(HandleProblem.taken.message)
+                return
+            }
+            dismiss()
+        }
     }
 }
 

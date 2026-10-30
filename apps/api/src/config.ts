@@ -6,6 +6,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY  server-only; the API writes with it (bypasses RLS)
 //   SUPABASE_JWT_SECRET        optional; verifies legacy HS256 tokens locally instead of asking Supabase Auth
 //   PORT                       default 8787
+//   KEDRO_CLIP_SECRET          optional; signs App Clip session tokens (random per process when unset)
 //   KEDRO_DEV_AUTH=1           local only, no Supabase: in-memory store, tokens are "dev:<uuid>"
 //
 // APNs (Live Activity broadcast pushes) is not configured yet: see push/liveActivity.ts.
@@ -14,6 +15,7 @@ export type ApiConfig = {
   port: number
   supabase: { url: string; anonKey: string; serviceRoleKey: string; jwtSecret?: string } | null
   devAuth: boolean
+  clipSecret?: string
   /** Names of the Supabase keys that are missing (for the startup message). */
   missing: string[]
 }
@@ -34,6 +36,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         ? { url: url.replace(/\/+$/, ''), anonKey, serviceRoleKey, jwtSecret: env.SUPABASE_JWT_SECRET || undefined }
         : null,
     devAuth: env.KEDRO_DEV_AUTH === '1',
+    clipSecret: env.KEDRO_CLIP_SECRET || undefined,
     missing,
   }
 }

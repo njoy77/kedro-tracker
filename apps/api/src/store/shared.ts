@@ -11,6 +11,7 @@ export type FinishedSeatDetail = {
   seatId: string
   playerId: UUID | null
   guestId: UUID | null
+  seatOrder: number
   displayName: string
   total: number
   isWinner: boolean

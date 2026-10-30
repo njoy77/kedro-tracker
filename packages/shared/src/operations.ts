@@ -22,10 +22,16 @@ import type { UUID } from './ids.ts'
 
 const roundNumber = z.number().int().min(1).max(500)
 
-/** Payload schemas by operation type: all 22 of Swift's `OperationType.allCases`. */
+/** Payload schemas by operation type: all 23 of Swift's `OperationType.allCases`. */
 export const payloadSchemas = {
   GameCreated: z.object({ config: gameConfigSchema, host: seatIdSchema }),
   GameStarted: z.object({ seatOrder: z.array(seatIdSchema).max(16), firstDealer: seatIdSchema }),
+  /** Lobby only: replaces the table word, scoring mode and house voice cap (no cap clears it). */
+  GameConfigured: z.object({
+    tableWord: gameConfigSchema.shape.tableWord,
+    scoringMode: gameConfigSchema.shape.scoringMode,
+    houseVoiceCap: gameConfigSchema.shape.houseVoiceCap,
+  }),
   PlayerSeated: z.object({ seat: seatSchema }),
   SeatRemoved: z.object({ seatId: seatIdSchema }),
   ScorekeeperChanged: z.object({ seatId: seatIdSchema }),

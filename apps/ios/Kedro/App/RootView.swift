@@ -33,6 +33,9 @@ struct RootView: View {
         .toastHost(app.toasts)
         .task { await auth.observeAuthChanges() }
         .task { await app.start() }
+        #if DEBUG
+        .task { await DebugLaunch.run(app: app, auth: auth) }
+        #endif
         .task {
             try? await Task.sleep(for: .seconds(1.2))
             minimumSplashElapsed = true

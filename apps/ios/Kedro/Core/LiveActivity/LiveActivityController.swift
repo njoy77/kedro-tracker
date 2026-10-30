@@ -42,11 +42,11 @@ final class LiveActivityController {
 
     /// Returns the APNs broadcast channel ID for a game, created by the backend, so the server
     /// can update the activity while Kedro is suspended. nil (the default) keeps updates local.
-    /// TODO(backend, networking): create one channel per game and return its ID here.
+    /// Installed by `.liveGameActivity()` from `PushService.liveActivityChannel(for:)`.
     @ObservationIgnored var channelProvider: (@MainActor (GameID) async -> String?)?
 
     /// Receives push-to-start tokens (hex) for `POST /v1/push/tokens {token, kind:"liveactivity"}`.
-    /// TODO(networking): install from Core/Push.
+    /// Installed by `.liveGameActivity()` (`PushService.registerPushToStartToken`).
     @ObservationIgnored var onPushToStartToken: (@MainActor (String) async -> Void)?
 
     @ObservationIgnored private var activity: Activity<LiveGameAttributes>?

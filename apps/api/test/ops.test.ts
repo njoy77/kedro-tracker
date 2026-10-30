@@ -243,10 +243,12 @@ describe('POST /v1/ops', () => {
     await h.upload(ids.noah, sampleWireOperations({ throughRound: 5, finished: false, liveKnock: true }))
     const message = h.broadcaster.sent.get(ids.game)
     expect(message?.event).toBe('update')
-    expect(message?.contentState.roundsPlayed).toBe(5)
-    expect(message?.contentState.standings.map((row) => row.total)).toEqual([26, 29, 44, 45, 47])
-    expect(message?.contentState.dealerSeat).toBe(seats.noah) // R6 is Noah's deal (design §17)
-    expect(message?.contentState.liveKnocker).toBe(seats.sam)
+    // The iOS LiveGameAttributes.ContentState JSON.
+    expect(message?.contentState.roundNumber).toBe(6)
+    expect(message?.contentState.rows.map((row) => row.score)).toEqual(['26', '29', '44', '45', '47'])
+    expect(message?.contentState.metadataLine).toBe('ROUND 6 OF 6 · NOAH DEALS') // R6 is Noah's deal (design §17)
+    expect(message?.contentState.liveKnockLine).toBe('Sam knocked · last turns')
+    expect(message?.contentState.rows.find((row) => row.isDealer)?.id).toBe(seats.noah)
   })
 
   test('rejects more than 500 ops per request', async () => {

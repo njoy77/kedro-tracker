@@ -314,6 +314,8 @@ nonisolated struct LateOperation: Hashable, Sendable, Identifiable {
         case afterAbandon
         /// Seats are fixed after Round 1.
         case seatsLocked
+        /// Lobby settings (`GameConfigured`) that arrived after Deal.
+        case afterDeal
         /// A ninth seat.
         case tableFull
         /// Undo of a round that isn't the latest.

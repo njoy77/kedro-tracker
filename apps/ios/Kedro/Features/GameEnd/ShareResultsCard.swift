@@ -57,8 +57,8 @@ struct ShareResultsCard: View {
     }
 
     /// Renders the card at 3× for the share sheet.
-    static func render(state: GameState) -> Image? {
-        let renderer = ImageRenderer(content: ShareResultsCard(state: state))
+    static func render(state: GameState, level: LanguageLevel = .clean) -> Image? {
+        let renderer = ImageRenderer(content: ShareResultsCard(state: state, voice: Voice.house(for: state, viewer: level)))
         renderer.scale = 3
         guard let image = renderer.cgImage else { return nil }
         return Image(decorative: image, scale: 3)

@@ -89,6 +89,7 @@ nonisolated struct GameOperation: Hashable, Sendable, Identifiable, Codable {
 nonisolated enum OperationType: String, Hashable, Sendable, Codable, CaseIterable {
     case gameCreated = "GameCreated"
     case gameStarted = "GameStarted"
+    case gameConfigured = "GameConfigured"
     case playerSeated = "PlayerSeated"
     case seatRemoved = "SeatRemoved"
     case scorekeeperChanged = "ScorekeeperChanged"
@@ -192,6 +193,15 @@ nonisolated enum Op {
         var knocker: SeatID
     }
 
+    /// Lobby only (design §5.6): the table word, scoring mode and house voice cap, which
+    /// `GameCreated` set. Replaces all three (no `houseVoiceCap` clears the cap); refused after
+    /// Deal. `{"tableWord":"Cold Deck","scoringMode":"scorekeeper","houseVoiceCap":"clean"}`
+    struct GameConfigured: Hashable, Sendable, Codable {
+        var tableWord: String
+        var scoringMode: ScoringMode
+        var houseVoiceCap: LanguageLevel?
+    }
+
     /// Self-report: one seat's hand (by that player or their reporter). When every seat has
     /// reported and the knocker is settled, the fold completes the round.
     /// `{"roundNumber":6,"seatId":"p:…","hand":7,"knocked":false}`
@@ -282,6 +292,7 @@ nonisolated enum FinishReason: String, Hashable, Sendable, Codable {
 nonisolated enum OperationPayload: Hashable, Sendable {
     case gameCreated(Op.GameCreated)
     case gameStarted(Op.GameStarted)
+    case gameConfigured(Op.GameConfigured)
     case playerSeated(Op.PlayerSeated)
     case seatRemoved(Op.SeatRemoved)
     case scorekeeperChanged(Op.ScorekeeperChanged)
@@ -307,6 +318,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         switch self {
         case .gameCreated: .gameCreated
         case .gameStarted: .gameStarted
+        case .gameConfigured: .gameConfigured
         case .playerSeated: .playerSeated
         case .seatRemoved: .seatRemoved
         case .scorekeeperChanged: .scorekeeperChanged
@@ -334,6 +346,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         switch type {
         case .gameCreated: self = .gameCreated(try .init(from: decoder))
         case .gameStarted: self = .gameStarted(try .init(from: decoder))
+        case .gameConfigured: self = .gameConfigured(try .init(from: decoder))
         case .playerSeated: self = .playerSeated(try .init(from: decoder))
         case .seatRemoved: self = .seatRemoved(try .init(from: decoder))
         case .scorekeeperChanged: self = .scorekeeperChanged(try .init(from: decoder))
@@ -361,6 +374,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         switch self {
         case .gameCreated(let p): try p.encode(to: encoder)
         case .gameStarted(let p): try p.encode(to: encoder)
+        case .gameConfigured(let p): try p.encode(to: encoder)
         case .playerSeated(let p): try p.encode(to: encoder)
         case .seatRemoved(let p): try p.encode(to: encoder)
         case .scorekeeperChanged(let p): try p.encode(to: encoder)

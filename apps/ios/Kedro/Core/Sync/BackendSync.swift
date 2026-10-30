@@ -147,8 +147,16 @@ final class BackendSync {
         isPulling = true
         defer { isPulling = false }
         do {
-            let after = full ? nil : cursors[game]
-            let remote = try await api.operations(for: game, after: after)
+            // The server pages the log (`APIClient.opsPageSize`, fold order): a full page means
+            // there may be more after its last operation.
+            var after = full ? nil : cursors[game]
+            var remote: [GameOperation] = []
+            while true {
+                let page = try await api.operations(for: game, after: after)
+                remote += page
+                guard page.count >= APIClient.opsPageSize, let last = page.last?.hlc, last != after else { break }
+                after = last
+            }
             lastError = nil
             await ingest(remote, game: game)
             if full {
@@ -186,7 +194,9 @@ final class BackendSync {
                 if case .notSignedIn = error { hasAccount = false }
                 log.info("Upload failed: \(String(describing: error), privacy: .public)")
                 if case .notSignedIn = error { return }
-                if error.isRetryable || error == .unauthorized(401) {
+                // 404 on POST /v1/ops is `profileRequired`: the account has no player row yet
+                // (`AccountSync` sends it right after sign-in). Keep everything and try again.
+                if error.isRetryable || error == .unauthorized(401) || error == .badStatus(404) {
                     return scheduleRetry()
                 }
                 // A request the server can never accept as a whole (encoding, 4xx): answer for
@@ -218,7 +228,7 @@ final class BackendSync {
             do {
                 let result = try await api.uploadOperations([operation])
                 handle(result, for: [operation])
-            } catch let error as APIError where error.isRetryable {
+            } catch let error as APIError where error.isRetryable || error == .badStatus(404) {
                 scheduleRetry()
                 return false
             } catch let error as APIError {

@@ -27,6 +27,13 @@ nonisolated struct PlayerUpdate: Codable, Hashable, Sendable {
     var displayName: String
     var handle: Handle
     var avatar: Avatar
+    /// The displayed title (`TI-xx`). Omitted keeps the server's current one.
+    var titleID: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case displayName, handle, avatar
+        case titleID = "titleId"
+    }
 }
 
 /// `GET /v1/players/search` response.
@@ -63,7 +70,7 @@ nonisolated struct ReportRequest: Codable, Sendable {
 }
 
 /// `POST /v1/blocks`.
-nonisolated struct BlockRequest: Codable, Sendable {
+nonisolated struct BlockPlayerBody: Codable, Sendable {
     var playerId: PlayerID
 }
 
@@ -94,4 +101,9 @@ nonisolated struct PushTokenRequest: Codable, Hashable, Sendable {
 /// `{ok: true}` from the write endpoints.
 nonisolated struct OKResponse: Codable, Hashable, Sendable {
     var ok: Bool
+}
+
+/// `GET /v1/games/:gameId/live-activity` response.
+nonisolated struct LiveActivityChannelResponse: Codable, Hashable, Sendable {
+    var channelId: String?
 }

@@ -91,6 +91,7 @@ private nonisolated struct GameReducer {
         switch op.payload {
         case .gameCreated(let p): applyGameCreated(p, op)
         case .gameStarted(let p): applyGameStarted(p, op)
+        case .gameConfigured(let p): applyGameConfigured(p, op, actor)
         case .playerSeated(let p): applyPlayerSeated(p, op, actor)
         case .seatRemoved(let p): applySeatRemoved(p, op, actor)
         case .scorekeeperChanged(let p): applyScorekeeperChanged(p, op, actor)
@@ -122,6 +123,15 @@ private nonisolated struct GameReducer {
         state.config = p.config
         state.hostSeat = p.host
         state.createdAt = op.hlc.date
+    }
+
+    private mutating func applyGameConfigured(_ p: Op.GameConfigured, _ op: GameOperation, _ actor: GameActor) {
+        guard state.status == .lobby else { return refuse(op, actor, .afterDeal) }
+        let word = p.tableWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !word.isEmpty, word.count <= 40 else { return refuse(op, actor, .invalid) }
+        state.config.tableWord = word
+        state.config.scoringMode = p.scoringMode
+        state.config.houseVoiceCap = p.houseVoiceCap
     }
 
     private mutating func applyGameStarted(_ p: Op.GameStarted, _ op: GameOperation) {

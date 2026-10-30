@@ -48,7 +48,7 @@ const TARGETS: Target[] = [
     values: (env) => ({
       SUPABASE_URL: required(env, 'VITE_SUPABASE_URL'),
       SUPABASE_ANON_KEY: required(env, 'VITE_SUPABASE_ANON_KEY'),
-      ...pick(env, (key) => key === 'SUPABASE_SERVICE_ROLE_KEY' || key === 'SUPABASE_JWT_SECRET'),
+      ...pick(env, (key) => key === 'SUPABASE_SERVICE_ROLE_KEY' || key === 'SUPABASE_JWT_SECRET' || key === 'KEDRO_CLIP_SECRET'),
     }),
   },
 ]

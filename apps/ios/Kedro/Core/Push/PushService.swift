@@ -30,6 +30,7 @@ final class PushService {
 
     private enum Key {
         static let uploadedToken = "kedro.push.uploadedToken"
+        static let uploadedPushToStart = "kedro.push.uploadedPushToStart"
     }
 
     init(api: APIClient, center: UNUserNotificationCenter = .current(), defaults: UserDefaults = .standard) {
@@ -84,6 +85,7 @@ final class PushService {
     /// Signing in as someone else: the token must be uploaded again for the new account.
     func accountChanged() async {
         defaults.removeObject(forKey: Key.uploadedToken)
+        defaults.removeObject(forKey: Key.uploadedPushToStart)
         await uploadToken()
     }
 
@@ -95,6 +97,27 @@ final class PushService {
         } catch {
             log.info("Live Activity token upload failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    /// A Live Activity push-to-start token (hex, from `LiveActivityController.onPushToStartToken`),
+    /// so the server can start the activity on this phone. Not tied to a game.
+    func registerPushToStartToken(_ token: String) async {
+        guard await api.hasAccount() else { return }
+        guard defaults.string(forKey: Key.uploadedPushToStart) != token else { return }
+        do {
+            try await api.registerPushToken(PushTokenRequest(token: token, kind: .liveactivity))
+            defaults.set(token, forKey: Key.uploadedPushToStart)
+        } catch {
+            log.info("Push-to-start token upload failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// The APNs broadcast channel the server updates a game's Live Activity on
+    /// (`LiveActivityController.channelProvider`). nil until the server has one (APNs not set up,
+    /// offline, signed out): the activity then updates locally only.
+    func liveActivityChannel(for game: GameID) async -> String? {
+        guard await api.hasAccount() else { return nil }
+        return try? await api.liveActivityChannel(for: game)
     }
 
     // MARK: Invites

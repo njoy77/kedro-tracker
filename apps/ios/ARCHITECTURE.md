@@ -14,7 +14,8 @@ against the existing contract (or a local adapter in your own folder).
 ```
 apps/ios/Kedro/
   App/                      App shell (foundation)
-    KedroApp.swift            @main; AppModel.live() + AuthStore into the environment
+    KedroApp.swift            @main; AppModel.live() + AuthStore + NetworkServices, push delegate, root hosts
+    AppServices.swift         .appServices(): stats follow, blocked people → stats, widget snapshots, sound previews
     AppModel.swift            Services, identity, live game, navigation paths
     RootView.swift            Splash → OnboardingFlow (gate) → MainTabView; root toast host
     MainTabView.swift         Tab API: Play, Board, You, Search(.search); live game cover + mini bar
@@ -67,10 +68,10 @@ picked up automatically. Only the platform agent edits `project.pbxproj`.
 Tests: put yours in `KedroTests/<YourArea>/` (e.g. `KedroTests/Stats/`). Shared helpers in
 `KedroTests/Support/` are foundation's; copy what you need rather than editing them.
 
-### Stub entry views
+### Entry views
 
-These exist as compiling stubs marked `// STUB: owned by <agent>`. Replace the file's contents and
-keep the type name and initializer exactly; the shell and other features already call them.
+Every entry view below is implemented (none are stubs any more). Keep the type name and
+initializer exactly; the shell and other features call them.
 
 | Owner | Type | File |
 |---|---|---|
@@ -97,8 +98,6 @@ keep the type name and initializer exactly; the shell and other features already
 | talk | `FeedView(session: GameSession)` | Features/Feed/FeedView.swift |
 | talk | `ReceiptComposer(gameID: GameID)` | Features/Receipts/ReceiptComposer.swift |
 
-The `TableView`, `PlayView` and `OnboardingFlow` stubs are minimal working versions so the shell
-can be exercised (start the sample table, minimize, mini bar, sign in as the test user). Replace them.
 
 ---
 
@@ -131,10 +130,9 @@ Everything comes from the environment, injected once by `KedroApp` (`.appEnviron
 | HTTP API | `app.api` (`APIClient`, networking owns it) |
 | Under-18 | `prefs.isUnder18`, `prefs.effectiveLanguageLevel`, `prefs.effectiveCustomTaunts` |
 
-Installing real implementations (networking, lobby): the single wiring point is `AppModel.live()`
-(foundation-owned), where `transport`, `directory`, `discovery` and `ageRange` are chosen. Build your
-implementation in your own folder with an initializer that takes what it needs (store, device ID,
-API client), and list the one-line wiring change in your shared needs; don't edit `App/` yourself.
+Installing real implementations: `AppModel.live()` builds the store and local services, and
+`KedroApp` installs the real `transport`, `directory`, `discovery` and `account` right after with
+`NetworkServices.install(in:auth:)` (it needs the `AuthStore`). See §5 for every cross-feature seam.
 
 ---
 
@@ -172,6 +170,7 @@ API client), and list the one-line wiring change in your shared needs; don't edi
 |---|---|---|
 | `GameCreated` | `{config, host}` | first one wins |
 | `GameStarted` | `{seatOrder:[SeatID], firstDealer}` | lobby → active; fixes order and first dealer |
+| `GameConfigured` | `{tableWord, scoringMode, houseVoiceCap?}` | lobby only: replaces all three (no cap clears it); after Deal → late (`afterDeal`) |
 | `PlayerSeated` | `{seat}` | upsert by seat; new seats refused after Round 1 or past 8; a new `deviceId` after start is logged |
 | `SeatRemoved` | `{seatId}` | before Round 1 only; logged |
 | `ScorekeeperChanged` | `{seatId}` | logged |
@@ -196,8 +195,8 @@ JSON keys are camelCase with `Id` (`opId`, `seatId`, `deviceId`, `titleId`); Swi
 `ID` and map via `CodingKeys`. Optional keys are omitted when nil, except `actorPlayerId`, which is
 always present (`null` when absent). `Seat`, `GameConfig` and `Round` JSON are documented on the types.
 
-`GameStarted`, `ScorekeeperChanged` and `TauntRetracted` are additions to design §11's list; the
-backend must accept all 22 types (`OperationType.allCases`).
+`GameStarted`, `GameConfigured`, `ScorekeeperChanged` and `TauntRetracted` are additions to design
+§11's list; the backend must accept all 23 types (`OperationType.allCases`).
 
 **Fold order**: de-dupe by `opId`, sort by `(hlc, deviceId, opId)`, apply. Conflicts: later HLC wins
 for concurrent edits; duplicate rounds keep the earlier; after `GameFinished` (or while abandoned)
@@ -313,7 +312,29 @@ Anything that receives operations (peer link, backend sync) writes them with `st
 
 ---
 
-## 5. Conventions
+## 5. Integration (how the features are wired together)
+
+| Seam | Where | How |
+|---|---|---|
+| Real services | `KedroApp.init` | `NetworkServices.install(in: appModel, auth:)` sets `app.transport` (`NetworkedTransport`), `app.directory` (`RemotePlayerDirectory`), `app.discovery` (`NearbyTableDiscovery`) and `app.account` (`AccountSync`) before `AppModel.start()`. `AppModel.live()`, previews and tests keep the local ones. |
+| Network services in views | environment | `@Environment(NetworkServices.self) var network: NetworkServices?` (nil in previews): `network.push.pendingInvite` / `consumeInvite()` (Play's Table card), `network.push.requestAuthorization()` (in context, after a primer), `network.link` (J-02 `seatRequests` / `answer(_:admit:)`, `inviteLink()` for the QR code), `network.alerts`. |
+| Joining | `Core/Nearby/NearbyTableDiscovery+Joining.swift` | The discovery adopts the lobby's `SeatRequesting` (Ask to Sit: joining the link without proof is the request; seating the person admits their phone) and `TableInviting` (QR codes the link's admission accepts; joining with a scanned `k`). |
+| Account | `AppModel.didSignIn`, onboarding, Settings → Profile | `app.syncProfile()` (PUT /v1/players/me with `titleId`; 409 → `.handleTaken`), then `account.claimGuestHistory(guestToken:)` (the guest profile's token, "Got a claim code?" codes, App Clip seats). Guest seats carry `claimTokenHash`. |
+| Table ← Stats | `MainTabView` cover | `.environment(\.tableInsights, .stats(titles:isLoaded:store:viewer:options:))` (`Core/Stats/StatsTableInsights.swift`): titles under names, game-end ratings, badges, Hall of Shame. |
+| Table ↔ Talk | `MainTabView`, `LiveTableView` | `.trashTalk(for: app.liveGame, presentsFeed: false)` on the tab view runs taunt toasts and sounds (minimized or not). A tapped toast sets `TalkServices.feedRequest`; the Table opens History → Feed. Display mode registers in `TalkServices.bannerGames` (banners instead of toasts) and claims the table speaker. `\.tauntRendering` defaults to Talk's renderer. |
+| Play/Lobby ← Stats | `PlayModel`, `LobbyModel` | `StatsModel.shared(for:)` is the `StakesProvider` (stakes, Since you last looked, the Wrapped slot) once loaded; `app.gamesPlayed(by:)` snapshots `Seat.gamesPlayed`. Stats follow the store app-wide (`.appServices()`), excluding blocked people. |
+| Run It Back | game end → Play | `app.rematchRequest = state`, the cover closes, Play opens `NewTableView(rematchOf:)` (the `Rematch` plan: same circle, rotated first deal, saved seats). |
+| Live Activity | `.liveGameActivity()` at the root | Follows `app.liveGame`; `channelProvider` / `onPushToStartToken` come from `PushService`. Buttons land in `pendingAction`, which `LiveTableView` takes. Server broadcasts use the same `ContentState` JSON (`packages/shared/src/live.ts`); phones apply `resolved(for: mySeatID)`. |
+| Widgets | `.appServices()` | Publishes `StatsSnapshot.widgetSnapshot(...)` whenever finished games change (held while a game is live). |
+| Outbound images | `AppPreferences.outboundImagesClean` | Receipts, Share Results and Wrapped start from `prefs.outboundImageLevel`. |
+
+Networking note: the iOS 26 structured `TLS` builder has no pre-shared-key option, so the table
+link hosts and connects with `NWListener`/`NWConnection` and `sec_protocol_options_add_pre_shared_key`,
+and browses with the iOS 26 `NetworkBrowser`.
+
+---
+
+## 6. Conventions
 
 - **SwiftUI only**, per `AGENTS.md`. The only UIKit is `IdleTimer` in `KeepAwake.swift`.
 - **Isolation**: the app target is `MainActor` by default. Value types used across actors (domain,

@@ -27,6 +27,7 @@ export type LateReason =
   | 'afterFinish'
   | 'afterAbandon'
   | 'seatsLocked'
+  | 'afterDeal'
   | 'tableFull'
   | 'invalid'
   | 'unknownRound'
@@ -60,6 +61,8 @@ export type FoldedGame = {
   rounds: Round[]
   dealerAnchor: { roundNumber: number; seat: SeatId } | null
   liveKnock: { roundNumber: number; knocker: SeatId } | null
+  /** Self-report: the seats that have reported a hand for the round in play. */
+  reportedSeats: SeatId[]
   finishReason: FinishReason | null
   createdAtMs: number | null
   startedAtMs: number | null
@@ -160,6 +163,7 @@ class Reducer {
       rounds: [],
       dealerAnchor: null,
       liveKnock: null,
+      reportedSeats: [],
       finishReason: null,
       createdAtMs: null,
       startedAtMs: null,
@@ -181,6 +185,7 @@ class Reducer {
     const nextRound = this.state.rounds.length + 1
     const knocker = this.state.status === 'active' || this.state.status === 'lobby' ? this.liveKnocks.get(nextRound) : undefined
     this.state.liveKnock = knocker ? { roundNumber: nextRound, knocker } : null
+    this.state.reportedSeats = [...(this.reports.get(nextRound)?.keys() ?? [])]
   }
 
   private applyOperation(op: Operation): void {
@@ -218,6 +223,7 @@ class Reducer {
     switch (op.type) {
       case 'GameCreated': return this.gameCreated(op)
       case 'GameStarted': return this.gameStarted(op)
+      case 'GameConfigured': return this.gameConfigured(op)
       case 'PlayerSeated': return this.playerSeated(op)
       case 'SeatRemoved': return this.seatRemoved(op)
       case 'ScorekeeperChanged': return this.scorekeeperChanged(op)
@@ -251,6 +257,17 @@ class Reducer {
     this.state.config = { ...op.payload.config }
     this.state.hostSeat = op.payload.host
     this.state.createdAtMs = op.hlc.wallMs
+  }
+
+  private gameConfigured(op: Operation<'GameConfigured'>) {
+    const state = this.state
+    if (state.status !== 'lobby') return this.refuse(op, 'afterDeal')
+    const tableWord = op.payload.tableWord.trim()
+    if (!tableWord) return this.refuse(op, 'invalid')
+    state.config.tableWord = tableWord
+    state.config.scoringMode = op.payload.scoringMode
+    if (op.payload.houseVoiceCap) state.config.houseVoiceCap = op.payload.houseVoiceCap
+    else delete state.config.houseVoiceCap
   }
 
   private gameStarted(op: Operation<'GameStarted'>) {

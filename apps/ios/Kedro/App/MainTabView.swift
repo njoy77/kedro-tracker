@@ -5,6 +5,8 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
 
+    private var stats: StatsModel { .shared(for: app.store) }
+
     var body: some View {
         @Bindable var app = app
 
@@ -32,12 +34,27 @@ struct MainTabView: View {
         }
         .tint(.kedroRed)
         .liveGameAccessory(isEnabled: app.liveGame != nil && !app.isTablePresented)
+        // Taunt toasts and sounds for the live game, minimized or not (one monitor per game).
+        .trashTalk(for: app.liveGame, presentsFeed: false)
         .fullScreenCover(isPresented: $app.isTablePresented) {
             if let session = app.liveGame {
                 TableView(session: session)
+                    .environment(\.tableInsights, tableInsights(for: session))
+                    .environment(\.tauntRendering, .talk)
                     .toastHost(app.toasts)
             }
         }
+    }
+
+    /// Stats' titles and game-end progression for the Table (Features/Table/TableInsights.swift).
+    private func tableInsights(for session: GameSession) -> TableInsights {
+        .stats(
+            titles: stats.tableTitles(for: session.state.seats),
+            isLoaded: stats.isLoaded,
+            store: app.store,
+            viewer: app.profile?.identity,
+            options: stats.options
+        )
     }
 }
 

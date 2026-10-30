@@ -6,12 +6,12 @@ import WidgetKit
 struct LiveGameActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LiveGameAttributes.self) { context in
-            LiveGameLockScreenView(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            LiveGameLockScreenView(attributes: context.attributes, state: context.state.resolved(for: context.attributes.mySeatID), isStale: context.isStale)
                 .activityBackgroundTint(Color.night.opacity(0.82))
                 .activitySystemActionForegroundColor(.cream)
                 .widgetURL(tableURL(context.attributes))
         } dynamicIsland: { context in
-            let state = context.state
+            let state = context.state.resolved(for: context.attributes.mySeatID)
             let focus = state.myRow ?? state.rows.first
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {

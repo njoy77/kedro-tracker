@@ -3,7 +3,7 @@ import Observation
 
 /// Did the Reading (design §12.6): the Learn feature sets this `UserDefaults` flag once the
 /// lessons and the Score a Round drill are done (`@AppStorage(LearningProgress.didTheReadingKey)`).
-enum LearningProgress {
+nonisolated enum LearningProgress {
     static let didTheReadingKey = "kedro.learn.didTheReading"
 
     static func didTheReading(defaults: UserDefaults = .standard) -> Bool {

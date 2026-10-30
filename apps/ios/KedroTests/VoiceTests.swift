@@ -67,7 +67,8 @@ struct VoiceTests {
         let ids = Set(text.matches(of: pattern).map { String($0.1) }).subtracting(["T-11"]) // T-11 has no string
         #expect(ids.count > 150)
         for id in ids.sorted() {
-            #expect(deck[id] != nil, "\(id) is missing from CopyDeck")
+            // The launch taunts (TT-15 onward) live with Talk's library, not the standard deck.
+            #expect(deck[id] != nil || TauntLibrary.entry(id) != nil, "\(id) is missing from CopyDeck")
         }
     }
 

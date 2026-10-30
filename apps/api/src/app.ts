@@ -13,12 +13,17 @@ import {
   MAX_OPS_PER_REQUEST,
   blockSchema,
   claimSchema,
+  clipClaimSchema,
+  clipSessionSchema,
   pushTokenSchema,
   receiptSchema,
   reportSchema,
   tauntCheckSchema,
   updateProfileSchema,
   type ClaimResponse,
+  type ClipClaimResponse,
+  type ClipSessionResponse,
+  type LiveActivityChannelResponse,
   type GetOpsResponse,
   type GuestSuggestionsResponse,
   type HandleAvailabilityResponse,
@@ -35,6 +40,8 @@ import {
 import { requireAuth, type AuthEnv, type TokenVerifier } from './auth.ts'
 import { HttpError, badRequest, errorBody, readJson, uuidParam } from './http.ts'
 import { StubLiveActivityBroadcaster, type LiveActivityBroadcaster } from './push/liveActivity.ts'
+import { StubNotifier, type Notifier } from './push/notifications.ts'
+import { ClipService, ClipTokens } from './services/clip.ts'
 import { LeaderboardService } from './services/leaderboard.ts'
 import { TauntFilter } from './services/moderation.ts'
 import { OpsService } from './services/ops.ts'
@@ -47,6 +54,9 @@ export type AppDeps = {
   store: Store
   verifier: TokenVerifier
   broadcaster?: LiveActivityBroadcaster
+  notifier?: Notifier
+  /** Signs App Clip session tokens (KEDRO_CLIP_SECRET); a random per-process secret when unset. */
+  clipSecret?: string
   now?: () => number
   log?: (message: string) => void
   /** Log every request (the server entry turns this on; tests leave it off). */
@@ -60,20 +70,28 @@ export type Services = {
   social: SocialService
   ratings: RatingsService
   filter: TauntFilter
+  clip: ClipService
+  clipTokens: ClipTokens
+  notifier: Notifier
 }
 
 const OK: OkResponse = { ok: true }
 const HLC_STRING = /^[0-9]{15}-[0-9]{5}-.{1,64}$/
 
-export function createServices({ store, broadcaster, now, log }: Omit<AppDeps, 'verifier'>): Services {
+export function createServices({ store, broadcaster, notifier, clipSecret, now, log }: Omit<AppDeps, 'verifier'>): Services {
   const ratings = new RatingsService(store)
   const filter = new TauntFilter(store, now)
   const players = new PlayersService(store)
+  const clipTokens = new ClipTokens(clipSecret, now)
+  const alerts = notifier ?? new StubNotifier(store, log)
   return {
     ratings,
     filter,
     players,
-    ops: new OpsService({ store, ratings, filter, broadcaster: broadcaster ?? new StubLiveActivityBroadcaster(log), now, log }),
+    clipTokens,
+    notifier: alerts,
+    clip: new ClipService(store, clipTokens),
+    ops: new OpsService({ store, ratings, filter, broadcaster: broadcaster ?? new StubLiveActivityBroadcaster(log), notifier: alerts, now, log }),
     leaderboard: new LeaderboardService(store, players),
     social: new SocialService(store, players, ratings),
   }
@@ -81,7 +99,7 @@ export function createServices({ store, broadcaster, now, log }: Omit<AppDeps, '
 
 export function createApp(deps: AppDeps) {
   const services = createServices(deps)
-  const { ops, players, leaderboard, social, filter } = services
+  const { ops, players, leaderboard, social, filter, clip, clipTokens } = services
   const log = deps.log ?? console.error
 
   const app = new Hono<AuthEnv>()
@@ -100,7 +118,7 @@ export function createApp(deps: AppDeps) {
   app.get('/health', (c) => c.json<HealthResponse>({ status: 'ok', version: API_VERSION }))
 
   const v1 = new Hono<AuthEnv>()
-  v1.use('*', requireAuth(deps.verifier))
+  v1.use('*', requireAuth(deps.verifier, clipTokens))
   v1.use('*', bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json(errorBody('payloadTooLarge', 'Request body too large'), 413) }))
 
   // MARK: Operations
@@ -110,6 +128,8 @@ export function createApp(deps: AppDeps) {
     if (body.ops.length > MAX_OPS_PER_REQUEST) {
       throw new HttpError(413, 'tooManyOps', `Send at most ${MAX_OPS_PER_REQUEST} operations per request`)
     }
+    const clipSession = c.get('clip')
+    if (clipSession) return c.json<PostOpsResponse>(await ops.ingestClip(clipSession, body.ops))
     const caller = c.get('user').id
     await players.requireProfile(caller)
     return c.json<PostOpsResponse>(await ops.ingest(caller, body.ops))
@@ -120,7 +140,28 @@ export function createApp(deps: AppDeps) {
     const after = c.req.query('after') || undefined
     if (after !== undefined && !HLC_STRING.test(after)) throw badRequest('after must be an HLC string')
     const limit = optionalInt(c.req.query('limit'), 'limit')
+    const clipSession = c.get('clip')
+    if (clipSession) return c.json<GetOpsResponse>({ ops: await ops.operationsForClip(clipSession, gameId, { after, limit }) })
     return c.json<GetOpsResponse>({ ops: await ops.operationsAfter(c.get('user').id, gameId, { after, limit }) })
+  })
+
+  v1.get('/games/:gameId/live-activity', async (c) => {
+    const gameId = uuidParam(c.req.param('gameId'), 'gameId')
+    return c.json<LiveActivityChannelResponse>({ channelId: await ops.liveActivityChannel(c.get('user').id, gameId) })
+  })
+
+  // MARK: App Clip
+
+  v1.post('/clip/sessions', async (c) => {
+    const request = await readJson(c, clipSessionSchema)
+    return c.json<ClipSessionResponse>(await clip.startSession({ ...request, gameId: request.gameId.toLowerCase(), deviceId: request.deviceId.toLowerCase() }))
+  })
+
+  v1.post('/clip/claims', async (c) => {
+    const clipSession = c.get('clip')
+    if (!clipSession) throw new HttpError(403, 'forbidden', 'Only the App Clip claims seats this way')
+    const request = await readJson(c, clipClaimSchema)
+    return c.json<ClipClaimResponse>(await clip.claim(clipSession, { gameId: request.gameId.toLowerCase(), seatId: request.seatId }))
   })
 
   // MARK: Players

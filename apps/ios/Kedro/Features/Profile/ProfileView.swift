@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var isPickingTitle = false
     @State private var receiptGame: ReceiptTarget?
     @State private var playAgainFailed = false
+    @State private var blockRequest: BlockRequest?
 
     private var stats: StatsModel { .shared(for: app.store) }
     private var voice: Voice { app.voice }
@@ -45,13 +46,21 @@ struct ProfileView: View {
                     }
                     .accessibilityLabel("Settings")
                 }
+            } else {
+                // Mute Their Taunts (always, from a profile) and Block (design §8.3).
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("More", systemImage: "ellipsis") {
+                        ModerationMenu(person: player, name: identity.name) { blockRequest = $0 }
+                    }
+                }
             }
         }
+        .blockConfirmation($blockRequest)
         .sheet(isPresented: $isPickingTitle) {
             TitlePickerSheet(player: player)
         }
         .sheet(item: $receiptGame) { target in
-            NavigationStack { ReceiptComposer(gameID: target.id) }
+            ReceiptComposer(gameID: target.id)
                 .toastHost(app.toasts)
         }
         .alert("Couldn't Open a Table", isPresented: $playAgainFailed) {

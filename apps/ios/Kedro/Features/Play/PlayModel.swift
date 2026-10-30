@@ -27,6 +27,8 @@ final class PlayModel {
     private(set) var stakes: [StakesLine] = [.nothing]
     private(set) var myGamesPlayed = 0
     private(set) var finished: [GameState] = []
+    /// The Wrapped slot from Core/Stats (December, or last year's until the next one).
+    private(set) var wrapped: WrappedSlot?
 
     @ObservationIgnored private let app: AppModel
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "Play")
@@ -84,11 +86,12 @@ final class PlayModel {
     @discardableResult
     func open(_ url: URL) async -> Bool {
         guard let link = TableInviteLink(url: url) else { return false }
-        // TODO(networking): verify `link.token` with the host (RotatingTableToken) before seating.
+        // The table's link checks the code (`k`) when this phone sits down (TableJoiner).
         let state = try? await app.store.gameState(link.gameID)
         if let table = nearby.first(where: { $0.id == link.gameID }) {
             var content = TableCardContent(table: table, hasSavedSeat: link.kind == .savedSeat)
             content.isPlayedWith = true // the host handed you the link
+            content.inviteCode = link.token
             linkedTable = content
         } else {
             linkedTable = TableCardContent(gameID: link.gameID, state: state, link: link, me: app.profile?.identity)
@@ -110,7 +113,7 @@ final class PlayModel {
         defer { isJoining = false }
         do {
             let action = card.action
-            try await TableJoiner(app: app).perform(action, at: card.id)
+            try await TableJoiner(app: app).perform(action, at: card.id, inviteCode: card.inviteCode)
             if action == .askToSit {
                 askedTable = card.id
             } else {
@@ -168,17 +171,37 @@ final class PlayModel {
             myGamesPlayed = 0
             return
         }
-        myGamesPlayed = PlayInsights.gamesPlayed(by: me, in: finished)
-        digest = PlayInsights.digest(for: me, in: finished, since: digestSince)
-        stakes = PlayInsights.stakes(for: me, in: finished, limit: 1)
+        refreshInsights()
         checkAskAnswered()
+    }
+
+    /// Recomputes the digest and stakes: from Core/Stats once it has loaded (ratings, board
+    /// movement, badges), from finished games before that.
+    func refreshInsights() {
+        guard let me = app.profile?.identity else { return }
+        let stats = StatsModel.shared(for: app.store)
+        let voice = app.voice
+        myGamesPlayed = stats.isLoaded ? stats.progress(for: me).gamesPlayed : PlayInsights.gamesPlayed(by: me, in: finished)
+        stakes = PlayInsights.stakes(provider: stats, isLoaded: stats.isLoaded, me: me, table: [], voice: voice)
+            ?? PlayInsights.stakes(for: me, in: finished, limit: 1)
+        // A line already in Tonight's stakes (the closest badge, usually) isn't repeated above it.
+        let stakesText = Set(stakes.map { $0.text(voice) })
+        digest = (PlayInsights.digest(provider: stats, isLoaded: stats.isLoaded, me: me, in: finished, since: digestSince, voice: voice)
+            ?? PlayInsights.digest(for: me, in: finished, since: digestSince))
+            .filter { item in
+                if case .stats(let line) = item { return !stakesText.contains(line.text) }
+                return true
+            }
+        wrapped = stats.isLoaded ? stats.wrappedSlot(for: me, voice: voice, now: .now) : nil
     }
 
     /// Stakes for the people at a table (the card).
     func stakes(at card: TableCardContent) -> [StakesLine] {
         guard let me = app.profile?.identity else { return [] }
-        let opponents = Set(card.seated.map(\.ref))
-        return PlayInsights.stakes(for: me, in: finished, opponents: opponents)
+        let opponents = card.seated.map(\.ref)
+        let stats = StatsModel.shared(for: app.store)
+        return PlayInsights.stakes(provider: stats, isLoaded: stats.isLoaded, me: me, table: opponents, voice: app.voice)
+            ?? PlayInsights.stakes(for: me, in: finished, opponents: Set(opponents))
     }
 
     /// Marks the digest as seen (when you leave Play).

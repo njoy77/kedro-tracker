@@ -26,9 +26,13 @@ nonisolated enum DigestItem: Hashable, Sendable, Identifiable {
     case rivalryFlipped(Rivalry)
     /// Someone sent you a receipt (N-08).
     case receipt(id: UUID, gameID: GameID, fromName: String, fromAvatar: Avatar?, fromIsGuest: Bool, word: String)
+    /// A progression line from Core/Stats (J-09 with the rating change, J-07, J-08, TI-19, HS-09,
+    /// the closest badge), already rendered in the player's voice.
+    case stats(SinceYouLastLookedItem)
 
     var id: String {
         switch self {
+        case .stats(let item): "stats:\(item.id)"
         case .lastGame(let game, _, _, _): "game:\(game)"
         case .rivalryFlipped(let rivalry): "rivalry:\(rivalry.opponent)"
         case .receipt(let id, _, _, _, _, _): "receipt:\(id)"
@@ -44,10 +48,14 @@ nonisolated enum StakesLine: Hashable, Sendable {
     case rivalLeads(Rivalry)
     /// Nothing on the line (J-10).
     case nothing
+    /// A line from Core/Stats' `StakesProvider` (J-01, J-05, J-06, closest badge), rendered in
+    /// the player's voice when it was computed.
+    case stats(String)
 
     /// The copy deck line in a voice.
     func text(_ voice: Voice) -> String {
         switch self {
+        case .stats(let text): text
         case .fifthGame: voice.line("J-01")
         case .rivalLeads(let rivalry): voice.line("J-05", ["name": rivalry.name, "a": rivalry.theirs, "b": rivalry.mine])
         case .nothing: voice.line("J-10")
@@ -57,9 +65,10 @@ nonisolated enum StakesLine: Hashable, Sendable {
 
 /// Derived, never stored (design §12): Play's digest and stakes, computed from finished games.
 ///
-/// Ratings, board movement and badges come from Core/Stats (stats agent); until Play can read
-/// them, the rating-based lines (J-06 "pass the player above", J-07 "passed you", the rating
-/// delta in J-09, closest badge) are left out rather than estimated differently from the board.
+/// The rating-based lines (J-06, J-07, the rating change in J-09, closest badge) come from
+/// Core/Stats through `StakesProvider` (`PlayInsights.stakes(provider:…)`, `digest(provider:…)`);
+/// these finished-game versions are the fallback until stats have loaded, and the source of the
+/// receipt rows (N-08), which stats doesn't track.
 nonisolated enum PlayInsights {
     /// Finished, non-abandoned games you were seated at.
     static func gamesPlayed(by me: PlayerRef, in games: [GameState]) -> Int {
@@ -136,5 +145,27 @@ nonisolated enum PlayInsights {
         if let rival = rivals.first { lines.append(.rivalLeads(rival)) }
         // TODO(stats): closest badge.
         return lines.isEmpty ? [.nothing] : Array(lines.prefix(limit))
+    }
+}
+
+// MARK: - Stats
+
+extension PlayInsights {
+    /// Tonight's stakes from Core/Stats: one line, or nil while stats haven't loaded.
+    static func stakes(provider: any StakesProvider, isLoaded: Bool, me: PlayerRef, table: [PlayerRef], voice: Voice) -> [StakesLine]? {
+        guard isLoaded else { return nil }
+        let stakes = provider.tonightsStakes(for: me, table: table, voice: voice)
+        if case .nothing = stakes.kind { return [.nothing] }
+        return [.stats(stakes.text)]
+    }
+
+    /// "Since you last looked" from Core/Stats plus this phone's receipt rows (N-08), or nil
+    /// while stats haven't loaded.
+    static func digest(provider: any StakesProvider, isLoaded: Bool, me: PlayerRef, in games: [GameState], since: Date?, voice: Voice) -> [DigestItem]? {
+        guard isLoaded else { return nil }
+        let receipts = digest(for: me, in: games, since: since).filter {
+            if case .receipt = $0 { true } else { false }
+        }
+        return provider.sinceYouLastLooked(for: me, since: since, voice: voice).map(DigestItem.stats) + receipts
     }
 }

@@ -67,6 +67,8 @@ export type FinishedSeatRow = {
   seatId: string
   playerId: UUID | null
   guestId: UUID | null
+  /** Clockwise position: the rating replay sums pairs in seat order, like the iOS app. */
+  seatOrder: number
   total: number
 }
 
@@ -128,6 +130,8 @@ export interface Store {
   /** Records a guest seen in a game. The first claim token hash recorded wins. */
   registerGuests(guests: readonly GuestRegistration[]): Promise<void>
   claimGuest(claimTokenHash: string, playerId: UUID): Promise<ClaimResult>
+  /** The claim token hash recorded for a guest (null when none; undefined for an unknown guest). */
+  guestClaimTokenHash(guestId: UUID): Promise<string | null | undefined>
 
   // Safety
   addBlock(blockerId: UUID, blockedId: UUID): Promise<void>

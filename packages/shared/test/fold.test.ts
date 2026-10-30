@@ -243,29 +243,65 @@ describe('live knock and the Live Activity content state', () => {
     expect(saved.liveKnock).toBeNull()
   })
 
-  test('the content state carries standings, the next dealer and the last outcome', () => {
+  test('the content state matches the phones\' Live Activity JSON', () => {
     const state = liveActivityContentState(foldGame(sampleOperations({ throughRound: 5, finished: false, liveKnock: true })))
-    expect(state.tableWord).toBe('Cold Deck')
-    expect(state.roundsPlayed).toBe(5)
+    if (!state) throw new Error('expected content')
+    expect(state.phase).toBe('active')
+    expect(state.roundNumber).toBe(6)
     expect(state.plannedRounds).toBe(6)
-    expect(state.dealerSeat).toBe(seats.noah)
-    expect(state.liveKnocker).toBe(seats.sam)
+    expect(state.metadataLine).toBe('ROUND 6 OF 6 · NOAH DEALS')
     // R5: Noah knocked with 2 against Sam's 4 and landed (−10).
-    expect(state.lastRound).toEqual({ number: 5, knocker: seats.noah, outcome: 'landed' })
-    expect(state.standings.map((row) => [row.displayName, row.total, row.lastScore])).toEqual([
-      ['Noah', 26, -10],
-      ['Ana', 29, 9],
-      ['Ben', 44, 6],
-      ['Cleo', 45, 11],
-      ['Sam', 47, 4],
+    expect(state.factLine).toBe('Round 5. Noah knocked on 2.')
+    expect(state.liveKnockLine).toBe('Sam knocked · last turns')
+    expect(state.staleTemplate).toContain('{time}')
+    expect(state.rows.map((row) => [row.name, row.score, row.delta, row.outcome ?? null])).toEqual([
+      ['Noah', '26', '\u221210', 'landed'],
+      ['Ana', '29', '+9', null],
+      ['Ben', '44', '+6', null],
+      ['Cleo', '45', '+11', null],
+      ['Sam', '47', '+4', null],
     ])
+    expect(state.rows[0]).toMatchObject({ rankLabel: '1', ordinal: '1st', isLeader: true, isDealer: true, isMe: false })
+    // Broadcasts name the phones that show the button; each phone resolves it.
+    expect(state.action).toEqual({ kind: 'recordRound', title: 'Record Round 6' })
+    expect(state.actionSeats).toEqual([seats.noah])
     expect(JSON.stringify(state).length).toBeLessThan(4096)
   })
 
-  test('a finished game has no dealer and no live knock', () => {
+  test('a finished game has no dealer, button or live knock; the lobby has no content', () => {
     const state = liveActivityContentState(foldGame(sampleOperations()))
-    expect(state.status).toBe('finished')
-    expect(state.dealerSeat).toBeUndefined()
-    expect(state.standings.map((row) => row.total)).toEqual([28, 34, 65, 67, 70])
+    if (!state) throw new Error('expected content')
+    expect(state.phase).toBe('finished')
+    expect(state.metadataLine).not.toContain('DEALS')
+    expect(state.action).toBeUndefined()
+    expect(state.liveKnockLine).toBeUndefined()
+    expect(state.rows.map((row) => row.score)).toEqual(['28', '34', '65', '67', '70'])
+    expect(liveActivityContentState(foldGame(sampleOperations().filter((op) => op.type === 'GameCreated' || op.type === 'PlayerSeated')))).toBeNull()
+  })
+})
+
+describe('lobby settings', () => {
+  test('GameConfigured changes the table word, mode and cap in the lobby only', () => {
+    const lobby = sampleOperations().filter((op) => op.type === 'GameCreated' || op.type === 'PlayerSeated')
+    const at = (ms: number) => ({ ...lobby[lobby.length - 1].hlc, wallMs: lobby[lobby.length - 1].hlc.wallMs + ms })
+    const configure = (ms: number, payload: { tableWord: string; scoringMode: 'scorekeeper' | 'selfReport'; houseVoiceCap?: 'clean' }) => ({
+      ...lobby[0],
+      opId: crypto.randomUUID(),
+      hlc: at(ms),
+      type: 'GameConfigured' as const,
+      payload,
+    })
+    const configured = foldGame([...lobby, configure(1, { tableWord: 'Last Call', scoringMode: 'selfReport', houseVoiceCap: 'clean' })])
+    expect(configured.config.tableWord).toBe('Last Call')
+    expect(configured.config.scoringMode).toBe('selfReport')
+    expect(configured.config.houseVoiceCap).toBe('clean')
+    const cleared = foldGame([...lobby, configure(1, { tableWord: 'Last Call', scoringMode: 'selfReport', houseVoiceCap: 'clean' }), configure(2, { tableWord: 'Last Call', scoringMode: 'scorekeeper' })])
+    expect(cleared.config.houseVoiceCap).toBeUndefined()
+
+    const dealt = sampleOperations({ throughRound: 1, finished: false })
+    const late = { ...configure(0, { tableWord: 'Too Late', scoringMode: 'selfReport' }), hlc: { ...dealt[dealt.length - 1].hlc, wallMs: dealt[dealt.length - 1].hlc.wallMs + 1 } }
+    const refused = foldGame([...dealt, late])
+    expect(refused.config.tableWord).toBe('Cold Deck')
+    expect(refused.late.at(-1)?.reason).toBe('afterDeal')
   })
 })

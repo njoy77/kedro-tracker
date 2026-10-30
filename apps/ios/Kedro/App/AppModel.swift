@@ -27,6 +27,9 @@ final class AppModel {
     var directory: any PlayerDirectory
     var discovery: any TableDiscovery
     var ageRange: any AgeRangeProviding
+    /// Profile upload and guest claims (networking's `AccountSync`). nil keeps the account on the
+    /// phone (previews, tests).
+    var account: (any AccountSyncing)?
     let toasts: ToastCenter
     let preferences: AppPreferences
     let profiles: ProfileStore
@@ -40,6 +43,9 @@ final class AppModel {
     /// `isTablePresented`, otherwise as the mini bar in the tab bar accessory.
     private(set) var liveGame: GameSession?
     var isTablePresented = false
+    /// Run It Back from game end: the finished game to rebuild the lobby from. The Play tab opens
+    /// the lobby with it (seats saved, rounds and mode pre-filled, first deal rotated) and clears it.
+    var rematchRequest: GameState?
     @ObservationIgnored private var liveGameTask: Task<Void, Never>?
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "App")
 
@@ -79,7 +85,9 @@ final class AppModel {
             container = try? KedroPersistence.makeContainer(inMemory: true)
         }
         let store: any GameStore = container.map { SwiftDataGameStore(container: $0) } ?? InMemoryGameStore()
-        // Networking agent: install the real transport, directory and discovery here.
+        // The real transport, directory, discovery and account sync need the AuthStore, so
+        // `KedroApp` installs them right after this with `NetworkServices.install(in:auth:)`.
+        // Until then (and in previews and tests) the local implementations run.
         return AppModel(store: store, profiles: ProfileStore(container: container))
     }
 
@@ -100,15 +108,19 @@ final class AppModel {
         Voice.house(for: state, viewer: preferences.effectiveLanguageLevel)
     }
 
-    /// Call when auth reports a signed-in user: makes sure the local profile is that player.
+    /// Call when auth reports a signed-in user: makes sure the local profile is that player, then
+    /// uploads it and claims any guest history this phone holds (the server needs the player row
+    /// before it accepts claims or ops).
     func didSignIn(userID: UUID, displayName: String?) {
         let player = PlayerRef.player(PlayerID(userID))
+        var guestToken: String?
         if var existing = profile {
-            guard existing.identity != player else { return }
-            // TODO(backend): claim guest history with `existing.claimToken` (POST /v1/claims).
-            existing.identity = player
-            existing.claimToken = nil
-            profiles.save(existing)
+            if existing.identity != player {
+                guestToken = existing.claimToken
+                existing.identity = player
+                existing.claimToken = nil
+                profiles.save(existing)
+            }
         } else {
             let name = displayName?.split(separator: " ").first.map(String.init) ?? "Player"
             profiles.save(LocalProfile(
@@ -118,6 +130,19 @@ final class AppModel {
                 avatar: .randomStarter()
             ))
         }
+        guard let account else { return }
+        Task {
+            if preferences.hasCompletedOnboarding { _ = await syncProfile() }
+            // The claimed games' seats change server side; the claimer gets no line (J-11 and
+            // N-04 are for the other people at those tables, sent by the server).
+            _ = await account.claimGuestHistory(guestToken: guestToken)
+        }
+    }
+
+    /// Sends the profile to the server (end of onboarding, Settings → Profile, sign-in).
+    func syncProfile() async -> ProfileUploadResult {
+        guard let account, let profile else { return .notSent }
+        return await account.uploadProfile(profile)
     }
 
     /// "Play as a guest": a local guest identity with a claim token (design §5.1).
@@ -170,7 +195,7 @@ final class AppModel {
     /// Opens a new table with this phone's person as host (the lobby's first step).
     func createGame(config: GameConfig, others: [Seat] = []) async throws -> GameSession {
         guard let profile else { throw GameSession.SessionError.invalidRound }
-        let host = profile.seat(order: 0, device: deviceID, languageLevel: preferences.effectiveLanguageLevel, gamesPlayed: nil)
+        let host = profile.seat(order: 0, device: deviceID, languageLevel: preferences.effectiveLanguageLevel, gamesPlayed: gamesPlayed(by: profile.identity))
         let session = try await GameSession.create(
             config: config, host: host, others: others, store: store, transport: transport, identity: identity, clock: clock
         )
@@ -207,6 +232,13 @@ final class AppModel {
         liveGameTask?.cancel()
         liveGameTask = nil
         liveGame = nil
+    }
+
+    /// Finished games for a person, from Core/Stats, for the `Seat.gamesPlayed` snapshot (learner
+    /// hints, the 5-step meter). nil until stats have loaded.
+    func gamesPlayed(by person: PlayerRef) -> Int? {
+        let stats = StatsModel.shared(for: store)
+        return stats.isLoaded ? stats.progress(for: person).gamesPlayed : nil
     }
 
     // MARK: Navigation

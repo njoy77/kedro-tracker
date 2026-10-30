@@ -4,10 +4,10 @@ import SwiftUI
 /// doesn't depend on `Features/Talk` (which owns the full canned library) or `Core/Moderation`
 /// (which owns masking for Clean recipients).
 ///
-/// The default resolves canned taunts through the standard copy deck (`TT-01…TT-14`) and shows
-/// custom taunts as written. The Talk agent can install a richer one with
-/// `.environment(\.tauntRendering, …)` on the Table's cover.
-nonisolated struct TauntRendering: Sendable {
+/// The default is Talk's renderer (`TauntRendering`): the full canned library in the viewer's
+/// level, and custom taunts with profanity masked for Clean viewers. `standardDeck` is the
+/// deck-only fallback (TT-01…TT-14, custom as written) for tests.
+nonisolated struct TableTauntRendering: Sendable {
     /// The taunt's text for a recipient at `level`, or nil to not show it at all.
     var text: @Sendable (_ content: TauntContent, _ level: LanguageLevel) -> String?
 
@@ -17,7 +17,7 @@ nonisolated struct TauntRendering: Sendable {
 
     /// Canned taunts from `CopyDeck.standard`; custom ones as written. An unknown canned ID is
     /// not shown (rather than leaking the ID).
-    static let standardDeck = TauntRendering { content, level in
+    static let standardDeck = TableTauntRendering { content, level in
         switch content {
         case .canned(let id):
             guard CopyDeck.standard[id] != nil else { return nil }
@@ -28,6 +28,13 @@ nonisolated struct TauntRendering: Sendable {
     }
 }
 
+extension TableTauntRendering {
+    /// Talk's renderer: the full taunt library, Clean masking for custom taunts.
+    static let talk = TableTauntRendering { content, level in
+        TauntRendering.text(content, level: level)
+    }
+}
+
 extension EnvironmentValues {
-    @Entry var tauntRendering: TauntRendering = .standardDeck
+    @Entry var tauntRendering: TableTauntRendering = .talk
 }

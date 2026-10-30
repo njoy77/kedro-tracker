@@ -13,6 +13,16 @@ protocol SeatRequesting: AnyObject, Sendable {
     func seatRequests(for game: GameID) -> AsyncStream<Seat>
 }
 
+/// Table links that the real transport checks (networking's `TableLink`): the rotating QR code
+/// its admission accepts, and joining with a scanned code so the phone is let in without Ask to
+/// Sit. `app.discovery as? TableInviting`; without it the lobby mints its own code.
+protocol TableInviting: AnyObject {
+    /// `https://kedro.app/t/{gameID}?k={code}` for the table this phone is linked to, or nil.
+    func inviteLink(for game: GameID, at date: Date) -> URL?
+    /// Starts linking with a table using the `k` from a scanned link.
+    func prepareToJoin(_ game: GameID, inviteCode: String)
+}
+
 /// What the Table card does when you tap its button.
 nonisolated enum SitDownAction: Hashable, Sendable {
     /// Played with the host, or the host added you: seats you now.
@@ -62,8 +72,12 @@ struct TableJoiner {
 
     /// Performs the card's action. Returns the session (now the live game, presented).
     @discardableResult
-    func perform(_ action: SitDownAction, at game: GameID) async throws -> GameSession {
+    func perform(_ action: SitDownAction, at game: GameID, inviteCode: String? = nil) async throws -> GameSession {
         guard let profile = app.profile else { throw JoinError.noProfile }
+        if let inviteCode, let inviting = app.discovery as? any TableInviting {
+            // The scanned QR code admits this phone to the table's link (no Ask to Sit).
+            inviting.prepareToJoin(game, inviteCode: inviteCode)
+        }
         if action == .askToSit, !(app.discovery is any SeatRequesting) {
             log.info("Ask to Sit isn't available without a table link yet")
             throw JoinError.cantAsk
@@ -97,7 +111,7 @@ struct TableJoiner {
     }
 
     private func mySeat(_ profile: LocalProfile, order: Int) -> Seat {
-        profile.seat(order: order, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: nil)
+        profile.seat(order: order, device: app.deviceID, languageLevel: app.preferences.effectiveLanguageLevel, gamesPlayed: app.gamesPlayed(by: profile.identity))
     }
 
     /// Gives the transport a moment to bring in the table's log, so a saved seat is found and

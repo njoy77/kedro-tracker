@@ -10,7 +10,11 @@ extension APIClient {
         try await send("POST", "v1/ops", body: OpsUpload(ops: operations))
     }
 
-    /// `GET /v1/games/:gameId/ops?after=<hlcString>`. nil `after` returns the whole log.
+    /// The server's page size for `GET /v1/games/:gameId/ops` (apps/api `DEFAULT_OPS_PAGE`).
+    static let opsPageSize = 2000
+
+    /// `GET /v1/games/:gameId/ops?after=<hlcString>`: one page in fold order, starting at the
+    /// beginning when `after` is nil. A full page (`opsPageSize`) means ask again after its last op.
     func operations(for game: GameID, after: HLC? = nil) async throws -> [GameOperation] {
         let query = after.map { [URLQueryItem(name: "after", value: $0.stringValue)] } ?? []
         let page: OpsPage = try await send("GET", "v1/games/\(game.uuidString)/ops", query: query)
@@ -54,7 +58,7 @@ extension APIClient {
 
     /// `POST /v1/blocks`.
     func block(_ player: PlayerID) async throws {
-        let _: OKResponse = try await send("POST", "v1/blocks", body: BlockRequest(playerId: player))
+        let _: OKResponse = try await send("POST", "v1/blocks", body: BlockPlayerBody(playerId: player))
     }
 
     /// `DELETE /v1/blocks/:playerId`.
@@ -72,5 +76,14 @@ extension APIClient {
     /// `POST /v1/push/tokens`.
     func registerPushToken(_ request: PushTokenRequest) async throws {
         let _: OKResponse = try await send("POST", "v1/push/tokens", body: request)
+    }
+
+    // MARK: Live Activity
+
+    /// `GET /v1/games/:gameId/live-activity`: the APNs broadcast channel the server updates this
+    /// game's Live Activity on. nil until the server has created one.
+    func liveActivityChannel(for game: GameID) async throws -> String? {
+        let response: LiveActivityChannelResponse = try await send("GET", "v1/games/\(game.uuidString.lowercased())/live-activity")
+        return response.channelId
     }
 }

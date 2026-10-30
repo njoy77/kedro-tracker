@@ -33,6 +33,10 @@ extension View {
     /// heavy haptic and Undo on the marking phone; taunts from other phones toast in this
     /// viewer's level; other people's corrections get H-02. `ToastCenter` already queues
     /// everything while a Round sheet is open.
+    ///
+    /// Taunt toasts on the phone belong to Talk's `LiveTalkMonitor` (moderation, rate limits,
+    /// sounds, and they keep coming while the Table is minimized); this modifier only turns
+    /// taunts into display-mode banners, and Talk skips the toast while a banner shows them.
     func tableAttention(
         _ session: GameSession,
         isDisplayMode: Bool,
@@ -87,7 +91,9 @@ private struct TableAttentionModifier: ViewModifier {
             guard state.liveKnock?.opId == mark.opId else { return }
             liveKnock(mark, mine: isMine(entry.opId))
         case .taunt(let taunt):
-            guard !taunt.isRetracted, !isMine(entry.opId) else { return }
+            guard isDisplayMode, !taunt.isRetracted,
+                  TalkServices.shared.shows(taunt, in: state.gameID, preferences: prefs)
+            else { return }
             self.taunt(taunt)
         case .record(let audit):
             guard !isMine(entry.opId) else { return }

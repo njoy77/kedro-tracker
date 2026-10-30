@@ -55,21 +55,19 @@ struct LeaderboardView: View {
 
     private var header: some View {
         Section {
-            VStack(spacing: 12) {
-                if viewer != nil {
-                    Picker("Scope", selection: $scope) {
-                        ForEach(LeaderboardScope.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+            if viewer != nil {
+                Picker("Scope", selection: $scope) {
+                    ForEach(LeaderboardScope.allCases) { Text($0.label).tag($0) }
                 }
-                Text("\(effectiveScope.label) · \(sort.headerLabel)")
-                    .kedroFont(.label)
-                    .foregroundStyle(.silver)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
             }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
+        } footer: {
+            Text("\(effectiveScope.label) · \(sort.headerLabel)")
+                .kedroFont(.label)
+                .foregroundStyle(.silver)
+                .accessibilityAddTraits(.isHeader)
         }
     }
 

@@ -43,6 +43,7 @@ nonisolated enum PendingClaims {
 /// "Got a claim code?": paste the code (or link) someone sent you after a game you played as a
 /// guest. Saved on the phone and claimed when you sign in.
 struct ClaimCodeSheet: View {
+    @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var input = ""
     @State private var saved = false
@@ -77,9 +78,13 @@ struct ClaimCodeSheet: View {
                     Button(saved ? Literal.text("button.done") : "Save") {
                         if saved { return dismiss() }
                         guard let code else { return }
-                        // TODO(networking): POST /v1/claims {claimToken} once signed in; remove on success.
+                        // Kept on the phone; POST /v1/claims now if signed in, else at sign-in
+                        // (AccountSync removes it once the server accepts it).
                         PendingClaims.add(code)
                         saved = true
+                        if let account = app.account, app.profile?.isGuest == false {
+                            Task { _ = await account.claimGuestHistory(guestToken: nil) }
+                        }
                     }
                     .disabled(!saved && code == nil)
                 }

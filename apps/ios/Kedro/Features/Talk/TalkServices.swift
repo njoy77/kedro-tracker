@@ -25,6 +25,9 @@ final class TalkServices {
     var filter: TauntFilter
     /// The game whose feed a tapped taunt toast asked to open (the Table presents it).
     var feedRequest: GameID?
+    /// Games whose Table is in display mode right now: it shows taunts as full-width banners
+    /// (design §6.3), so the monitor doesn't toast them as well.
+    var bannerGames: Set<GameID> = []
 
     @ObservationIgnored private var isConfigured = false
     @ObservationIgnored private var monitors: [GameID: MonitorHandle] = [:]

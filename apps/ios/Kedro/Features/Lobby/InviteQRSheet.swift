@@ -25,17 +25,23 @@ struct InviteQRSheet: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
 
+    /// The table link's own code when there is one (its admission checks it), otherwise the
+    /// lobby's rotating token (previews, no transport).
+    private func inviteURL(at date: Date) -> URL {
+        (app.discovery as? any TableInviting)?.inviteLink(for: token.gameID, at: date) ?? token.link(at: date).url
+    }
+
     var body: some View {
         NavigationStack {
             TimelineView(.periodic(from: .now, by: RotatingTableToken.period / 4)) { context in
-                let link = token.link(at: context.date)
+                let url = inviteURL(at: context.date)
                 ScrollView {
                     VStack(spacing: 18) {
                         Text(tableWord)
                             .kedroFont(.display)
                             .foregroundStyle(.cream)
                         Group {
-                            if let image = QRCode.image(for: link.url.absoluteString) {
+                            if let image = QRCode.image(for: url.absoluteString) {
                                 Image(decorative: image, scale: 1)
                                     .interpolation(.none)
                                     .resizable()
@@ -56,7 +62,7 @@ struct InviteQRSheet: View {
                             .padding(.horizontal, 24)
 
                         ShareLink(
-                            item: link.url,
+                            item: url,
                             subject: Text("\(hostName)'s table"),
                             message: Text("Sit down at \(tableWord).")
                         ) {

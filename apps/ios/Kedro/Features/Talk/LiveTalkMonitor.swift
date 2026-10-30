@@ -54,6 +54,8 @@ final class LiveTalkMonitor {
     // MARK: Private
 
     private func showToast(for taunt: TauntRecord, in state: GameState) {
+        // Display mode shows its own banner for the taunt.
+        guard !services.bannerGames.contains(state.gameID) else { return }
         let level = app.preferences.effectiveLanguageLevel
         guard let text = TauntRendering.text(taunt.content, level: level, filter: services.filter) else { return }
         let sender = taunt.from.flatMap { state.seat($0) }

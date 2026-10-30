@@ -43,12 +43,33 @@ nonisolated struct LiveGameAttributes: ActivityAttributes {
         /// The button on the Lock Screen and in the expanded Island; nil for watchers, between
         /// the last round and the finish, and for finished games.
         var action: LiveActivityButton?
+        /// Server broadcasts only: the seats whose phones show `action` (the scorekeeper, or the
+        /// seats still owing a hand and their reporters), because one broadcast reaches every
+        /// phone. nil in content a phone built for itself (`action` is already its own).
+        var actionSeats: [String]?
         /// When this content was produced, in whole seconds since 1970 (server-friendly; a
         /// `Date` would encode as seconds since 2001 with ActivityKit's coder).
         var updatedAt: Int
 
         /// The live knock line if a knock is marked, else the fact line.
         var statusLine: String? { liveKnockLine ?? factLine }
+
+        /// This content for one phone. A server broadcast is the same for the whole table, so
+        /// its rows carry no `isMe` and its button names the seats it's for; each phone resolves
+        /// them against its own seat (`LiveGameAttributes.mySeatID`). Content the phone built
+        /// itself comes back unchanged.
+        func resolved(for mySeatID: String?) -> ContentState {
+            guard let actionSeats else { return self }
+            var copy = self
+            copy.rows = rows.map { row in
+                var row = row
+                row.isMe = row.isMe || (mySeatID.map { $0 == row.id } ?? false)
+                return row
+            }
+            copy.action = mySeatID.flatMap { actionSeats.contains($0) ? action : nil }
+            copy.actionSeats = nil
+            return copy
+        }
 
         /// This phone's row.
         var myRow: LiveStandingRow? { rows.first(where: \.isMe) }

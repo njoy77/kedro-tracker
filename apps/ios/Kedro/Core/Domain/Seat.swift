@@ -7,7 +7,7 @@ import Foundation
 ///
 /// JSON (inside `PlayerSeated.seat`; optional keys are omitted when nil):
 /// `{"player":{"kind":"guest","id":"…"},"displayName":"Sam","order":4,"reporter":"p:…","gamesPlayed":2}`
-/// plus, when set: `handle`, `avatar`, `deviceId`, `languageLevel`, `titleId`.
+/// plus, when set: `handle`, `avatar`, `deviceId`, `languageLevel`, `titleId`, `claimTokenHash`.
 nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
     /// The person in the seat. Determines `id`.
     var player: PlayerRef
@@ -29,11 +29,14 @@ nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
     var titleID: String?
     /// Finished games before this one, snapshotted when they sat down (learner hints, 5-step meter).
     var gamesPlayed: Int?
+    /// A guest seat sat in by the phone that owns that guest identity: the lowercase hex SHA-256
+    /// of its claim token, so the server can match a later `POST /v1/claims` (never the token).
+    var claimTokenHash: String?
 
     var id: SeatID { player.seatID }
 
     private enum CodingKeys: String, CodingKey {
-        case player, displayName, order, handle, avatar, reporter, languageLevel, gamesPlayed
+        case player, displayName, order, handle, avatar, reporter, languageLevel, gamesPlayed, claimTokenHash
         case deviceID = "deviceId"
         case titleID = "titleId"
     }
@@ -56,7 +59,8 @@ nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
         deviceID: DeviceID? = nil,
         languageLevel: LanguageLevel? = nil,
         titleID: String? = nil,
-        gamesPlayed: Int? = nil
+        gamesPlayed: Int? = nil,
+        claimTokenHash: String? = nil
     ) {
         self.player = player
         self.displayName = displayName
@@ -68,6 +72,7 @@ nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
         self.languageLevel = languageLevel
         self.titleID = titleID
         self.gamesPlayed = gamesPlayed
+        self.claimTokenHash = claimTokenHash
     }
 
     /// A seat for a signed-up player.

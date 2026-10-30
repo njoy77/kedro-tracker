@@ -4,7 +4,7 @@
 // strategy decodes. Optional keys are omitted rather than sent as null unless noted.
 
 import { z } from 'zod'
-import { avatarSchema, handleSchema, uuidSchema, type Avatar } from './domain.ts'
+import { avatarSchema, handleSchema, seatIdSchema, uuidSchema, type Avatar } from './domain.ts'
 import type { UUID } from './ids.ts'
 import type { LeaderboardScope, LeaderboardSort } from './leaderboard.ts'
 import type { HLC } from './hlc.ts'
@@ -67,6 +67,11 @@ export type OpRejectionReason =
   | 'invalidActor'
   /** The first ops for a game must include its GameCreated. */
   | 'unknownGame'
+  /**
+   * An App Clip session may only link its phone to a guest seat and act for that seat (report a
+   * hand, react, send a canned taunt).
+   */
+  | 'notAllowed'
 
 export type RejectedOp = { opId: string | null; reason: OpRejectionReason; message?: string }
 
@@ -137,6 +142,29 @@ export const claimSchema = z.object({ claimToken: z.string().min(16).max(256) })
 /** POST /v1/claims */
 export type ClaimRequest = z.infer<typeof claimSchema>
 export type ClaimResponse = { guestId: UUID; gamesClaimed: number }
+
+// MARK: App Clip (additions: the clip has no account)
+
+/**
+ * POST /v1/clip/sessions (no Authorization): trades the invite link's table token for a
+ * game-scoped bearer token, accepted only by GET /v1/games/:gameId/ops, POST /v1/ops and
+ * POST /v1/clip/claims for that game.
+ */
+export const clipSessionSchema = z.object({
+  gameId: uuidSchema,
+  tableToken: z.string().min(4).max(256),
+  deviceId: uuidSchema,
+})
+export type ClipSessionRequest = z.infer<typeof clipSessionSchema>
+export type ClipSessionResponse = { accessToken: string; expiresAt: string }
+
+/** POST /v1/clip/claims: a claim token for the guest seat this clip sat in (redeemed later with POST /v1/claims). */
+export const clipClaimSchema = z.object({ gameId: uuidSchema, seatId: seatIdSchema })
+export type ClipClaimRequest = z.infer<typeof clipClaimSchema>
+export type ClipClaimResponse = { claimToken: string }
+
+/** GET /v1/games/:gameId/live-activity: the game's APNs broadcast channel, once the server made one. */
+export type LiveActivityChannelResponse = { channelId: string | null }
 
 // MARK: Moderation
 
