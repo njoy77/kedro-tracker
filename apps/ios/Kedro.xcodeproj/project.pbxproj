@@ -22,8 +22,8 @@
 
 /* Begin PBXFileReference section */
 		AA0000000000000000000010 /* Kedro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kedro.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0000000000000000000012 /* Kedro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Kedro.xcconfig; sourceTree = "<group>"; };
 		AA0000000000000000000011 /* KedroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KedroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000012 /* Kedro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Kedro.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -68,14 +68,6 @@
 			);
 			sourceTree = "<group>";
 		};
-		AA0000000000000000000007 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				AA0000000000000000000012 /* Kedro.xcconfig */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		AA0000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -83,6 +75,14 @@
 				AA0000000000000000000011 /* KedroTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000007 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000012 /* Kedro.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -240,11 +240,11 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 6.0;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -264,11 +264,11 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_VERSION = 6.0;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -282,15 +282,15 @@
 				CODE_SIGN_ENTITLEMENTS = Config/Kedro.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
 				INFOPLIST_FILE = Config/Info.plist;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -312,15 +312,15 @@
 				CODE_SIGN_ENTITLEMENTS = Config/Kedro.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
 				INFOPLIST_FILE = Config/Info.plist;
-				KEDRO_API_BASE_URL = "http://localhost:8787";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				KEDRO_API_BASE_URL = "http://localhost:8787";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
