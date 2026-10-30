@@ -8,7 +8,7 @@ struct LeaderboardView: View {
     @AppStorage("kedro.board.sort") private var sort: LeaderboardSort = .rating
     /// Global opens on "Around me"; Jump to Top shows the whole board.
     @State private var showsWholeGlobalBoard = false
-    @State private var isViewerRowVisible = true
+    @State private var isViewerRowVisible = false
     @State private var record: RecordKind?
 
     private var stats: StatsModel { .shared(for: app.store) }

@@ -146,7 +146,10 @@ extension StatsSnapshot {
         let finishes = Dictionary(grouping: results, by: { $0.rank.position }).mapValues(\.count)
 
         // Rating
-        var line = [RatingPoint(gameIndex: (results.first?.gameIndex ?? 0) - 1, date: results.first?.date ?? now, rating: results.first?.ratingBefore ?? record.rating)]
+        // The journey starts just before the year's first game (never on the same instant, so the
+        // chart has no vertical step at the start).
+        let firstDate = (results.first?.date ?? now).addingTimeInterval(-3600)
+        var line = [RatingPoint(gameIndex: (results.first?.gameIndex ?? 0) - 1, date: firstDate, rating: results.first?.ratingBefore ?? record.rating)]
         line += results.map { RatingPoint(gameIndex: $0.gameIndex, date: $0.date, rating: $0.ratingAfter) }
         let peak = line.map(\.rating).max() ?? record.rating
 

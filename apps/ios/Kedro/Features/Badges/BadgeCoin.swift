@@ -26,11 +26,13 @@ struct BadgeCoin: View {
                     .foregroundStyle(Color(white: 0.35))
             } else {
                 KMark(height: size * 0.42)
+                    .saturation(isEarned ? 1 : 0)
+                    .opacity(isEarned ? 1 : 0.45)
             }
         }
         .frame(width: size, height: size)
         .saturation(isEarned ? 1 : 0)
-        .brightness(isEarned ? 0 : -0.25)
+        .opacity(isEarned ? 1 : 0.8)
         .overlay(alignment: .bottomTrailing) {
             if showsCategory, !isHiddenSecret, size >= 48 {
                 Image(systemName: definition.category.systemImage)
