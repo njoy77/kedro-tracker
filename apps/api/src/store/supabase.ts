@@ -21,6 +21,7 @@ import {
 import {
   HandleTakenError,
   type ClaimResult,
+  type FinishedGameSummaryRow,
   type FinishedSeatRow,
   type GameRow,
   type GuestRegistration,
@@ -254,6 +255,14 @@ export class SupabaseStore implements Store {
     return (await this.finishedSeats()).map(({ gameId, finishedAtMs, seatId, playerId, guestId, seatOrder, total }) => ({
       gameId, finishedAtMs, seatId, playerId, guestId, seatOrder, total,
     }))
+  }
+
+  async finishedGames(gameIds: readonly UUID[]): Promise<FinishedGameSummaryRow[]> {
+    const rows: Row[] = []
+    for (const list of chunks([...new Set(gameIds)], IN_CHUNK)) {
+      rows.push(...must(await this.db.from('finished_games').select('game_id, table_word, finished_at_ms').in('game_id', list)))
+    }
+    return rows.map((row) => ({ gameId: String(row.game_id), tableWord: String(row.table_word), finishedAtMs: Number(row.finished_at_ms) }))
   }
 
   async replaceRatings(ratings: readonly Rating[], changes: readonly RatingChange[]): Promise<void> {

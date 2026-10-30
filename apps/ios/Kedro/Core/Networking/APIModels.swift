@@ -129,6 +129,32 @@ nonisolated struct LeaderboardResponse: Codable, Hashable, Sendable {
     var notYetRankedCount: Int
 }
 
+/// `GET /v1/records` response (packages/shared `RecordsResponse`): every record's top holders.
+nonisolated struct RecordsResponse: Codable, Hashable, Sendable {
+    nonisolated struct Row: Codable, Hashable, Sendable {
+        nonisolated struct Game: Codable, Hashable, Sendable {
+            var gameId: GameID
+            var tableWord: String
+            var finishedAt: Date
+        }
+
+        var rank: Int
+        var player: PlayerSummary
+        var value: Int
+        var isMe: Bool
+        var game: Game?
+    }
+
+    nonisolated struct Record: Codable, Hashable, Sendable {
+        /// A `RecordKind` raw value; kinds this app doesn't know are skipped.
+        var kind: String
+        var rows: [Row]
+    }
+
+    var scope: String
+    var records: [Record]
+}
+
 /// `PUT /v1/players/me/photo` response: the avatar to put in the profile and in seats.
 nonisolated struct PhotoUploadResponse: Codable, Sendable {
     var avatar: Avatar

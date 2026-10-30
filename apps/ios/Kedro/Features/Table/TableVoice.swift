@@ -104,6 +104,12 @@ nonisolated enum TableVoice {
             }
         }
 
+        // Going out with all four cards (an inherent knock) is its own moment. It comes before the
+        // red King lines because beating one always takes a red King (the knocker's hand is 0);
+        // `.noPenalty` is only ever an inherent knock.
+        if outcome == .noPenalty { return VoicePick(.wentOutBeaten, args) }
+        if round.isInherentKnock, outcome == .landed { return VoicePick(.wentOutLanded, args) }
+
         // A red King deciding the round beats everything (design §6.1).
         if let lowest = round.hands.values.min(), lowest <= -2 { return VoicePick(.bothRedKings, args) }
         if record.redKingDecided { return VoicePick(.redKing, args) }
@@ -123,8 +129,6 @@ nonisolated enum TableVoice {
                big.value >= hugeHand {
                 return VoicePick(.hugeHand, ["name": state.name(of: big.key), "hand": big.value])
             }
-            // An inherent knock that didn't land has no knock to roast (no lines written for it yet).
-            if outcome == .noPenalty { return nil }
             if outcome == .tied { return VoicePick(.knockTied, args) }
             return hand <= 0 ? VoicePick(.knockLandedLow, args) : VoicePick(.knockLanded, args)
         }

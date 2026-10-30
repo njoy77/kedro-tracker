@@ -30,7 +30,7 @@ struct LearnView: View {
                     row("Learn Cambio in 2 Minutes", "Setup, card values, powers, sticking and the knock. Then a quiz.", systemImage: "rectangle.stack")
                 }
                 NavigationLink(value: LearnRoute.drill) {
-                    row("Score a Round", "Practice rounds with the cards face up: landed, tied and failed.", systemImage: "number.square")
+                    row("Score a Round", "Practice rounds with the cards face up: landed, tied, failed and going out.", systemImage: "number.square")
                 }
             }
 

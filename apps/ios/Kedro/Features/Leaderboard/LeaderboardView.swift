@@ -25,6 +25,12 @@ struct LeaderboardView: View {
         return snapshot.leaderboard(scope: effectiveScope, sort: sort, viewer: viewer)
     }
 
+    /// The records follow the boards: the server's when loaded, this phone's history otherwise.
+    private func recordLeader(_ kind: RecordKind, snapshot: StatsSnapshot) -> RecordEntry? {
+        if let remote = server.records(kind, scope: effectiveScope) { return remote.first }
+        return snapshot.records(kind, scope: effectiveScope, viewer: viewer, limit: 1).first
+    }
+
     private var isShowingLocalGlobal: Bool { effectiveScope == .global && server.global[sort] == nil }
 
     var body: some View {
@@ -58,8 +64,13 @@ struct LeaderboardView: View {
         .task(id: GlobalKey(scope: effectiveScope, sort: sort)) {
             await server.load(effectiveScope, api: app.api, sort: sort, viewer: viewer)
         }
+        .task(id: effectiveScope) {
+            await server.loadRecords(effectiveScope, api: app.api)
+        }
         .refreshable {
-            await server.load(effectiveScope, api: app.api, sort: sort, viewer: viewer, force: true)
+            async let board: Void = server.load(effectiveScope, api: app.api, sort: sort, viewer: viewer, force: true)
+            async let records: Void = server.loadRecords(effectiveScope, api: app.api, force: true)
+            _ = await (board, records)
         }
         .onChange(of: scope) { showsWholeGlobalBoard = false }
     }
@@ -207,7 +218,7 @@ struct LeaderboardView: View {
                     Button {
                         record = kind
                     } label: {
-                        RecordTile(kind: kind, leader: snapshot.records(kind, scope: effectiveScope, viewer: viewer, limit: 1).first)
+                        RecordTile(kind: kind, leader: recordLeader(kind, snapshot: snapshot))
                     }
                     .buttonStyle(.plain)
                 }

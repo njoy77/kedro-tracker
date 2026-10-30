@@ -649,7 +649,7 @@ Any card can be shared on its own. Everything comes from finished, non-abandoned
 ### 13.1 Rules and learning
 
 - **Learn Cambio in 2 minutes:** five cards (setup, card values, powers, sticking, knocking and the knock gamble), real card faces, ending in a knock-gamble quiz.
-- **Score a Round** drill: the real Round sheet in practice mode (PRACTICE watermark, synthetic players, cards face up, nothing logged) covering landed, tied and failed.
+- **Score a Round** drill: the real Round sheet in practice mode (PRACTICE watermark, synthetic players, cards face up, nothing logged) covering landed, tied, failed and going out with all four cards (an inherent knock, which never takes the +10).
 - **Rules reference:** a searchable `List`, available mid-game as a `.medium` sheet. Rule text is literal and identical in every level.
 - **Knock Calculator:** opened from Rules or any **Why?**; prefilled from a round, editable without touching the game.
 - **TipKit** tips in the first two games; Card mode on for the first 3 games.

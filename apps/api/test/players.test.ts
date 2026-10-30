@@ -256,3 +256,68 @@ describe('GET /v1/leaderboard', () => {
     expect((await h.get('/v1/leaderboard?scope=playedWith', ids.noah)).body.notYetRankedCount).toBe(4)
   })
 })
+
+describe('GET /v1/records', () => {
+  type Row = { rank: number; value: number; isMe: boolean; player: { id: string }; game?: { gameId: string; tableWord: string; finishedAt: string } }
+  type Records = { scope: string; records: { kind: string; rows: Row[] }[] }
+
+  async function history(games: number) {
+    const h = await table()
+    const base = sampleWireOperations()
+    for (let index = 0; index < games; index++) {
+      await h.upload(ids.noah, cloneGame(base, gameUUID(index + 1), index * 86_400_000))
+    }
+    return h
+  }
+  const rows = (body: Records, kind: string) => body.records.find((record) => record.kind === kind)?.rows ?? []
+
+  test('every record over everyone with a finished game, before anyone is ranked', async () => {
+    const h = await history(2)
+    const response = await h.get<Records>('/v1/records?scope=playedWith', ids.ana)
+    expect(response.status).toBe(200)
+    expect(response.body.scope).toBe('playedWith')
+    expect(response.body.records.map((record) => record.kind)).toEqual(['bestGame', 'longestStreak', 'mostLandedKnocks', 'mostGames'])
+
+    // Best game: lowest final score, with the game it was set in (the earliest when tied).
+    const best = rows(response.body, 'bestGame')
+    expect(best.map((row) => [row.player.id, row.value, row.rank])).toEqual([
+      [ids.noah, 28, 1],
+      [ids.ana, 34, 2],
+      [ids.cleo, 65, 3],
+      [ids.ben, 67, 4],
+    ])
+    expect(best[0].game).toEqual({ gameId: gameUUID(1), tableWord: 'Cold Deck', finishedAt: expect.any(String) })
+    expect(best[1].isMe).toBe(true)
+
+    // Only people with something toward a record are listed for it.
+    expect(rows(response.body, 'longestStreak').map((row) => [row.player.id, row.value])).toEqual([[ids.noah, 2]])
+    expect(rows(response.body, 'mostLandedKnocks').map((row) => [row.player.id, row.value])).toEqual([
+      [ids.noah, 4],
+      [ids.ana, 2],
+    ])
+    expect(rows(response.body, 'longestStreak')[0].game).toBeUndefined()
+
+    // Ties share a rank. Sam, an unclaimed guest, is never listed.
+    const games = rows(response.body, 'mostGames')
+    expect(games).toHaveLength(4)
+    expect(games.every((row) => row.rank === 1 && row.value === 2)).toBe(true)
+  })
+
+  test('played-with scope, blocks, limit and validation', async () => {
+    const h = await history(1)
+    const loner = fixedUUID(1, 30)
+    await h.profile(loner, 'Loner', 'loner')
+    const lonely = await h.get<Records>('/v1/records?scope=playedWith', loner)
+    expect(lonely.body.records.every((record) => record.rows.length === 0)).toBe(true)
+    // Global covers everyone.
+    expect(rows((await h.get<Records>('/v1/records', loner)).body, 'mostGames')).toHaveLength(4)
+
+    expect((await h.post('/v1/blocks', ids.ana, { playerId: ids.noah })).status).toBe(200)
+    const blocked = await h.get<Records>('/v1/records?scope=global', ids.ana)
+    expect(blocked.body.records.flatMap((record) => record.rows).some((row) => row.player.id === ids.noah)).toBe(false)
+
+    expect(rows((await h.get<Records>('/v1/records?limit=1', ids.cleo)).body, 'bestGame').map((row) => row.player.id)).toEqual([ids.noah])
+    expect((await h.get('/v1/records?scope=everyone', ids.noah)).status).toBe(400)
+    expect((await h.get('/v1/records', null)).status).toBe(401)
+  })
+})

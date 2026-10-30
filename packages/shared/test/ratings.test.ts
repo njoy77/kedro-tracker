@@ -3,6 +3,7 @@ import {
   RATING_START,
   aggregateStats,
   buildLeaderboard,
+  buildRecords,
   expectedScore,
   foldGame,
   kFactor,
@@ -95,6 +96,7 @@ describe('stats and leaderboard', () => {
     ]
     const stats = aggregateStats(rows).get('p:a')
     expect(stats).toMatchObject({ gamesPlayed: 4, wins: 3, winRate: 0.75, avgScore: 31.25, bestGame: 20, worstGame: 50, currentWinStreak: 2, longestWinStreak: 2, knockSuccess: 1 })
+    expect(stats).toMatchObject({ bestGameId: 'g3', bestGameAtMs: 3, longestWinStreakAtMs: 4, lastPlayedMs: 4 })
     expect(stats?.avgPerRound).toBeCloseTo(125 / 24, 10)
   })
 
@@ -127,5 +129,46 @@ describe('stats and leaderboard', () => {
     }
     const board = buildLeaderboard({ stats: aggregateStats(rows).values(), ratings: new Map(), sort: 'avgScore' })
     expect(board.rows.map((entry) => entry.subject)).toEqual(['p:low', 'p:high'])
+  })
+})
+
+describe('records', () => {
+  const row = (subject: string, gameId: string, at: number, total: number, isWinner: boolean, landed = 0): StatsRow => ({
+    gameId, finishedAtMs: at, subject, total, isWinner, roundsPlayed: 6, knocks: landed, knocksLanded: landed, knocksTied: 0, knocksFailed: 0,
+  })
+  const stats = [
+    ...aggregateStats([
+      row('p:a', 'g1', 1, 20, true, 1),
+      row('p:a', 'g2', 2, 40, false),
+      row('p:b', 'g1', 1, 30, false),
+      row('p:b', 'g2', 2, 20, true, 2),
+      row('p:b', 'g3', 3, 25, true),
+      row('p:c', 'g3', 3, 60, false),
+    ]).values(),
+  ]
+
+  test('best game: lowest first, ties by who set it first, with the game', () => {
+    expect(buildRecords(stats, 'bestGame')).toEqual([
+      { subject: 'p:a', rank: 1, value: 20, gameId: 'g1', atMs: 1 },
+      { subject: 'p:b', rank: 1, value: 20, gameId: 'g2', atMs: 2 },
+      { subject: 'p:c', rank: 3, value: 60, gameId: 'g3', atMs: 3 },
+    ])
+  })
+
+  test('streaks, landed knocks and games leave out people with none; limit trims', () => {
+    expect(buildRecords(stats, 'longestStreak').map((entry) => [entry.subject, entry.value, entry.atMs])).toEqual([
+      ['p:b', 2, 3],
+      ['p:a', 1, 1],
+    ])
+    expect(buildRecords(stats, 'mostLandedKnocks').map((entry) => [entry.subject, entry.value])).toEqual([
+      ['p:b', 2],
+      ['p:a', 1],
+    ])
+    expect(buildRecords(stats, 'mostGames').map((entry) => [entry.subject, entry.rank])).toEqual([
+      ['p:b', 1],
+      ['p:a', 2],
+      ['p:c', 3],
+    ])
+    expect(buildRecords(stats, 'mostGames', 1)).toHaveLength(1)
   })
 })

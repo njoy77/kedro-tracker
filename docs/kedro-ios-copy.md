@@ -80,6 +80,8 @@ Variables: `{name}`, `{knocker}`, `{hand}`, `{score}`, `{n}`, `{gap}`, `{round}`
 
 The **fact** and **verdict** lines are literal (§20). These are the roast lines; each moment has 3–6 variants (two shown).
 
+K-24…K-27 (an inherent knock: the player went out with all four cards) are **drafts** awaiting review. They take precedence over the red King lines, since beating an inherent knock always takes a red King.
+
 | ID | Moment | Clean | Spicy | Unhinged |
 |---|---|---|---|---|
 | K-01 | Landed | {knocker} knocked on {hand} and nobody could touch it. | {knocker} knocked on {hand} and nobody had shit. | = |
@@ -105,6 +107,10 @@ The **fact** and **verdict** lines are literal (§20). These are the roast lines
 | K-21 | Live knock (toast, all phones) | {knocker} knocked. Last turns. Pray. | = | {knocker} knocked. Last turns. Pray, you animals. |
 | K-22 | Live knock (alt) | {knocker} knocked. Everybody look nervous. | = | {knocker} knocked. Clench. |
 | K-23 | Live knock (Live Activity) | {knocker} knocked · last turns | = | = |
+| K-24 | Went out (inherent knock), landed −10 · **draft** | {knocker} played all four cards and walked off with −10. Didn't even have to knock. | {knocker} played all four cards and walked off with −10. Cold as shit. | {knocker} emptied the whole fucking grid and took −10. Get out. |
+| K-25 | Went out, landed (alt) · **draft** | Nothing left in front of {knocker}. Not one card. | = | Nothing left in front of {knocker}. Not one fucking card. Menace. |
+| K-26 | Went out, beaten, no penalty · **draft** | {knocker} went out on nothing and {name} still had {low}. Robbed. | {knocker} went out on nothing and {name} still had {low}. Robbed as hell. | {knocker} went out on nothing and {name} still had {low}. Daylight fucking robbery. |
+| K-27 | Went out, beaten (alt) · **draft** | Played every card and still got beaten. At least it's free. | = | Played every card and still got beaten. At least it's free, you poor bastard. |
 | K-30 | Learner: own failed knock | Failed: someone had less. Knock when you're at 4 or under. | = | = |
 | K-31 | Learner: own big hand | That's {hand}. Use your peeks on your highest cards. | = | = |
 | K-32 | Learner: own tied knock | Tied for lowest: you keep your hand. Close. | = | = |

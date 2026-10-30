@@ -78,6 +78,9 @@ export type ClaimResult =
 
 export type PlayerGameRow = { gameId: UUID; status: GameStatus; finishedAt: string | null; lastHlc: string | null }
 
+/** A finished game's table word and finish time (for records set in it). */
+export type FinishedGameSummaryRow = { gameId: UUID; tableWord: string; finishedAtMs: number }
+
 export type PlayedWithRow = { playerId: UUID; gamesTogether: number; lastPlayedMs: number }
 export type GuestSuggestionRow = { guestId: UUID; name: string; gamesTogether: number }
 
@@ -121,6 +124,8 @@ export interface Store {
   projectFinishedGame(projection: FinishedGameProjection): Promise<void>
   setFinishedGameAbandoned(gameId: UUID, abandoned: boolean): Promise<void>
   finishedSeatRows(): Promise<FinishedSeatRow[]>
+  /** Table words and finish times of these finished games; unknown IDs are left out. */
+  finishedGames(gameIds: readonly UUID[]): Promise<FinishedGameSummaryRow[]>
   replaceRatings(ratings: readonly Rating[], changes: readonly RatingChange[]): Promise<void>
   /** Ratings by subject ("p:<id>"); all players when `subjects` is omitted. */
   ratings(subjects?: readonly string[]): Promise<Map<string, Rating>>

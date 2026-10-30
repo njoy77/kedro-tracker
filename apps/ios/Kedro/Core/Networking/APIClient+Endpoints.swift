@@ -80,6 +80,14 @@ extension APIClient {
         ])
     }
 
+    /// `GET /v1/records?scope=`: every record's top holders over every finished game.
+    func records(scope: String = "global", limit: Int = 25) async throws -> RecordsResponse {
+        try await send("GET", "v1/records", query: [
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ])
+    }
+
     /// `PUT /v1/players/me/photo`: uploads a JPEG profile photo; the answer is the https avatar.
     func uploadPhoto(_ jpeg: Data) async throws -> Avatar {
         let response: PhotoUploadResponse = try await sendRaw("PUT", "v1/players/me/photo", body: jpeg, contentType: "image/jpeg")

@@ -33,6 +33,7 @@ import {
   type HandleAvailabilityResponse,
   type HealthResponse,
   type LeaderboardResponse,
+  type RecordsResponse,
   type LinkAttestationResponse,
   type LinkKeyResponse,
   type MyGamesResponse,
@@ -331,6 +332,12 @@ export function createApp(deps: AppDeps) {
     const sort = oneOf(c.req.query('sort') ?? 'rating', LEADERBOARD_SORTS, 'sort')
     const limit = optionalInt(c.req.query('limit'), 'limit')
     return c.json<LeaderboardResponse>(await leaderboard.leaderboard(c.get('user').id, { scope, sort, limit }))
+  })
+
+  v1.get('/records', async (c) => {
+    const scope = oneOf(c.req.query('scope') ?? 'global', LEADERBOARD_SCOPES, 'scope')
+    const limit = optionalInt(c.req.query('limit'), 'limit')
+    return c.json<RecordsResponse>(await leaderboard.records(c.get('user').id, { scope, limit }))
   })
 
   app.route('/v1', v1)

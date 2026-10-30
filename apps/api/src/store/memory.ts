@@ -17,6 +17,7 @@ import {
 import {
   HandleTakenError,
   type ClaimResult,
+  type FinishedGameSummaryRow,
   type FinishedSeatRow,
   type GameRow,
   type GuestRegistration,
@@ -168,6 +169,13 @@ export class MemoryStore implements Store {
         total: seat.total,
       })),
     )
+  }
+
+  async finishedGames(gameIds: readonly UUID[]): Promise<FinishedGameSummaryRow[]> {
+    return gameIds.flatMap((id) => {
+      const row = this.finished.get(id)
+      return row ? [{ gameId: id, tableWord: row.projection.tableWord, finishedAtMs: row.projection.finishedAtMs }] : []
+    })
   }
 
   async replaceRatings(ratings: readonly Rating[], changes: readonly RatingChange[]): Promise<void> {
