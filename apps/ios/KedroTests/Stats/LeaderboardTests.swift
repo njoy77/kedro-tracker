@@ -6,23 +6,24 @@ import Testing
 struct LeaderboardTests {
     private let people = ["A", "B", "C", "D", "E", "F"].map { TestPerson.player($0) }
 
-    /// Six players, five games each: A wins 3, B wins 2. G has 3 games; guest H has 6.
+    /// Six players, ten games each: A wins 4, B 3, C 2, D 1, E and F none. G has 3 games (B wins
+    /// all three); guest H has 6 (H wins all six).
     private func history() -> (StatsHistory, g: TestPerson, h: TestPerson) {
         var history = StatsHistory()
-        for winner in [0, 0, 1, 1, 0] { history.win(people, winner: winner) }
+        for winner in [0, 0, 1, 1, 0, 2, 3, 0, 1, 2] { history.win(people, winner: winner) }
         let g = TestPerson.player("G"), h = TestPerson.guest("H")
         for _ in 0..<3 { history.win([people[0], g, people[1]], winner: 2) }
         for _ in 0..<6 { history.win([people[2], people[3], h], winner: 2) }
         return (history, g, h)
     }
 
-    @Test("5-game eligibility; unclaimed guests never appear")
+    @Test("10-game eligibility; unclaimed guests never appear")
     func eligibility() {
         let (history, g, h) = history()
         let board = history.snapshot().leaderboard(scope: .global, sort: .rating, viewer: g.ref)
         #expect(board.ranked.count == 6)
         #expect(board.notYetRanked.map(\.ref) == [g.ref])
-        #expect(board.viewerUnranked?.gamesLeft == 2)
+        #expect(board.viewerUnranked?.gamesLeft == 7)
         #expect(!board.ranked.contains { $0.ref == h.ref })
         #expect(!board.notYetRanked.contains { $0.ref == h.ref })
         // Ranks are 1…n for the sort, competition-style.
@@ -33,13 +34,13 @@ struct LeaderboardTests {
     func minimums() {
         let (history, _, _) = history()
         let snapshot = history.snapshot()
+        // Win rate's 10 games are the same as ranking's, so everyone ranked has a win rate.
         let winRate = snapshot.leaderboard(scope: .global, sort: .winRate, viewer: people[0].ref)
-        // A and B have 8 games, the rest 5 or 11: C and D played 11.
-        #expect(Set(winRate.ranked.map(\.ref)) == [people[2].ref, people[3].ref])
-        #expect(winRate.belowMinimum.allSatisfy { $0.rank == nil })
-        #expect(winRate.belowMinimum.count == 4)
+        #expect(winRate.ranked.count == 6)
+        #expect(winRate.belowMinimum.isEmpty)
         let knocks = snapshot.leaderboard(scope: .global, sort: .knockSuccess, viewer: people[0].ref)
         #expect(knocks.ranked.isEmpty)
+        #expect(knocks.belowMinimum.allSatisfy { $0.rank == nil })
         #expect(knocks.belowMinimum.count == 6)
         #expect(Voice(level: .unhinged).line("L-05", ["n": 10]) == "Needs 10 games for this one.")
     }
@@ -62,7 +63,8 @@ struct LeaderboardTests {
     @Test("Close race: the person above within the sort's threshold (L-04)")
     func closeRace() throws {
         var history = StatsHistory()
-        for winner in [0, 0, 0, 1, 1] { history.win(people, winner: winner) }
+        // Ten games: A wins 5, B 4, C 1.
+        for winner in [0, 0, 0, 1, 1, 0, 1, 1, 0, 2] { history.win(people, winner: winner) }
         let board = history.snapshot().leaderboard(scope: .playedWith, sort: .wins, viewer: people[1].ref)
         let race = try #require(board.closeRace)
         #expect(race.above == people[0].ref)
@@ -88,7 +90,7 @@ struct LeaderboardTests {
         #expect(best.first?.value == -10)
         #expect(best.first?.ref == people[0].ref)
         let games = snapshot.records(.mostGames, scope: .global, viewer: nil)
-        #expect(games.first?.value == 11)
+        #expect(games.first?.value == 16)
         #expect(games.prefix(2).allSatisfy { $0.rank == 1 })
         // B's three straight at G's table; H's six straight don't count (an unclaimed guest).
         let streak = snapshot.records(.longestStreak, scope: .global, viewer: nil).first
@@ -96,14 +98,14 @@ struct LeaderboardTests {
         #expect(streak?.ref == people[1].ref)
     }
 
-    @Test("Ratings show from game 5; progress meter until then")
+    @Test("Ratings show from game 10; progress meter until then")
     func progress() {
         let (history, g, _) = history()
         let snapshot = history.snapshot()
         let unranked = snapshot.progress(for: g.ref)
         #expect(unranked.meter == 3)
         #expect(unranked.rating == nil)
-        #expect(unranked.meterLine(voice: Voice(level: .clean)) == "3 of 5. Finish 2 more and you're ranked.")
+        #expect(unranked.meterLine(voice: Voice(level: .clean)) == "3 of 10. Finish 7 more and you're ranked.")
         let ranked = snapshot.progress(for: people[0].ref)
         #expect(ranked.meter == nil)
         #expect(ranked.rating != nil)

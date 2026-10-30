@@ -21,8 +21,8 @@ extension PreviewData {
     /// A generated history for stats screens: 40 finished games (plus one abandoned) among the
     /// ten sample players and Sam (guest), January to October 2026, all before the sample game.
     ///
-    /// Shaped to match the sample story where it matters: Ben has exactly 4 games (the sample
-    /// game is his 5th, his debut), Sam has exactly 2 (the sample game is his 3rd), Noah plays
+    /// Shaped to match the sample story where it matters: Ben has exactly 9 games (the sample
+    /// game is his 10th, his debut), Sam has exactly 2 (the sample game is his 3rd), Noah plays
     /// almost every game, and Ana is a little sharper than everyone else.
     nonisolated static let history: [[GameOperation]] = makeHistory()
 
@@ -37,7 +37,7 @@ extension PreviewData {
             jo.id: 9, max.id: 8, maya.id: 7, theo.id: 9, leo.id: 10,
         ]
         let regulars = [ana, cleo, priya, jo, max, maya, theo, leo]
-        var benGamesLeft = 4
+        var benGamesLeft = Ranking.gamesToRank - 1
         var samGamesLeft = 2
         var gamesPlayed: [SeatID: Int] = [:]
         var result: [[GameOperation]] = []

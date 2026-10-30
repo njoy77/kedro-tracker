@@ -211,7 +211,7 @@ When Kedro is opened (or brought to the foreground) and a table is advertising n
 > **MAYA'S TABLE** · COLD DECK
 > At your table · 0.6 m
 > (avatars of who's seated) Maya, Noah, Ana + 1 guest
-> Stakes line (J-01): "Your 5th game. Finish it and you're on the board."
+> Stakes line (J-01): "Your 10th game. Finish it and you're on the board."
 > **[ Sit Down ]**
 
 - **Played-with players and anyone the host already added: Sit Down seats you immediately.** The host gets a 5 s non-modal toast: "Ana sat down · Remove" (J-03).
@@ -466,7 +466,7 @@ A full-screen moment, then a scrollable summary:
 1. **Hero:** the full logo lands on `nightGradient`; under it, the winner's avatar (96 pt, gold ring), name in `display`, and the winner line (W-01–W-06, picked by how they won: comeback, wire to wire, by 1, shared).
 2. **Final standings** with final scores, the knock record per player (✓2 =1 ✗1), and the last-place line (W-10s).
 3. **Highlights:** best round, knock record of the table, biggest comeback, the round that decided it.
-4. **Ratings:** each player's rating change; a **debut** card for anyone who just finished game 5 ("Ben's on the board. 986." W-05), shown to the whole table.
+4. **Ratings:** each player's rating change; a **debut** card for anyone who just finished game 10 ("Ben's on the board. 986." W-05), shown to the whole table.
 5. **Badges earned** this game (§12.6), plus a **Hall of Shame** card if the game set a new top-3 moment (§12.8).
 6. **Actions:** **Run It Back** (kedroRed), **Send a Receipt**, **Share Results** (image, Clean by default), **Done**.
 
@@ -502,25 +502,25 @@ Two avatars facing off, **"ANA LEADS 12–5"** in `display`, the rivalry line un
 
 - **Scope** (segmented): **Played With** (default) | **Global** (opens on "Around me" with a Jump to top).
 - **Sort** (menu in the toolbar, `Picker` in a `Menu`): **Rating** (default) · **Win rate** · **Wins** · **Avg score** (lower is better, sorted ascending) · **Knock success**. The header always says what you're looking at: "PLAYED WITH · BY WIN RATE". The rank number shown is the rank **for that sort**.
-- **Rating:** multiplayer pairwise Elo from finishing order (ahead = win, equal = draw), K scaled by 1/(n−1), doubled for a player's first 10 games, start **1,000**, rebuilt deterministically by replaying finished games (so edits, claims and migrated history come out right). Computed from game 1, hidden until game 5, then revealed as a debut at game end.
-- **Minimums per sort** (on top of the 5-game eligibility): Win rate needs 10 games; Knock success needs 15 knocks. Below a sort's minimum, a player is listed after the ranked rows without a number ("needs 10 games for this one").
+- **Rating:** multiplayer pairwise Elo from finishing order (ahead = win, equal = draw), K scaled by 1/(n−1), doubled for a player's first 10 games, start **1,000**, rebuilt deterministically by replaying finished games (so edits, claims and migrated history come out right). Computed from game 1, hidden until game 10, then revealed as a debut at game end.
+- **Minimums per sort** (on top of the 10-game eligibility): Win rate needs 10 games (the same as eligibility); Knock success needs 15 knocks. Below a sort's minimum, a player is listed after the ranked rows without a number ("needs 10 games for this one").
 - **Your row** is pinned with your neighbours. If the player above you (by the current sort) is close (within 15 rating points, 2% win rate, 1 win), your row says so (L-04).
 - **Records** (a 2 × 2 grid under the pinned row): Best game · Longest win streak · Most successful knocks · Most games. Each pushes to a top-25 board. Under the grid, a full-width **Hall of Shame** row pushes to §12.8.
-- **Not Yet Ranked:** players under 5 games appear below the board with a **5-step progress meter** ("3 of 5") and no number (L-02). Global shows the count ("1,214 people are still in their first five."). Your own row under 5 games reads L-01. Unclaimed guests never appear.
+- **Not Yet Ranked:** players under 10 games appear below the board with a **10-step progress meter** ("3 of 10") and no number (L-02). Global shows the count ("1,214 people are still in their first ten."). Your own row under 10 games reads L-01. Unclaimed guests never appear.
 
 ### 12.5 Play-more incentives
 
 | Where | What |
 |---|---|
-| Everywhere an unranked player appears | The 5-step meter ("3 of 5"): Table card, lobby seat, profile, board, widget, game end |
-| Table card and lobby | Stakes lines (J-01: "Your 5th game. Finish it and you're on the board.") |
-| Game 5 | The debut, revealed to the whole table |
+| Everywhere an unranked player appears | The 10-step meter ("3 of 10"): Table card, lobby seat, profile, board, widget, game end |
+| Table card and lobby | Stakes lines (J-01: "Your 10th game. Finish it and you're on the board.") |
+| Game 10 | The debut, revealed to the whole table |
 | Game end | Rating change, rank movement, badges, the next goal ("Two more straight for Three-Peat."), Run It Back |
 | Head-to-head | Gap line, Play Again |
 | Leaderboard | Pinned row with neighbours, close races, Not Yet Ranked meters |
 | Receipts | One per rival per game |
 | Badges | **Next up**: the 3 closest, each with a progress meter; secret badges |
-| Widgets | Standing (with the meter under 5 games), Rivalry, Next Badge |
+| Widgets | Standing (with the meter under 10 games), Rivalry, Next Badge |
 
 Guardrails: no loss-framed pushes ("you were passed" only appears in Since you last looked), no streak-at-risk, no "we miss you", no countdowns, nothing paid.
 
@@ -532,7 +532,7 @@ Badges are shown as dark coins with the small mark struck in the center, rimmed 
 |---|---|---|---|---|
 | 1 | Out of the Gate | Milestone | Silver | Finish your first game |
 | 2 | First Blood | Milestone | Silver | Win a game (shared wins count) |
-| 3 | On the Board | Milestone | Silver | Finish 5 games and get a rank |
+| 3 | On the Board | Milestone | Silver | Finish 10 games and get a rank |
 | 4 | Regular | Milestone | Red | Finish 25 games |
 | 5 | Touch Grass | Milestone | Gold | Finish 100 games |
 | 6 | Top Dog | Milestone | Gold | #1 by rating on your Played With board (≥ 5 ranked people) |
@@ -577,7 +577,7 @@ A title is a short label under a player's name: on the Table, the Table card, th
 
 | Title | Kind | How you get it |
 |---|---|---|
-| Fresh Meat | Earned | Default for your first 5 games |
+| Fresh Meat | Earned | Default for your first 10 games |
 | Regular | Earned | Badge: Regular (25 games) |
 | Untouchable | Earned | Badge: Untouchable (5 wins in a row) |
 | The Ghost | Earned | Badge: Ghost Hand |
@@ -673,7 +673,7 @@ Online updates go server → APNs **broadcast channel** per game; offline see §
 
 | Widget | Families | Content |
 |---|---|---|
-| Standing | small, `accessoryCircular`, `accessoryRectangular` | Rank, rating, weekly movement; the 5-step meter under 5 games |
+| Standing | small, `accessoryCircular`, `accessoryRectangular` | Rank, rating, weekly movement; the 10-step meter under 10 games |
 | Rivalry | medium, `accessoryRectangular` | "You vs Ana · 5–12" plus the rivalry line (R-01) |
 | Next Badge | small | Closest badge and its progress |
 
@@ -725,7 +725,7 @@ Not notified: rounds recorded, edits, taunts (they're in-game only), "you were p
 | Receipts and share images | `ImageRenderer` → `ShareLink` | No |
 | App Clip | App Clip target, `NSUserActivity` invocation, `.appStoreOverlay`, app-group claim token | No |
 | Live Activity | ActivityKit with broadcast push channels, `staleDate`, `AlertConfiguration` | No |
-| Widgets | WidgetKit, `Gauge` for the 5-step meter | No |
+| Widgets | WidgetKit, `Gauge` for the 10-step meter | No |
 | Rules tips | TipKit | No |
 | Sound pack | `AVAudioPlayer` with the `.ambient` `AVAudioSession` category (respects the Silent switch); bundled `.caf` files; Table speaker election as a peer operation | No |
 | Kedro Wrapped | `TabView` with `.tabViewStyle(.page)`, Swift Charts for the rating line, `ImageRenderer` → `ShareLink` per card | No |
@@ -771,7 +771,7 @@ The number pad costs ~6 more taps per round than the tournament's Tally board, i
 | R8 | Noah | 0, 1, 12, 6, 21 | landed | **−10**, 1, 12, 6, 21 |
 | **Final** | | | 4 landed · 2 tied · 2 failed | **Noah 28, Ana 34, Cleo 65, Ben 67, Sam 70** |
 
-After R3, Noah was 4th (33), so Noah wins from behind: **Comeback Kid**. Noah's R8 hand of 0 earns **Ghost Hand**; finishing ahead of Ana (Noah's nemesis) earns **Nemesis Tamed**. Sam's R4 hand of −1 earns **Below Zero**. Ratings: Noah 1,068 → **1,086 (+18)**, now #13 Global; Ana 1,138 → 1,142; Ben's **debut at game 5: 986**. Head-to-head: Ana leads **12–5**. Sam: 3 games, "Two more games and you're ranked."
+After R3, Noah was 4th (33), so Noah wins from behind: **Comeback Kid**. Noah's R8 hand of 0 earns **Ghost Hand**; finishing ahead of Ana (Noah's nemesis) earns **Nemesis Tamed**. Sam's R4 hand of −1 earns **Below Zero**. Ratings: Noah 1,068 → **1,086 (+18)**, now #13 Global; Ana 1,138 → 1,142; Ben's **debut at game 10: 986**. Head-to-head: Ana leads **12–5**. Sam: 3 games, "Seven more games and you're ranked."
 
 ---
 

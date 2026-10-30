@@ -163,7 +163,7 @@ export type GuestSuggestionsResponse = { guests: GuestSuggestion[] }
 /**
  * GET /v1/players/:playerId/profile: the public profile with server-computed stats (one source of
  * truth for every phone, PRD §5.1). `stats`/`rating` are absent before the first finished game;
- * `globalRank` is null until ranked (5 games).
+ * `globalRank` is null until ranked (10 games).
  */
 export type PlayerProfileResponse = {
   player: PlayerSummary

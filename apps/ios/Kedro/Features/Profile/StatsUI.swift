@@ -107,7 +107,7 @@ nonisolated struct StatDefinition: Hashable, Sendable {
     static let inherentKnocks = StatDefinition(name: "Inherent knocks", text: "Rounds you went out by playing all four cards. −10 if your 0 was lowest alone, never +10. Not counted as knocks.")
     static let knockOutcomes = StatDefinition(name: "Knock outcomes", text: "Landed: strictly lowest hand, −10. Tied: tied for lowest, scores the hand. Failed: someone was lower, hand + 10.")
     static let nemesis = StatDefinition(name: "Nemesis", text: "The player who has finished ahead of you most often in shared games. Ties go to whoever got there first.")
-    static let rating = StatDefinition(name: "Rating", text: "Pairwise Elo from finishing order. Starts at 1,000, moves twice as fast for your first 10 games, and shows from your 5th game.")
+    static let rating = StatDefinition(name: "Rating", text: "Pairwise Elo from finishing order. Starts at 1,000, moves twice as fast for your first 10 games, and shows from your 10th game.")
     static let form = StatDefinition(name: "Form", text: "Your last five finishes, oldest first.")
     static let gamesTogether = StatDefinition(name: "Games together", text: "Finished games you both played.")
     static let finishedAhead = StatDefinition(name: "Finished ahead", text: "Shared games where one of you had the lower final score. Equal scores count for neither.")

@@ -149,7 +149,7 @@ struct LobbyRulesTests {
         #expect(line(seats[0]).text == "Host · Scorekeeper")
         #expect(line(seats[1], played: 17).text == "Played 17 together")
         #expect(line(ben) == .meter(gamesPlayed: 4))
-        #expect(line(ben).text == "4 of 5")
+        #expect(line(ben).text == "4 of 10")
         #expect(line(cleo, open: true) == .waitingForPhone)
         #expect(line(cleo, open: true).text == "Seat saved · waiting for their phone")
         #expect(line(sam).text == "P2 reports for Sam")

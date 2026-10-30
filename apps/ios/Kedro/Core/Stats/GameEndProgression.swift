@@ -34,9 +34,9 @@ nonisolated struct GameEndProgression: Hashable, Sendable {
     }
 
     var gameID: GameID
-    /// In seat order. Show a rating only when `isRated` (hidden until game 5).
+    /// In seat order. Show a rating only when `isRated` (hidden until `Ratings.rankedAfterGames`).
     var ratingChanges: [RatingChange]
-    /// Anyone who just finished game 5, revealed to the whole table (W-05).
+    /// Anyone who just finished their ranking game, revealed to the whole table (W-05).
     var debuts: [Debut]
     /// Badges earned this game, in seat order.
     var badgesEarned: [Earned]
@@ -125,7 +125,7 @@ extension StatsSnapshot {
     }
 
     /// Finished games per seated person, for the lobby's `Seat.gamesPlayed` snapshot and the
-    /// 5-step meter on lobby seats.
+    /// The rank meter on lobby seats.
     func gamesPlayed(for seats: [Seat]) -> [SeatID: Int] {
         Dictionary(uniqueKeysWithValues: seats.map { ($0.id, record($0.player)?.gamesPlayed ?? 0) })
     }

@@ -18,7 +18,7 @@ nonisolated enum WidgetCopy {
     static let rivalryDescription = "You against the person you play most."
     static let nextBadgeDescription = "The badge you're closest to."
 
-    /// "3 of 5" (the copy deck's `label.meter`).
+    /// "3 of 10" (the copy deck's `label.meter`).
     static func meter(_ n: Int) -> String { "\(n) of \(StandingSnapshot.gamesToRank)" }
 
     /// "▲ 2 this week" reads "Up 2 this week" (the arrow is a glyph, not the only cue).

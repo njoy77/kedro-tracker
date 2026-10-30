@@ -78,7 +78,7 @@ struct WidgetSnapshotTests {
     func meters() {
         #expect(StandingSnapshot(rank: nil, scopeLabel: "Global", rating: nil, weeklyMovement: 0, gamesPlayed: 3).meterSteps == 3)
         #expect(StandingSnapshot(rank: nil, scopeLabel: "Global", rating: nil, weeklyMovement: 0, gamesPlayed: -1).meterSteps == 0)
-        #expect(StandingSnapshot(rank: 4, scopeLabel: "Global", rating: 1000, weeklyMovement: 0, gamesPlayed: 9).meterSteps == 5)
+        #expect(StandingSnapshot(rank: 4, scopeLabel: "Global", rating: 1000, weeklyMovement: 0, gamesPlayed: 12).meterSteps == StandingSnapshot.gamesToRank)
         #expect(!StandingSnapshot(rank: nil, scopeLabel: "Global", rating: nil, weeklyMovement: 0, gamesPlayed: 3).isRanked)
         #expect(sample.standing?.isRanked == true)
         #expect(BadgeSnapshot(badgeID: "x", name: "x", tier: .gold, progress: 7, target: 5, progressLine: "").fraction == 1)

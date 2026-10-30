@@ -94,6 +94,6 @@ nonisolated enum WidgetSamples {
         playerName: "Sam",
         standing: StandingSnapshot(rank: nil, scopeLabel: "Global", rating: nil, weeklyMovement: 0, gamesPlayed: 3),
         rivalry: nil,
-        nextBadge: BadgeSnapshot(badgeID: "BG-03", name: "On the Board", tier: .silver, progress: 3, target: 5, progressLine: "3 of 5 games")
+        nextBadge: BadgeSnapshot(badgeID: "BG-03", name: "On the Board", tier: .silver, progress: 3, target: 10, progressLine: "3 of 10 games")
     )
 }

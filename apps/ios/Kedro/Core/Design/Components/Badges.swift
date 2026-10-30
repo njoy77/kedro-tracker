@@ -72,11 +72,11 @@ struct HatchPattern: View {
     }
 }
 
-/// The 5-step meter for players under 5 games (design §12.4–§12.5): "3 of 5".
+/// The step meter for players not yet ranked (design §12.4–§12.5): "3 of 10".
 struct ProgressMeter: View {
     var value: Int
-    var total = 5
-    /// Show "3 of 5" after the steps.
+    var total = Ranking.gamesToRank
+    /// Show "3 of 10" after the steps.
     var showsLabel = true
 
     var body: some View {
@@ -85,11 +85,11 @@ struct ProgressMeter: View {
                 ForEach(0..<total, id: \.self) { step in
                     Capsule()
                         .fill(step < value ? Color.kedroRed : Color.rule)
-                        .frame(width: 14, height: 5)
+                        .frame(width: total > 5 ? 8 : 14, height: 5)
                 }
             }
             if showsLabel {
-                Text(Literal.text("label.meter", ["n": min(value, total)]))
+                Text(Literal.text("label.meter", ["n": min(value, total), "total": total]))
                     .font(.caption2)
                     .foregroundStyle(.silverDim)
             }

@@ -31,7 +31,7 @@ nonisolated enum BadgeEvaluator {
         // Milestones
         if record.gamesPlayed >= 1 { award(.outOfTheGate) }
         if record.wins >= 1 { award(.firstBlood) }
-        if record.gamesPlayed >= 5 { award(.onTheBoard) }
+        if record.gamesPlayed >= Ratings.rankedAfterGames { award(.onTheBoard) }
         if record.gamesPlayed >= 25 { award(.regular) }
         if record.gamesPlayed >= 100 { award(.touchGrass) }
         if isTopDog(me, records: records) { award(.topDog) }

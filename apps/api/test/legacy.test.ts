@@ -129,11 +129,11 @@ describe('legacy web history', () => {
   })
 
   test("the web app's leaderboard (legacyLeaderboard) is the server's board for the same history", async () => {
-    // Six varied games with a tie, a knock of each kind, an inherent knock, a deleted player's
+    // Twelve counted games (enough to rank) with a tie, a knock of each kind, an inherent knock, a deleted player's
     // seat and a short game, so ratings, minimums and Not Yet Ranked all come into play.
     const dan = { id: 'lp4', username: 'dan', emoji: '🎲', deleted: true }
     const scores = [[3, 9, 5], [-10, 4, 6], [7, 7, 2], [0, 5, -1], [16, 2, 8], [4, 4, 9]]
-    const games = Array.from({ length: 7 }, (_, index) =>
+    const games = Array.from({ length: 13 }, (_, index) =>
       legacyGame(`g${index}`, scores.slice(0, index === 6 ? 2 : 3 + (index % 3)).map((round, r) => ({
         scores: round.map((score) => score + index - r),
         knockedBy: r === 1 ? players[index % 3].id : null,

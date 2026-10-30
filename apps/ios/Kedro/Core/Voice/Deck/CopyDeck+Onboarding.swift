@@ -39,9 +39,9 @@ nonisolated extension CopyDeck {
     ]
 
     static let joining: [CopyEntry] = [
-        CopyEntry("J-01", "Stakes, 5th game",
-                  clean: "Your 5th game. Finish it and you're on the board. Don't blow it.",
-                  spicy: "Your 5th game. Finish it and you're on the board. Don't fuck it up."),
+        CopyEntry("J-01", "Stakes, 10th game",
+                  clean: "Your 10th game. Finish it and you're on the board. Don't blow it.",
+                  spicy: "Your 10th game. Finish it and you're on the board. Don't fuck it up."),
         CopyEntry("J-02", "Stranger asks to sit",
                   clean: "{name} wants a seat. You've never played together, so it's your call."),
         CopyEntry("J-03", "Played-with sat down (toast)",

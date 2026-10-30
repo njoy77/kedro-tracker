@@ -26,7 +26,7 @@ nonisolated enum PreviewData {
     /// Noah is the demo "you" (the DEBUG test user signs in as Noah).
     static let noah = player(1, "Noah", "noah", .curated(.crow), title: "TI-12", games: 40)
     static let ana = player(2, "Ana", "ana.k", .emoji("🦊", colorIndex: 0), title: "TI-14", games: 30)
-    static let ben = player(3, "Ben", "ben", .curated(.bull), title: "TI-01", games: 4)
+    static let ben = player(3, "Ben", "ben", .curated(.bull), title: "TI-01", games: 9)
     static let cleo = player(4, "Cleo", "cleo", .curated(.joker), title: "TI-13", games: 12)
     static let priya = player(5, "Priya", "priya", .emoji("🦂", colorIndex: 1), games: 18)
     static let jo = player(6, "Jo", "jo.b", .curated(.wolf), games: 8)

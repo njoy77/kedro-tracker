@@ -42,8 +42,8 @@ nonisolated enum DigestItem: Hashable, Sendable, Identifiable {
 
 /// One line of stakes (design §12.1 "Tonight's stakes", §5.6 lobby, §5.3 Table card).
 nonisolated enum StakesLine: Hashable, Sendable {
-    /// Your 5th game: finish it and you're on the board (J-01).
-    case fifthGame
+    /// Your ranking game: finish it and you're on the board (J-01).
+    case debutGame
     /// Someone leads you; tonight's a good night to fix that (J-05).
     case rivalLeads(Rivalry)
     /// Nothing on the line (J-10).
@@ -56,7 +56,7 @@ nonisolated enum StakesLine: Hashable, Sendable {
     func text(_ voice: Voice) -> String {
         switch self {
         case .stats(let text): text
-        case .fifthGame: voice.line("J-01")
+        case .debutGame: voice.line("J-01")
         case .rivalLeads(let rivalry): voice.line("J-05", ["name": rivalry.name, "a": rivalry.theirs, "b": rivalry.mine])
         case .nothing: voice.line("J-10")
         }
@@ -137,7 +137,7 @@ nonisolated enum PlayInsights {
     /// level a rivalry > closest badge). `opponents` narrows rivalries to the people at a table.
     static func stakes(for me: PlayerRef, in games: [GameState], opponents: Set<PlayerRef>? = nil, limit: Int = 2) -> [StakesLine] {
         var lines: [StakesLine] = []
-        if gamesPlayed(by: me, in: games) == 4 { lines.append(.fifthGame) }
+        if gamesPlayed(by: me, in: games) == Ratings.rankedAfterGames - 1 { lines.append(.debutGame) }
         // TODO(stats): J-06 "a win tonight would likely put you past {name}" from ratings.
         let rivals = rivalries(for: me, in: games).values
             .filter { $0.theyLead && (opponents?.contains($0.opponent) ?? true) }

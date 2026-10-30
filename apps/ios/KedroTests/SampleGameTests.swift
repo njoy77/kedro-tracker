@@ -78,7 +78,7 @@ struct SampleGameTests {
         let finished = states.filter { $0.status == .finished }
         #expect(finished.count == 40)
         #expect(states.filter { $0.status == .abandoned }.count == 1)
-        #expect(finished.filter { $0.seat(PreviewData.benSeat) != nil }.count == 4)
+        #expect(finished.filter { $0.seat(PreviewData.benSeat) != nil }.count == Ratings.rankedAfterGames - 1)
         #expect(finished.filter { $0.seat(PreviewData.samSeat) != nil }.count == 2)
         let names = Set(finished.flatMap(\.seats).map(\.displayName))
         #expect(names.isSuperset(of: ["Priya", "Jo", "Max", "Maya", "Theo", "Leo"]))

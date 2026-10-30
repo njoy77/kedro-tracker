@@ -51,8 +51,8 @@ struct WidgetHeader: View {
     }
 }
 
-/// The 5-step meter before a player is ranked (design §13.3; `Gauge` per §15).
-struct FiveStepMeter: View {
+/// The step meter before a player is ranked (design §13.3; `Gauge` per §15).
+struct RankMeter: View {
     let steps: Int
 
     var body: some View {

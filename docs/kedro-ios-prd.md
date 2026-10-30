@@ -223,12 +223,12 @@ For any two players: games played together, how often each finished ahead of the
 ### 5.3 Leaderboards
 - A **global** leaderboard across all Kedro players is required.
 - A **played-with** leaderboard: you ranked among people you have shared a table with.
-- **Eligibility: a player must complete at least 5 games** (non-abandoned) to hold a leaderboard placement. Players below the threshold are still recognized as part of the global community, but they hold no rank.
+- **Eligibility: a player must complete at least 10 games** (non-abandoned) to hold a leaderboard placement. (Raised from 5 in October 2026: with 5 games, one result against first-time players could move someone past regulars.) Players below the threshold are still recognized as part of the global community, but they hold no rank.
 - **Sortable.** Players can sort leaderboards by several attributes: at least a skill rating (Elo-style, starting at 1,000), win rate, wins, average score, and knock success.
 - **Records** boards (for example best game, longest streak, most successful knocks) sit alongside the rankings.
 
 ### 5.4 Playing more games
-Kedro should **encourage people to play more games**. Getting onto the leaderboard (reaching 5 games) is the clearest first goal, followed by climbing it, extending streaks, and earning achievements. Designs should look for ways across the whole app, not only on leaderboards, to show players their progress and give them a reason to play again.
+Kedro should **encourage people to play more games**. Getting onto the leaderboard (reaching 10 games) is the clearest first goal, followed by climbing it, extending streaks, and earning achievements. Designs should look for ways across the whole app, not only on leaderboards, to show players their progress and give them a reason to play again.
 
 ### 5.5 Achievements
 - Players earn achievements for milestones and memorable moments. Illustrative examples, not a final list: first win, first successful knock, a Red King round, a win streak, playing with N different people, reaching the leaderboard.

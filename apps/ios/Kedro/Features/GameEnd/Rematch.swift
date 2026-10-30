@@ -17,7 +17,7 @@ nonisolated struct Rematch: Hashable, Sendable {
         others = (1..<max(count, 1)).map { offset in
             var seat = seats[(hostIndex + offset) % count]
             seat.order = offset
-            // This game now counts toward their record (learner lines, the 5-step meter).
+            // This game now counts toward their record (learner lines, the rank meter).
             seat.gamesPlayed = seat.gamesPlayed.map { $0 + 1 }
             return seat
         }

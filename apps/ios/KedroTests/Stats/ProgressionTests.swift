@@ -59,13 +59,13 @@ struct StakesTests {
     private let people = ["A", "B", "C", "D", "E", "F"].map { TestPerson.player($0) }
     private let clean = Voice(level: .clean)
 
-    @Test("Game 5 is the stakes: J-01 with the meter")
+    @Test("The ranking game is the stakes: J-01 with the meter")
     func rankThreshold() {
         var history = StatsHistory()
-        for _ in 0..<4 { history.win(Array(people.prefix(3)), winner: 1) }
+        for _ in 0..<(Ratings.rankedAfterGames - 1) { history.win(Array(people.prefix(3)), winner: 1) }
         let stakes = history.snapshot().tonightsStakes(for: people[0].ref, table: [people[1].ref], voice: clean)
         #expect(stakes.kind == .rankThreshold)
-        #expect(stakes.meter == 4)
+        #expect(stakes.meter == Ratings.rankedAfterGames - 1)
         #expect(stakes.text == clean.line("J-01"))
     }
 
@@ -84,10 +84,12 @@ struct StakesTests {
     @Test("Since you last looked: last game, and who passed you")
     func sinceYouLastLooked() throws {
         var history = StatsHistory()
-        for _ in 0..<5 { history.win(people, winner: 0) }
-        let firstFive = history.snapshot()
-        let since = try #require(firstFive.games.last?.finishedAt).addingTimeInterval(3600)
-        for _ in 0..<4 { history.win(people, winner: 1) }
+        // Ten games to get everyone ranked, A ahead of B (A wins 6, B 4). Then B wins 5 more and
+        // passes A (packages/shared's replay of the same games: A 1,122 vs B 1,040, then 1,079 vs 1,102).
+        for winner in [1, 0, 1, 0, 1, 0, 1, 0, 0, 0] { history.win(people, winner: winner) }
+        let ranked = history.snapshot()
+        let since = try #require(ranked.games.last?.finishedAt).addingTimeInterval(3600)
+        for _ in 0..<5 { history.win(people, winner: 1) }
         let snapshot = history.snapshot()
         let items = snapshot.sinceYouLastLooked(for: people[0].ref, since: since, voice: clean)
         #expect(items.contains { $0.kind == .passed(people[1].ref) && $0.text == "B passed you on the board." })
@@ -158,6 +160,6 @@ struct StakesTests {
                 #expect(snapshot.availableTitles(of: seat.player).contains(title) || snapshot.bestEarnedTitle(of: seat.player) == title)
             }
         }
-        #expect(snapshot.gamesPlayed(for: PreviewData.sampleSeats)[PreviewData.benSeat] == 5)
+        #expect(snapshot.gamesPlayed(for: PreviewData.sampleSeats)[PreviewData.benSeat] == Ratings.rankedAfterGames)
     }
 }

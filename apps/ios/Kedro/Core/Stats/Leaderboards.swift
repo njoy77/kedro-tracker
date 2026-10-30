@@ -121,7 +121,7 @@ nonisolated struct LeaderboardRow: Hashable, Sendable, Identifiable {
     var id: PlayerRef { ref }
 }
 
-/// Someone still in their first five (Not Yet Ranked, L-02).
+/// Someone still in their first ten (Not Yet Ranked, L-02).
 nonisolated struct UnrankedRow: Hashable, Sendable, Identifiable {
     var ref: PlayerRef
     var identity: StatsParticipant

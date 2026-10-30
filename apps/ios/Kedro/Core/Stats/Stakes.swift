@@ -21,7 +21,7 @@ nonisolated struct TonightStakes: Hashable, Sendable {
     /// Rendered in the voice passed in.
     var text: String
     var isEstimate: Bool
-    /// The 5-step meter value for unranked players (nil once ranked).
+    /// The rank meter value for unranked players (nil once ranked).
     var meter: Int?
 }
 
@@ -58,13 +58,13 @@ nonisolated struct SinceYouLastLookedItem: Hashable, Sendable, Identifiable {
     }
 }
 
-/// Where someone stands, for every place the 5-step meter or a rank shows (Table card, lobby
+/// Where someone stands, for every place the rank meter or a rank shows (Table card, lobby
 /// seat, game end, widgets; design §12.5).
 nonisolated struct PlayerProgress: Hashable, Sendable {
     var player: PlayerRef
     var gamesPlayed: Int
     var isRanked: Bool
-    /// The meter value while unranked ("3 of 5"); nil once ranked.
+    /// The meter value while unranked ("3 of 10"); nil once ranked.
     var meter: Int?
     /// Shown only once ranked.
     var rating: Int?
@@ -72,7 +72,7 @@ nonisolated struct PlayerProgress: Hashable, Sendable {
     var globalRank: Rank?
     /// The closest badge (Next up / the Next Badge widget).
     var nextBadge: BadgeProgress?
-    /// "3 of 5. Finish 2 more and you're ranked." (L-01) while unranked.
+    /// "3 of 10. Finish 7 more and you're ranked." (L-01) while unranked.
     func meterLine(voice: Voice) -> String? {
         guard let meter else { return nil }
         return voice.line("L-01", ["n": meter, "left": Ratings.rankedAfterGames - meter])

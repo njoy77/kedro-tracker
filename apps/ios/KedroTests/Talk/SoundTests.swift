@@ -141,7 +141,7 @@ struct SoundCueTests {
     @Test("Debut: a signed-up player's 5th game")
     func debut() {
         var state = PreviewData.sampleState(throughRound: 8, finished: true)
-        #expect(SoundCues.debuts(in: state) == [PreviewData.benSeat]) // Ben, 4 games before this one
+        #expect(SoundCues.debuts(in: state) == [PreviewData.benSeat]) // Ben, 9 games before this one
         state.seats = state.seats.map { var seat = $0; seat.gamesPlayed = 10; return seat }
         #expect(SoundCues.debuts(in: state).isEmpty)
     }

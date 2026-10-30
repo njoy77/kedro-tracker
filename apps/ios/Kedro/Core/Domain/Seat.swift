@@ -27,7 +27,7 @@ nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
     var languageLevel: LanguageLevel?
     /// The player's displayed title (`TI-xx`), snapshotted when they sat down.
     var titleID: String?
-    /// Finished games before this one, snapshotted when they sat down (learner hints, 5-step meter).
+    /// Finished games before this one, snapshotted when they sat down (learner hints, the rank meter).
     var gamesPlayed: Int?
     /// A guest seat sat in by the phone that owns that guest identity: the lowercase hex SHA-256
     /// of its claim token, so the server can match a later `POST /v1/claims` (never the token).

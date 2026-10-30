@@ -8,7 +8,7 @@ import Foundation
 /// Using one K per pair keeps every game zero-sum, so the rating pool never inflates, while a
 /// newcomer still moves at double speed. Ratings start at 1,000, are replayed deterministically
 /// from every finished, non-abandoned game (so edits, claims and migrated history come out right),
-/// are computed from game 1 and are shown from game 5 (the debut).
+/// are computed from game 1 and are shown from game 10 (the debut).
 ///
 /// The server's replay (`packages/shared`) must use exactly these rules.
 nonisolated enum Ratings {
@@ -17,7 +17,7 @@ nonisolated enum Ratings {
     /// A player's first `provisionalGames` games use double K.
     static let provisionalGames = 10
     /// Ratings are hidden, and players unranked, until this many games.
-    static let rankedAfterGames = 5
+    static let rankedAfterGames = Ranking.gamesToRank
 
     static func k(gamesBefore: Int) -> Double {
         gamesBefore < provisionalGames ? baseK * 2 : baseK
@@ -71,7 +71,7 @@ nonisolated struct RatingChange: Hashable, Sendable {
     var displayAfter: Int { Int(after.rounded()) }
     /// The visible change: rounded after minus rounded before.
     var delta: Int { displayAfter - displayBefore }
-    /// Ratings show once a player has 5 games.
+    /// Ratings show once a player has `Ratings.rankedAfterGames` games.
     var isRated: Bool { gamesAfter >= Ratings.rankedAfterGames }
     /// This game was the player's 5th: their rating is revealed to the whole table (W-05).
     var isDebut: Bool { gamesAfter == Ratings.rankedAfterGames }

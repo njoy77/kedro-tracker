@@ -16,8 +16,8 @@ export const RATING_START = 1000
 export const RATING_K = 32
 export const RATING_PROVISIONAL_GAMES = 10
 export const RATING_PROVISIONAL_MULTIPLIER = 2
-/** Ratings are computed from game 1 but shown from game 5 (the leaderboard eligibility). */
-export const RATING_REVEAL_GAMES = 5
+/** Ratings are computed from game 1 but shown from game 10 (the leaderboard eligibility). */
+export const RATING_REVEAL_GAMES = 10
 
 export type RatedPlacement = { subject: Subject; total: number }
 export type RatedGame = { gameId: UUID; finishedAtMs: number; placements: RatedPlacement[] }

@@ -59,7 +59,7 @@ Variables: `{name}`, `{knocker}`, `{hand}`, `{score}`, `{n}`, `{gap}`, `{round}`
 
 | ID | Moment | Clean | Spicy | Unhinged |
 |---|---|---|---|---|
-| J-01 | Stakes, 5th game | Your 5th game. Finish it and you're on the board. Don't blow it. | …Don't fuck it up. | = |
+| J-01 | Stakes, 10th game | Your 10th game. Finish it and you're on the board. Don't blow it. | …Don't fuck it up. | = |
 | J-02 | Stranger asks to sit | {name} wants a seat. You've never played together, so it's your call. | = | = |
 | J-03 | Played-with sat down (toast) | {name} sat down. | = | {name} sat down. Hide your cards. |
 | J-04 | Watch mode | Seats are set after Round 1. Watch this one; you're in the rematch. | = | Seats are set after Round 1. Watch, heckle, you're in the rematch. |
@@ -178,9 +178,9 @@ Shown under the standings; changes only when a round is saved.
 | R-04 | H2H, dead even | {a}–{a}. Somebody has to blink. | = | = |
 | R-05 | Nemesis | {name} has finished ahead of you {n} times. Your nemesis. | = | {name} has finished ahead of you {n} times. Your nemesis. Your personal hell. |
 | R-06 | Rival widget | {name} {a}, you {b}. {name}'s living in your head rent-free. | = | = |
-| L-01 | Your row, under 5 games | {n} of 5. Finish {left} more and you're ranked. | = | = |
-| L-02 | Not Yet Ranked header | Still in their first five. | = | = |
-| L-03 | Global unranked count | {n} people are still in their first five. | = | = |
+| L-01 | Your row, under 10 games | {n} of 10. Finish {left} more and you're ranked. | = | = |
+| L-02 | Not Yet Ranked header | Still in their first ten. | = | = |
+| L-03 | Global unranked count | {n} people are still in their first ten. | = | = |
 | L-04 | Close race | {name}'s {gap} ahead of you. Very catchable. | = | {name}'s {gap} ahead of you. Go get the bastard. |
 | L-05 | Below a sort's minimum | Needs {n} games for this one. | = | = |
 | L-06 | #1 by rating | Top of the board. Everyone hates you now. Good. | = | = |
@@ -334,7 +334,7 @@ Pre-written only. One per rival per finished game. Outbound images default to Cl
 |---|---|---|---|
 | Out of the Gate | One down. The bar was low and you cleared it. | = | = |
 | First Blood | First win. Screenshot it. | First win. Holy shit, screenshot it. | = |
-| On the Board | Five games, one number. No more hiding. | = | = |
+| On the Board | Ten games, one number. No more hiding. | = | = |
 | Regular | Twenty-five games. It's a habit now. | = | Twenty-five games. Get help. |
 | Touch Grass | A hundred games. Genuinely, go outside. | = | = |
 | Top Dog | #1 among your people. Everyone hates you now. Good. | = | = |
@@ -385,7 +385,7 @@ Rendered in the **viewer's** level. Most titles are the same in every level.
 
 | ID | Title | Clean | Spicy | Unhinged | Tagline on the profile (all levels unless noted) |
 |---|---|---|---|---|---|
-| TI-01 | Fresh Meat | Fresh Meat | = | = | First five games. Be gentle. (Unhinged: Don't be gentle.) |
+| TI-01 | Fresh Meat | Fresh Meat | = | = | First ten games. Be gentle. (Unhinged: Don't be gentle.) |
 | TI-02 | Regular | Regular | = | = | Twenty-five games and counting. |
 | TI-03 | Untouchable | Untouchable | = | = | Five straight wins. Once. |
 | TI-04 | The Ghost | The Ghost | = | = | Has held a hand worth nothing. |
