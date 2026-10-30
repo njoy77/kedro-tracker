@@ -2,12 +2,50 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.njoy77.kedro</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kedro</string>
+			</array>
+		</dict>
+	</array>
 	<key>KedroAPIBaseURL</key>
 	<string>$(KEDRO_API_BASE_URL)</string>
+	<key>KedroAppGroup</key>
+	<string>$(KEDRO_APP_GROUP)</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Kedro uses Bluetooth to let you know when people you've played with start a table nearby. Scores never travel over Bluetooth.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_kedro-table._tcp</string>
+		<string>_kedro-mc._tcp</string>
+		<string>_kedro-mc._udp</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Kedro uses the camera to scan a table's QR code and to take your profile photo.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kedro finds the table you're sitting at and keeps every phone's score in sync, even without internet.</string>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>Kedro uses distance to tell your table apart from the other tables nearby.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SupabaseURL</key>
 	<string>https://$(SUPABASE_HOST)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BebasNeue-Regular.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

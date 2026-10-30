@@ -74,7 +74,8 @@ When a card is discarded, any player may immediately play a matching card from t
 - On their turn, one player may **knock** to end the round. Knocking is a gamble, not a win or loss in itself.
 - After a knock, every other player gets exactly one more turn.
 - All cards are revealed and each player's hand value is totaled.
-- **Every round ends with exactly one knock.** A round cannot be recorded without a knocker.
+- **Inherent knock.** A player who has played all four of their cards knocks automatically when their turn comes around. Their hand is 0.
+- **Every round ends with exactly one knock** (regular or inherent). A round cannot be recorded without a knocker.
 - A wrong stick is handled at the table under the physical rules (it shows up in the player's hand value). The app does not track it separately.
 
 ### 2.6 Round scoring (enforced by the app)
@@ -85,10 +86,13 @@ When a card is discarded, any player may immediately play a matching card from t
 | Knocker **ties** for the lowest hand | Their hand value | Their hand value |
 | Someone has a **lower** hand than the knocker | Their hand value **+ 10** | Their hand value |
 
+An **inherent knock** (hand 0) scores −10 if it's the strictly lowest hand, and otherwise 0: it never takes the +10 penalty.
+
 Worked examples (knocker is A):
 - A = 4, B = 7, C = 9 → A scores −10, B 7, C 9.
 - A = 4, B = 4, C = 9 → A 4, B 4, C 9.
 - A = 6, B = 3, C = 9 → A 16, B 3, C 9.
+- Inherent: A = 0, B = 3 → A −10. A = 0, B = 0 → A 0. A = 0, B = −2 → A 0 (no penalty).
 
 The app must apply these adjustments automatically from the hand values and the identity of the knocker. Players never compute the bonus or penalty themselves.
 
@@ -127,7 +131,9 @@ Players in a Kedro game are **always physically together**. That fact is the fou
 Requirements:
 - **Effortless co-located joining.** When people with Kedro open are together and a game is starting or underway nearby, joining it should take little more than a confirmation. Using proximity capabilities (for example Bluetooth or local-network discovery, Nearby Interaction, or similar Apple frameworks) is strongly encouraged. The mechanism and the experience are up to the design.
 - **Host-led setup.** A host can always start a game and add players directly: people they have played with before, any Kedro user, or guests by name.
+- **Pick from a list.** Adding players starts from a list to pick from, with no typing needed: people nearby first, then people you have played with, then every other Kedro user A–Z. Typing narrows the list and searches Kedro by name or @handle. Blocked people never appear.
 - **Played-with list.** People you have played with before are easy to add to a new game.
+- **Late joins.** Any player in a game in progress can add someone after Round 1. The late joiner plays from the next round, starts at the **highest total at the table** at that moment (so joining late is never an advantage), and takes the last seat in the dealing order. The deal is not disturbed. A late joiner can be removed until they have played a round.
 - **Rematch.** After a game, the same table can start another game with the same players with minimal effort.
 - Supported table size: **3–8 players**.
 - At setup, the game records the planned number of rounds and the scoring mode (4.2).
@@ -165,7 +171,9 @@ The device should not sleep while a game is active and on screen.
 
 ### 4.6 Ending a game
 - When the planned rounds are complete, the app recognizes that the game is over.
-- Any player can end the game early. Early-ended games count fully in stats.
+- Any player can end the game at any time, from the game itself or without opening it. The confirmation says up front whether the game will count.
+- **A game counts only with at least 3 rounds.** Games ended with fewer stay in history, clearly marked, but don't count for stats, ratings, the leaderboard, badges, titles, the Hall of Shame, or Wrapped. Within a counted game, a player who played fewer than 3 rounds (a late joiner) doesn't count either.
+- Ending a game before any round is played simply discards it.
 - Ending a game deserves a moment: the winner (or co-winners), the final standings, and the game's highlights (for example best round, successful knocks, biggest comeback).
 - A game can be **abandoned**, which is distinct from ending early. Abandoned games stay in history, clearly marked, and are excluded from all stats, leaderboards, and achievements. Any player in the game can abandon it.
 
@@ -194,7 +202,7 @@ All stats are **derived from recorded rounds and games**. They are not stored as
 
 | Stat | Definition |
 |---|---|
-| Games played | Completed (non-abandoned) games, including early-ended ones |
+| Games played | Completed (non-abandoned) games of 3+ rounds, including early-ended ones |
 | Wins | Games won, including shared wins |
 | Win rate | Wins ÷ games played |
 | Best game | Lowest final cumulative score |
@@ -204,7 +212,8 @@ All stats are **derived from recorded rounds and games**. They are not stored as
 | Current win streak | Consecutive most-recent games won |
 | Longest win streak | Longest run of consecutive wins |
 | Knock rate | Rounds knocked ÷ rounds played |
-| Knock success rate | Knocks with strictly lowest hand (−10) ÷ total knocks |
+| Knock success rate | Knocks with strictly lowest hand (−10) ÷ total knocks (inherent knocks excluded) |
+| Inherent knocks | Rounds a player went out with all four cards, and how many were −10. Tracked apart from knocks. |
 | Knock outcomes | Count of successful, tied, and failed knocks |
 | Nemesis | The player who has finished ahead of this player most often in shared games |
 
@@ -305,6 +314,9 @@ Suggested judging criteria, mapped to goals:
 - iOS is the flagship. The web app will share the backend and catch up later.
 - Web parity is **not** a v1 constraint, and the iOS experience must not be shaped by web limitations.
 - **Existing web history is migrated.** Legacy games are imported, and each legacy username becomes a guest identity that its owner can claim with a claim link or code (3.2). Migrated games count toward stats once claimed, and are fixed records like any finished game.
+  - The web app saved scores (with the knock result marked by the scorekeeper), not hands, and allowed rounds with no knocker. Imported rounds **keep the web's saved scores exactly**, even where the marked result doesn't match the hands.
+  - A web round with no knocker recorded is imported with **no knock credited** to anyone (imported rounds only; live rounds always need a knocker). The web's inherent knock ("IK") is kept.
+  - Web rounds where everyone scored 0 were testing and are dropped.
 
 ---
 
@@ -321,5 +333,11 @@ Suggested judging criteria, mapped to goals:
 | 7 | Web history migration | Migrate; legacy users become claimable guest identities. |
 | 8 | Achievement catalog | Proposed by the designs in the tournament. |
 | 9 | Wrong-stick penalty | Handled at the table; already reflected in hand value. |
+| 10 | Short games | A game counts for stats only with 3+ rounds; a player counts in it only with 3+ rounds played. |
+| 11 | Late joins | Allowed after Round 1, at the highest total at the table, from the next round. |
+| 12 | Who can end a game | Any seated player, at any time. |
+| 13 | Adding players | A browsable list (nearby, played with, everyone A–Z) with search on top. |
+| 14 | Inherent knock | Part of the rules: hand 0, −10 if lowest alone, otherwise 0 (never +10). Its own stat, not counted as a knock. |
+| 15 | Importing web history | Keep the web's saved scores; credit no knock where none was recorded; drop all-zero test rounds. |
 
 *Kedro iOS PRD v3.0 · October 2026*

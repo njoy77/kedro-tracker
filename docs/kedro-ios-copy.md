@@ -145,6 +145,10 @@ Shown under the standings; changes only when a round is saved.
 | G-04 | Abandon confirm | Abandon this game? It won't count for anyone. You can restore it for 15 minutes. | = | = |
 | G-05 | Extended | {name} added {n} rounds. Now playing to {total}. | = | = |
 | G-06 | Rematch invite | Run it back? Same seats, {n} rounds. | = | = |
+| G-07 | End early confirm, under 3 rounds | End after Round {r}? Under 3 rounds, so it won't count for stats or the leaderboard. It stays in history. | End after Round {r}? Under 3 rounds doesn't count. No stats, no leaderboard. It stays in history. | End after Round {r}? Under 3 rounds is foreplay. Doesn't count for shit. It stays in history. |
+| G-08 | End before Round 1 | Nobody's played a round yet, so there's nothing to count. End it? | Not one round played. End this before it starts? | = |
+| G-09 | Game end, didn't count | Under 3 rounds, so this one doesn't count. Bragging rights only. | = | Under 3 rounds, so this one doesn't count. Talk all the shit you want, it's not on the record. |
+| G-10 | Late join | {name} is in from Round {r}, starting at {score}. | = | = |
 
 ## 9. History and corrections (H)
 
@@ -206,9 +210,9 @@ All N- strings ≤ 60 characters.
 | T-12 | Blocked by filter | That one's not going out. Kedro doesn't do slurs. | = | = |
 | T-13 | Reported (to reporter) | Reported. You won't see it again. | = | = |
 
-## 12. Canned taunt library (sample)
+## 12. Canned taunt library
 
-Each renders in the **recipient's** level. The full library targets ~150 taunts at launch.
+Each renders in the **recipient's** level. The full library targets ~150 taunts at launch; TT-15 onward are the launch lines kept in the app (`Features/Talk/TauntLibrary.swift`, which must match this table).
 
 | ID | Group | Clean | Spicy | Unhinged |
 |---|---|---|---|---|
@@ -226,6 +230,84 @@ Each renders in the **recipient's** level. The full library targets ~150 taunts 
 | TT-12 | General | No notes. | = | No notes. Just disgust. |
 | TT-13 | General | Somebody's sweating. | = | Somebody's sweating fucking bullets. |
 | TT-14 | General | Deal faster. | = | Deal faster, I'm aging over here. |
+| TT-15 | Knocks | Last turns. Make them count. | = | Last turns. Make them fucking count. |
+| TT-16 | Knocks | Bold knock. Let's see the cards. | Bold knock. Let's see the damn cards. | Bold fucking knock. Cards up. |
+| TT-17 | Knocks | That knock smells like a bluff. | That knock smells like bullshit. | = |
+| TT-18 | Knocks | Knocked into a wall. | Knocked straight into a damn wall. | Knocked face-first into a wall, dumbass. |
+| TT-19 | Knocks | Ten points for confidence. | = | Ten points for confidence. Zero for brains. |
+| TT-20 | Knocks | That knock aged badly. | That knock aged like shit. | = |
+| TT-21 | Knocks | Plus ten. Wear it. | = | Plus ten. Wear it, you menace. |
+| TT-22 | Knocks | Fine. That one was clean. | Fine. That one was clean as hell. | = |
+| TT-23 | Knocks | Minus ten. Don't get used to it. | = | Minus ten. Don't get fucking used to it. |
+| TT-24 | Knocks | Lucky knock. Say it with me: lucky. | = | Lucky fucking knock. Say it. |
+| TT-25 | Knocks | Tied. All that drama for nothing. | Tied. All that drama for shit. | = |
+| TT-26 | Knocks | A tie. The most boring outcome. | A tie. Boring as shit. | = |
+| TT-27 | Knocks | Knock already. We're waiting. | = | Knock already. We're fucking waiting. |
+| TT-28 | Knocks | Scared to knock? Understandable. | = | Scared to knock? Understandable, coward. |
+| TT-29 | Knocks | You're not knocking on that. Right? | = | You're not knocking on that. Right, genius? |
+| TT-30 | Knocks | Somebody knocked. Everybody panic. | Somebody knocked. Shit's getting real. | = |
+| TT-31 | Red Kings | Red King bailout. Must be nice. | = | Red King bailout. Must be fucking nice. |
+| TT-32 | Red Kings | Saved by royalty. Embarrassing. | = | Saved by royalty, you lucky bastard. |
+| TT-33 | Red Kings | That red King did all the work. | That red King did all the damn work. | = |
+| TT-34 | Red Kings | Below zero. Show-off. | = | Below zero, you show-off bastard. |
+| TT-35 | Red Kings | Who's hiding the red King? | Who's hiding the damn red King? | Who the fuck has the red King? |
+| TT-36 | Red Kings | I can smell a red King from here. | = | = |
+| TT-37 | Red Kings | Red King or not, you're in trouble. | Red King or not, you're in deep shit. | = |
+| TT-38 | Red Kings | One card carried that whole round. | = | One card carried your sorry ass. |
+| TT-39 | Red Kings | Peek at your cards. Go on. Peek. | = | Peek at your cards. Go on. I'll wait, asshole. |
+| TT-40 | Leader | Enjoy the view. It won't last. | = | Enjoy the view. It won't fucking last. |
+| TT-41 | Leader | First place looks nervous. | First place looks nervous as hell. | = |
+| TT-42 | Leader | The crown's on loan. | = | The crown's on loan, dickhead. |
+| TT-43 | Leader | Leading means nothing until it's final. | Leading means shit until it's final. | = |
+| TT-44 | Leader | Big lead. Bigger target. | Big lead. Bigger target on your ass. | = |
+| TT-45 | Leader | Every leader blows it eventually. | = | Every leader bottles it eventually. Your turn. |
+| TT-46 | Leader | Somebody knock that one down a peg. | Somebody knock that smug ass down a peg. | = |
+| TT-47 | Leader | You peaked. Respectfully. | = | You peaked. Respectfully, fuck you. |
+| TT-48 | Leader | Nice lead. Shame about the rest of the game. | = | Nice lead. Shame about the rest of the damn game. |
+| TT-49 | Leader | Wire to wire? Not on my watch. | = | Wire to wire? Not on my fucking watch. |
+| TT-50 | Leader | Don't get comfortable. | Don't get comfortable, smartass. | = |
+| TT-51 | Last place | The bottom has a great view of everyone. | = | = |
+| TT-52 | Last place | Last place is a choice. Bold one. | Last place is a choice. A shit one. | = |
+| TT-53 | Last place | Someone has to be last. Thanks for volunteering. | = | Someone has to be last. Thanks for volunteering, genius. |
+| TT-54 | Last place | Rock bottom called. It wants its seat back. | = | = |
+| TT-55 | Last place | Cooked. Fully cooked. | Cooked. Fully fucking cooked. | = |
+| TT-56 | Last place | Still time. Not much, but some. | = | Still time. Not a lot, but some, dumbass. |
+| TT-57 | Last place | Is the plan to lose on purpose? | = | Is the plan to lose on purpose, or what the hell? |
+| TT-58 | Last place | Last place. Say something. | = | Last place. Say something, loser. |
+| TT-59 | Last place | Thoughts, prayers and a calculator. | = | = |
+| TT-60 | Last place | That score's a cry for help. | That score's a damn cry for help. | That score's a fucking cry for help. |
+| TT-61 | Comebacks | Check your mirrors. | Check your damn mirrors. | Check your mirrors, asshole. |
+| TT-62 | Comebacks | Gap's closing. Feel it? | = | Gap's closing. Feel it, you bastard? |
+| TT-63 | Comebacks | Remember this round. I will. | = | Remember this round. I fucking will. |
+| TT-64 | Comebacks | Comeback loading. | = | Comeback loading. Brace your ass. |
+| TT-65 | Comebacks | Down isn't out. | Down isn't out. Not by a damn mile. | = |
+| TT-66 | Comebacks | I've been worse. Then I won. | I've been in worse shit. Then I won. | = |
+| TT-67 | Comebacks | Watch me climb. | = | Watch me climb, assholes. |
+| TT-68 | Comebacks | Two rounds. That's all I need. | = | Two rounds. That's all I fucking need. |
+| TT-69 | Comebacks | Nobody's safe. Least of all you. | = | Nobody's safe. Least of all your smug ass. |
+| TT-70 | Comebacks | Hope you saved some luck. | Hope you saved some luck. You'll damn well need it. | Hope you saved some luck. You'll fucking need it. |
+| TT-71 | General | Your game face needs work. | = | Your game face needs fucking work. |
+| TT-72 | General | I saw that look. | = | I saw that look. You're fucked. |
+| TT-73 | General | Count your cards. Then count again. | = | = |
+| TT-74 | General | Big talk for someone with that hand. | Big talk for someone with that shit hand. | = |
+| TT-75 | General | Interesting strategy. Wrong, but interesting. | = | Interesting strategy. Wrong as hell, but interesting. |
+| TT-76 | General | Somebody's bluffing. | = | Somebody's bluffing their ass off. |
+| TT-77 | General | Quiet over there. Suspicious. | Quiet over there. Suspicious as hell. | Quiet over there. Suspicious as fuck. |
+| TT-78 | General | That swap was a mistake. | That swap was a damn mistake. | That swap was a fucking mistake. |
+| TT-79 | General | Stop memorizing. It's not helping. | = | Stop memorizing. It's not helping, genius. |
+| TT-80 | General | Whatever you're planning, no. | Whatever the hell you're planning, no. | = |
+| TT-81 | General | Shuffle like you mean it. | = | Shuffle like you fucking mean it. |
+| TT-82 | General | Play faster. The table has plans. | = | Play faster, for fuck's sake. |
+| TT-83 | General | This is my table now. | This is my damn table now. | This is my fucking table now. |
+| TT-84 | General | Menace behavior. Respect. | = | = |
+| TT-85 | General | Act natural. You're failing. | = | Act natural. You're failing, dumbass. |
+| TT-86 | General | Every card you touch turns to garbage. | Every card you touch turns to shit. | = |
+| TT-87 | General | Somebody's about to get humbled. | Somebody's about to get humbled as hell. | Somebody's about to get fucking humbled. |
+| TT-88 | General | I've seen better hands on a clock. | = | = |
+| TT-89 | General | Last round. No pressure. | = | Last round. No pressure, asshole. |
+| TT-90 | General | One round left. Finish strong. Or don't. | = | One round left. Don't fuck it up. |
+| TT-91 | General | Receipts are coming. | = | Receipts are fucking coming. |
+| TT-92 | General | Say less. Play more. | = | Say less. Play more, motormouth. |
 
 ## 13. Receipts (RC)
 
@@ -373,9 +455,9 @@ Settings copy. Sound labels are literal.
 
 ## 20. Literal strings (identical in every level)
 
-Buttons: Sit Down · Ask to Sit · Let {name} In · Remove · New Table · Deal · Record Round {r} · Report Your Hand · Knock · Talk · Send · Next: {name} › · Save Round {r} · Save Change · Undo · Cards · Keep {hand} · Fix {name} · Finish Game · Fix a Round First · Play Another Round · Extend · End Early · Abandon · Restore Game · Run It Back · Send a Receipt · Share Results · Play Again with {name} · Invite with QR · Yes, that's me · Mute Their Taunts · Block · Report · Done.
+Buttons: Sit Down · Ask to Sit · Let {name} In · Remove · New Table · Deal · Record Round {r} · Report Your Hand · Knock · Talk · Send · Next: {name} › · Save Round {r} · Save Change · Undo · Cards · Keep {hand} · Fix {name} · Finish Game · Fix a Round First · Play Another Round · Extend · End Game · End Early · Abandon · Add Player · Restore Game · Run It Back · Send a Receipt · Share Results · Play Again with {name} · Invite with QR · Yes, that's me · Mute Their Taunts · Block · Report · Done.
 
-Fact and verdict lines (templates): "**Round {r}.** {knocker} knocked on {hand}." · "Landed: −10." · "Tied: {hand}." · "Failed: {hand} + 10 = {score}." · Delta captions: "landed · −10", "tied · {hand}", "failed · {hand} + 10".
+Fact and verdict lines (templates): "**Round {r}.** {knocker} knocked on {hand}." · inherent knock: "**Round {r}.** {knocker} went out." · imported round with no knock recorded: "**Round {r}.** No knock recorded." · "Landed: −10." · "Tied: {hand}." · "Failed: {hand} + 10 = {score}." · "No penalty: {hand}." · Delta captions: "landed · −10", "tied · {hand}", "failed · {hand} + 10", "no penalty · {hand}".
 
 Rules, the Knock Calculator, permission primers' factual sentence, error fix steps, the audit log ("{name} changed {player}'s R{r} hand {old} → {new} at {time}") and all accessibility labels are literal.
 

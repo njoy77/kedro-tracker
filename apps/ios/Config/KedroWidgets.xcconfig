@@ -1,0 +1,6 @@
+// Build settings for the KedroWidgets extension (widgets and the live game Live Activity).
+//
+// The extension only reads app-group snapshots and Live Activity content; it needs no secrets.
+// Bundle ID, team and entitlements are set on the target in Kedro.xcodeproj.
+
+KEDRO_APP_GROUP = group.com.njoy77.kedro

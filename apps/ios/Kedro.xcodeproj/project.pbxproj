@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		AA0000000000000000000070 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000072 /* Supabase */; };
+		BB0000000000000000000040 /* KedroWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* KedroWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB0000000000000000000041 /* KedroClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* KedroClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -18,23 +20,161 @@
 			remoteGlobalIDString = AA0000000000000000000020;
 			remoteInfo = Kedro;
 		};
+		BB0000000000000000000052 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000020;
+			remoteInfo = KedroWidgets;
+		};
+		BB0000000000000000000053 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000030;
+			remoteInfo = KedroClip;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB0000000000000000000044 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB0000000000000000000040 /* KedroWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000045 /* Embed App Clips */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
+			dstSubfolderSpec = 16;
+			files = (
+				BB0000000000000000000041 /* KedroClip.app in Embed App Clips */,
+			);
+			name = "Embed App Clips";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AA0000000000000000000010 /* Kedro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kedro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000011 /* KedroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KedroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000012 /* Kedro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Kedro.xcconfig; sourceTree = "<group>"; };
+		BB0000000000000000000010 /* KedroWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KedroWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000011 /* KedroClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KedroClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000012 /* KedroWidgets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = KedroWidgets.xcconfig; sourceTree = "<group>"; };
+		BB0000000000000000000013 /* KedroClip.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = KedroClip.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BB0000000000000000000080 /* Exceptions for "Kedro" folder in "KedroWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				Core/Design/Components/AvatarView.swift,
+				Core/Design/Components/CuratedAvatarArt.swift,
+				Core/Design/Components/LogoView.swift,
+				Core/Design/Components/SVGPath.swift,
+				Core/Design/Palette.swift,
+				Core/Design/Typography.swift,
+				Core/Domain/Avatar.swift,
+				Core/Domain/Handle.swift,
+				Core/Domain/Identifiers.swift,
+				Core/Domain/Player.swift,
+				Core/Domain/Seat.swift,
+				Core/Voice/LanguageLevel.swift,
+				"Resources/Fonts/BebasNeue-Regular.ttf",
+			);
+			target = BB0000000000000000000020 /* KedroWidgets */;
+		};
+		BB0000000000000000000081 /* Exceptions for "Kedro" folder in "KedroClip" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				Core/Design/Components/AvatarView.swift,
+				Core/Design/Components/Badges.swift,
+				Core/Design/Components/ButtonStyles.swift,
+				Core/Design/Components/CuratedAvatarArt.swift,
+				Core/Design/Components/KeepAwake.swift,
+				Core/Design/Components/LogoView.swift,
+				Core/Design/Components/SuitWatermark.swift,
+				Core/Design/Components/SVGPath.swift,
+				Core/Design/Palette.swift,
+				Core/Design/Toast/ToastCenter.swift,
+				Core/Design/Toast/ToastHost.swift,
+				Core/Design/Typography.swift,
+				Core/Domain/Avatar.swift,
+				Core/Domain/GameConfig.swift,
+				Core/Domain/GameOperation.swift,
+				Core/Domain/Handle.swift,
+				Core/Domain/HLC.swift,
+				Core/Domain/Identifiers.swift,
+				Core/Domain/Player.swift,
+				Core/Domain/Round.swift,
+				Core/Domain/ScoreFormat.swift,
+				Core/Domain/Seat.swift,
+				Core/Domain/TrashTalk.swift,
+				Core/Game/AuditEntry.swift,
+				Core/Game/GameFold.swift,
+				Core/Game/GameSession.swift,
+				Core/Game/GameState.swift,
+				Core/Persistence/GameStore.swift,
+				Core/Persistence/InMemoryGameStore.swift,
+				Core/Persistence/OperationTransport.swift,
+				Core/Persistence/PersistentModels.swift,
+				Core/Persistence/ProfileStore.swift,
+				Core/Sample/PreviewData.swift,
+				Core/Sample/SampleHistory.swift,
+				Core/Scoring/Scoring.swift,
+				Core/Voice/AgeGate.swift,
+				Core/Voice/CopyDeck.swift,
+				"Core/Voice/Deck/CopyDeck+GameEnd.swift",
+				"Core/Voice/Deck/CopyDeck+Literals.swift",
+				"Core/Voice/Deck/CopyDeck+Onboarding.swift",
+				"Core/Voice/Deck/CopyDeck+Progression.swift",
+				"Core/Voice/Deck/CopyDeck+Rounds.swift",
+				"Core/Voice/Deck/CopyDeck+System.swift",
+				Core/Voice/LanguageLevel.swift,
+				Core/Voice/Voice.swift,
+				"Resources/Fonts/BebasNeue-Regular.ttf",
+			);
+			target = BB0000000000000000000030 /* KedroClip */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AA0000000000000000000005 /* Kedro */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BB0000000000000000000080 /* Exceptions for "Kedro" folder in "KedroWidgets" target */,
+				BB0000000000000000000081 /* Exceptions for "Kedro" folder in "KedroClip" target */,
+			);
 			path = Kedro;
 			sourceTree = "<group>";
 		};
 		AA0000000000000000000006 /* KedroTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = KedroTests;
+			sourceTree = "<group>";
+		};
+		BB0000000000000000000005 /* KedroWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = KedroWidgets;
+			sourceTree = "<group>";
+		};
+		BB0000000000000000000006 /* KedroClip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = KedroClip;
+			sourceTree = "<group>";
+		};
+		BB0000000000000000000007 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -55,6 +195,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -62,6 +216,9 @@
 			isa = PBXGroup;
 			children = (
 				AA0000000000000000000005 /* Kedro */,
+				BB0000000000000000000007 /* Shared */,
+				BB0000000000000000000005 /* KedroWidgets */,
+				BB0000000000000000000006 /* KedroClip */,
 				AA0000000000000000000006 /* KedroTests */,
 				AA0000000000000000000007 /* Config */,
 				AA0000000000000000000003 /* Products */,
@@ -73,6 +230,8 @@
 			children = (
 				AA0000000000000000000010 /* Kedro.app */,
 				AA0000000000000000000011 /* KedroTests.xctest */,
+				BB0000000000000000000010 /* KedroWidgets.appex */,
+				BB0000000000000000000011 /* KedroClip.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,6 +240,8 @@
 			isa = PBXGroup;
 			children = (
 				AA0000000000000000000012 /* Kedro.xcconfig */,
+				BB0000000000000000000012 /* KedroWidgets.xcconfig */,
+				BB0000000000000000000013 /* KedroClip.xcconfig */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -95,13 +256,18 @@
 				AA0000000000000000000021 /* Sources */,
 				AA0000000000000000000022 /* Frameworks */,
 				AA0000000000000000000023 /* Resources */,
+				BB0000000000000000000044 /* Embed Foundation Extensions */,
+				BB0000000000000000000045 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB0000000000000000000050 /* PBXTargetDependency */,
+				BB0000000000000000000051 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AA0000000000000000000005 /* Kedro */,
+				BB0000000000000000000007 /* Shared */,
 			);
 			name = Kedro;
 			packageProductDependencies = (
@@ -132,6 +298,48 @@
 			productReference = AA0000000000000000000011 /* KedroTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		BB0000000000000000000020 /* KedroWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000054 /* Build configuration list for PBXNativeTarget "KedroWidgets" */;
+			buildPhases = (
+				BB0000000000000000000021 /* Sources */,
+				BB0000000000000000000022 /* Frameworks */,
+				BB0000000000000000000023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB0000000000000000000005 /* KedroWidgets */,
+				BB0000000000000000000007 /* Shared */,
+			);
+			name = KedroWidgets;
+			productName = KedroWidgets;
+			productReference = BB0000000000000000000010 /* KedroWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		BB0000000000000000000030 /* KedroClip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000055 /* Build configuration list for PBXNativeTarget "KedroClip" */;
+			buildPhases = (
+				BB0000000000000000000031 /* Sources */,
+				BB0000000000000000000032 /* Frameworks */,
+				BB0000000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB0000000000000000000006 /* KedroClip */,
+				BB0000000000000000000007 /* Shared */,
+			);
+			name = KedroClip;
+			productName = KedroClip;
+			productReference = BB0000000000000000000011 /* KedroClip.app */;
+			productType = "com.apple.product-type.application.on-demand-install-capable";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -148,6 +356,12 @@
 					AA0000000000000000000030 = {
 						CreatedOnToolsVersion = 27.1;
 						TestTargetID = AA0000000000000000000020;
+					};
+					BB0000000000000000000020 = {
+						CreatedOnToolsVersion = 27.1;
+					};
+					BB0000000000000000000030 = {
+						CreatedOnToolsVersion = 27.1;
 					};
 				};
 			};
@@ -170,6 +384,8 @@
 			targets = (
 				AA0000000000000000000020 /* Kedro */,
 				AA0000000000000000000030 /* KedroTests */,
+				BB0000000000000000000020 /* KedroWidgets */,
+				BB0000000000000000000030 /* KedroClip */,
 			);
 		};
 /* End PBXProject section */
@@ -183,6 +399,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0000000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000023 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000033 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -206,6 +436,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -213,6 +457,16 @@
 			isa = PBXTargetDependency;
 			target = AA0000000000000000000020 /* Kedro */;
 			targetProxy = AA0000000000000000000040 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000050 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000020 /* KedroWidgets */;
+			targetProxy = BB0000000000000000000052 /* PBXContainerItemProxy */;
+		};
+		BB0000000000000000000051 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000030 /* KedroClip */;
+			targetProxy = BB0000000000000000000053 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -365,6 +619,120 @@
 			};
 			name = Release;
 		};
+		BB0000000000000000000060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0000000000000000000012 /* KedroWidgets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/KedroWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KedroWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.njoy77.kedro.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BB0000000000000000000061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0000000000000000000012 /* KedroWidgets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/KedroWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KedroWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.njoy77.kedro.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		BB0000000000000000000062 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0000000000000000000013 /* KedroClip.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/KedroClip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KedroClip-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				KEDRO_API_BASE_URL = "http://localhost:8787";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.njoy77.kedro.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "KEDRO_CLIP $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BB0000000000000000000063 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB0000000000000000000013 /* KedroClip.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/KedroClip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2RXNMCM34K;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KedroClip-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kedro;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				KEDRO_API_BASE_URL = "http://localhost:8787";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.njoy77.kedro.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "KEDRO_CLIP $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -391,6 +759,24 @@
 			buildConfigurations = (
 				AA0000000000000000000064 /* Debug */,
 				AA0000000000000000000065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000054 /* Build configuration list for PBXNativeTarget "KedroWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000060 /* Debug */,
+				BB0000000000000000000061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000055 /* Build configuration list for PBXNativeTarget "KedroClip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000062 /* Debug */,
+				BB0000000000000000000063 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
