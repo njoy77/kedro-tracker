@@ -160,6 +160,20 @@ final class NetworkServices {
         }
     }
 
+    /// Moves a guest's history onto the signed-in account (`POST /v1/claims`, design §5.1). Call
+    /// from `AppModel.didSignIn` with the guest profile's claim token before clearing it; on
+    /// success the claimed games are pulled again so their seats show the account.
+    func claimGuestHistory(token: String) async -> ClaimResult? {
+        do {
+            let result = try await api.claim(token: token)
+            for game in sync.connectedGames { await sync.pull(game, full: true) }
+            return result
+        } catch {
+            log.info("Claim failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
     private struct LiveSeat: Hashable, Sendable {
         var game: GameID
         var person: PlayerRef

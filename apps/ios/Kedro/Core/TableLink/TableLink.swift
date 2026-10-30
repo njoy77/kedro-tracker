@@ -125,7 +125,8 @@ final class TableLink {
     /// - Parameter inviteCode: The `k` from a scanned QR link, which admits without Ask to Sit.
     func join(_ game: GameID, inviteCode: String? = nil) {
         if let inviteCode { inviteCodes[game] = inviteCode }
-        guard self.game != game else { return }
+        // Joining the same table again only matters after it stopped (declined, or left).
+        guard self.game != game || role == .idle else { return }
         leave()
         self.game = game
         role = .searching

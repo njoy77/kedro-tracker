@@ -93,6 +93,10 @@ final class BackendSync {
         flushTask = task
         await task.value
         flushTask = nil
+        // Operations queued while the last batch was finishing.
+        if hasAccount, !queue.isEmpty, retryTask == nil, lastError == nil {
+            scheduleFlush()
+        }
     }
 
     /// Starts pulling and following a game on the backend.
@@ -181,14 +185,13 @@ final class BackendSync {
                 lastError = error
                 if case .notSignedIn = error { hasAccount = false }
                 log.info("Upload failed: \(String(describing: error), privacy: .public)")
+                if case .notSignedIn = error { return }
                 if error.isRetryable || error == .unauthorized(401) {
-                    scheduleRetry()
-                } else {
-                    // A request the server can never accept as a whole (encoding, 4xx): answer for
-                    // each operation alone so one bad operation can't block the rest.
-                    await uploadIndividually(batch)
+                    return scheduleRetry()
                 }
-                return
+                // A request the server can never accept as a whole (encoding, 4xx): answer for
+                // each operation alone so one bad operation can't block the rest.
+                guard await uploadIndividually(batch) else { return }
             } catch {
                 return // Cancelled.
             }
@@ -208,23 +211,26 @@ final class BackendSync {
         }
     }
 
-    private func uploadIndividually(_ batch: [GameOperation]) async {
+    /// Uploads a batch one operation at a time; an operation the server rejects outright is
+    /// treated as refused. Returns false when uploading should stop for now.
+    private func uploadIndividually(_ batch: [GameOperation]) async -> Bool {
         for operation in batch {
             do {
                 let result = try await api.uploadOperations([operation])
                 handle(result, for: [operation])
             } catch let error as APIError where error.isRetryable {
                 scheduleRetry()
-                return
+                return false
             } catch let error as APIError {
-                if case .notSignedIn = error { return }
-                if case .unauthorized = error { return }
-                handle(OpsUploadResult(accepted: [], duplicates: []), for: [operation])
+                switch error {
+                case .notSignedIn, .unauthorized: return false
+                default: handle(OpsUploadResult(accepted: [], duplicates: []), for: [operation])
+                }
             } catch {
-                return
+                return false
             }
         }
-        if !queue.isEmpty { scheduleFlush() }
+        return true
     }
 
     private func scheduleRetry() {

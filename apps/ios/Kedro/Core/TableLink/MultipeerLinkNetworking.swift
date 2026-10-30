@@ -7,7 +7,9 @@ import Synchronization
 /// for when no Network-framework peer-to-peer path comes up. Same frames, same star; the session
 /// is encrypted (`.required`). Discovery info is a trimmed TXT record (MC allows ~400 bytes).
 final class MultipeerLinkNetworking: NSObject, TableLinkNetworking {
-    static let serviceType = "kedro-table"
+    /// Distinct from the Bonjour service (`_kedro-table._tcp`): MultipeerConnectivity advertises
+    /// `_kedro-mc._tcp`/`._udp`, and sharing a name would make the Bonjour browser see MC peers.
+    static let serviceType = "kedro-mc"
 
     let source = DiscoveredTable.Source.multipeer
     private let peer: MCPeerID
