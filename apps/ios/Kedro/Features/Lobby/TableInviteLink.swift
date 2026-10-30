@@ -112,3 +112,16 @@ nonisolated struct RotatingTableToken: Sendable {
             .description
     }
 }
+
+/// Keeps one invite secret per table for the life of the app, so closing and reopening the lobby
+/// (or the QR sheet) doesn't invalidate a code someone is about to scan.
+enum TableTokenVault {
+    private static var tokens: [GameID: RotatingTableToken] = [:]
+
+    static func token(for game: GameID) -> RotatingTableToken {
+        if let token = tokens[game] { return token }
+        let token = RotatingTableToken(gameID: game)
+        tokens[game] = token
+        return token
+    }
+}

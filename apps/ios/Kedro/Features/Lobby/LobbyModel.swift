@@ -12,8 +12,9 @@ import OSLog
 /// scorekeeper → `ScorekeeperChanged`, rounds → `RoundsChanged`, first deal → `GameStarted`.
 ///
 /// The table word, scoring mode and house voice cap live in `GameCreated`'s config and have no
-/// change operation yet, so they lock when the table opens (shared need: a lobby-only
-/// `GameConfigured` op would let them stay editable).
+/// change operation. While no other phone has sat down, changing one quietly reopens the table
+/// (the empty lobby is abandoned and a new one advertised); once someone else is linked to a seat
+/// they lock (shared need: a lobby-only `GameConfigured` op would keep them editable throughout).
 @Observable
 final class LobbyModel {
     enum LobbyError: LocalizedError {
@@ -91,7 +92,7 @@ final class LobbyModel {
         draftConfig = session.state.config
         firstDealer = session.state.config.firstDealerSeat
         knownSeats = Set(session.state.seats.map(\.id))
-        inviteToken = RotatingTableToken(gameID: session.gameID)
+        inviteToken = TableTokenVault.token(for: session.gameID)
     }
 
     // MARK: Reading
@@ -109,8 +110,13 @@ final class LobbyModel {
 
     var gameID: GameID? { session?.gameID }
 
-    /// Table word, scoring mode and house voice can change only before the table opens.
-    var canChangeTableShape: Bool { !isOpen }
+    /// Another phone is linked to a seat (someone sat down, or a saved seat was claimed).
+    var otherPhonesSeated: Bool {
+        seats.contains { $0.deviceID != nil && $0.deviceID != app.deviceID }
+    }
+
+    /// Table word, scoring mode and house voice can change until another phone sits down.
+    var canChangeTableShape: Bool { !isOpen || !otherPhonesSeated }
 
     var issues: [LobbyIssue] { LobbyRules.issues(seats: seats, config: config) }
 
@@ -259,21 +265,45 @@ final class LobbyModel {
         }
     }
 
-    func setScoringMode(_ mode: ScoringMode) {
-        guard canChangeTableShape else { return }
-        draftConfig.scoringMode = mode
-        if mode == .selfReport { draftSeats = LobbyRules.withDefaultReporters(draftSeats, host: hostSeatID) }
+    func setScoringMode(_ mode: ScoringMode) async {
+        guard mode != config.scoringMode else { return }
+        await reshape { config, seats in
+            config.scoringMode = mode
+            if mode == .selfReport { seats = LobbyRules.withDefaultReporters(seats, host: self.hostSeatID) }
+        }
     }
 
-    func regenerateTableWord() {
-        guard canChangeTableShape else { return }
-        draftConfig.tableWord = TableWord.random(excluding: draftConfig.tableWord)
+    func regenerateTableWord() async {
+        await reshape { config, _ in config.tableWord = TableWord.random(excluding: config.tableWord) }
     }
 
     /// "Keep it cleaner tonight": the host can lower the house voice, never raise it.
-    func capHouseVoice(at level: LanguageLevel?) {
+    func capHouseVoice(at level: LanguageLevel?) async {
+        guard level != config.houseVoiceCap else { return }
+        await reshape { config, _ in config.houseVoiceCap = level }
+    }
+
+    /// Changes a setting carried by `GameCreated`. A draft just changes; an open table that only
+    /// this phone has joined is reopened with the new settings (same seats).
+    private func reshape(_ change: (inout GameConfig, inout [Seat]) -> Void) async {
         guard canChangeTableShape else { return }
-        draftConfig.houseVoiceCap = level
+        var config = self.config
+        var seats = self.seats
+        change(&config, &seats)
+        guard let session else {
+            draftConfig = config
+            draftSeats = seats
+            return
+        }
+        draftConfig = config
+        draftSeats = LobbyRules.renumbered(seats)
+        await close(session)
+        do {
+            try await open()
+        } catch {
+            log.error("Couldn't reopen the table: \(error.localizedDescription, privacy: .public)")
+            app.toasts.show(app.voice.line("E-01"))
+        }
     }
 
     // MARK: Opening, dealing, leaving
@@ -288,7 +318,7 @@ final class LobbyModel {
         let others = draftSeats.filter { $0.id != hostSeatID }
         let session = try await app.createGame(config: draftConfig, others: others)
         self.session = session
-        inviteToken = RotatingTableToken(gameID: session.gameID)
+        inviteToken = TableTokenVault.token(for: session.gameID)
         // `createGame` seats the host first; restore the draft's clockwise order.
         await reorder(LobbyRules.renumbered(draftSeats))
         await app.discovery.advertise(AdvertisedTable(
@@ -316,7 +346,13 @@ final class LobbyModel {
     /// Cancel: a draft just goes away; an open lobby is abandoned (it never dealt, so it never
     /// counts) and stops advertising.
     func cancel() async {
-        guard let session, session.state.status == .lobby else { return }
+        guard let session else { return }
+        await close(session)
+    }
+
+    private func close(_ session: GameSession) async {
+        defer { self.session = nil }
+        guard session.state.status == .lobby else { return }
         do {
             try await session.abandon()
         } catch {
@@ -324,7 +360,6 @@ final class LobbyModel {
         }
         await app.discovery.stopAdvertising()
         if app.liveGame?.gameID == session.gameID { app.closeLiveGame() }
-        self.session = nil
     }
 
     // MARK: Other phones
