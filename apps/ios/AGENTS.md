@@ -54,4 +54,4 @@ bun run ios:build
 bun run --filter '@kedro/ios' test
 ```
 
-Build output goes to Xcode's default DerivedData (outside the repo). Never pass `-derivedDataPath` pointing inside the repo; it lives in iCloud and code signing will fail.
+Build output goes to Xcode's default DerivedData (outside the repo). Never pass `-derivedDataPath` pointing inside the repo: it bloats the working tree, and code signing fails on iCloud's extended attributes if the repo ever ends up in an iCloud-synced folder again.
