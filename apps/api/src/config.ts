@@ -15,8 +15,15 @@
 //   KEDRO_DEV_SEED=legacy      with KEDRO_DEV_AUTH: load the web app's players and games (read-only)
 //                              as signed-up test accounts (src/dev/seed.ts; `bun run dev:seed`)
 //   VERCEL_ENV / NODE_ENV      set by the host: `production` turns on deploymentProblems' checks
-//
-// APNs (Live Activity broadcast pushes) is not configured yet: see push/liveActivity.ts.
+//   APNS_KEY_ID                optional; the APNs auth key's ID. With APNS_PRIVATE_KEY, turns on pushes
+//   APNS_PRIVATE_KEY           the .p8 auth key's contents (PEM; "\n" escapes are accepted)
+//   APNS_TEAM_ID               default 2RXNMCM34K
+//   APNS_BUNDLE_ID             default com.njoy77.kedro
+//   APNS_ENVIRONMENT           `production` (TestFlight and App Store builds) or `sandbox` (Debug
+//                              builds); default production, sandbox when local
+// Without the APNs key the push senders are stubs that only log (push/liveActivity.ts, push/notifications.ts).
+
+import type { ApnsConfig } from './push/apns.ts'
 
 export type ApiConfig = {
   port: number
@@ -31,6 +38,7 @@ export type ApiConfig = {
   clipSecret?: string
   linkSigningKey?: string
   publicUrl?: string
+  apns?: ApnsConfig
   /** Names of the Supabase keys that are missing (for the startup message). */
   missing: string[]
 }
@@ -44,10 +52,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     !anonKey && 'SUPABASE_ANON_KEY',
     !serviceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
   ].filter((name): name is string => Boolean(name))
+  const environment: ApiConfig['environment'] =
+    env.VERCEL_ENV === 'production' || (!env.VERCEL_ENV && env.NODE_ENV === 'production') ? 'production' : env.VERCEL_ENV ? 'preview' : 'local'
   return {
     port: Number(env.PORT ?? 8787),
-    environment:
-      env.VERCEL_ENV === 'production' || (!env.VERCEL_ENV && env.NODE_ENV === 'production') ? 'production' : env.VERCEL_ENV ? 'preview' : 'local',
+    environment,
     supabase:
       url && anonKey && serviceRoleKey
         ? { url: url.replace(/\/+$/, ''), anonKey, serviceRoleKey, jwtSecret: env.SUPABASE_JWT_SECRET || undefined }
@@ -58,8 +67,25 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     clipSecret: env.KEDRO_CLIP_SECRET || undefined,
     linkSigningKey: env.KEDRO_LINK_SIGNING_KEY || undefined,
     publicUrl: env.KEDRO_PUBLIC_URL || undefined,
+    apns:
+      env.APNS_KEY_ID && env.APNS_PRIVATE_KEY
+        ? {
+            keyId: env.APNS_KEY_ID,
+            teamId: env.APNS_TEAM_ID || '2RXNMCM34K',
+            privateKey: env.APNS_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            bundleId: env.APNS_BUNDLE_ID || 'com.njoy77.kedro',
+            environment: apnsEnvironment(env.APNS_ENVIRONMENT, environment),
+          }
+        : undefined,
     missing,
   }
+}
+
+/** `development` is accepted for sandbox (the entitlement's name for it). */
+function apnsEnvironment(value: string | undefined, environment: ApiConfig['environment']): ApnsConfig['environment'] {
+  if (value === 'sandbox' || value === 'development') return 'sandbox'
+  if (value === 'production') return 'production'
+  return environment === 'local' ? 'sandbox' : 'production'
 }
 
 /**

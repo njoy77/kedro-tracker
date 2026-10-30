@@ -4,6 +4,7 @@ import { waitUntil } from '@vercel/functions'
 import { createApp } from './app.ts'
 import { DevTokenVerifier, SupabaseTokenVerifier, type TokenVerifier } from './auth.ts'
 import { deploymentProblems, loadConfig } from './config.ts'
+import { ApnsClient } from './push/apns.ts'
 import { fetchLegacyRows, seedFromLegacy, type DevAccount } from './dev/seed.ts'
 import { MemoryStore } from './store/memory.ts'
 import { SupabaseStore } from './store/supabase.ts'
@@ -31,7 +32,21 @@ if (config.supabase) {
   )
 }
 
-const { app, services } = createApp({ store, verifier, log, logRequests: true, clipSecret: config.clipSecret, linkSigningKey: config.linkSigningKey, publicUrl: config.publicUrl, defer: waitUntil })
+const apns = config.apns ? new ApnsClient(config.apns) : undefined
+if (config.apns) log(`APNs: ${config.apns.environment}, key ${config.apns.keyId}, ${config.apns.bundleId}`)
+else log('APNs is not configured (APNS_KEY_ID, APNS_PRIVATE_KEY): pushes are logged, not sent')
+
+const { app, services } = createApp({
+  store,
+  verifier,
+  apns,
+  log,
+  logRequests: true,
+  clipSecret: config.clipSecret,
+  linkSigningKey: config.linkSigningKey,
+  publicUrl: config.publicUrl,
+  defer: waitUntil,
+})
 
 // Local test data (see dev/seed.ts). Only with dev auth and the in-memory store.
 if (config.devSeed && config.devAuth && !config.supabase) {

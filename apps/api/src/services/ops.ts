@@ -334,12 +334,20 @@ export class OpsService {
     return result
   }
 
-  /** The APNs broadcast channel for a game's Live Activity (null until APNs creates one). */
+  /**
+   * The APNs broadcast channel for a game's Live Activity, created on first use while the game is
+   * live (a phone asks at Deal, possibly before its GameStarted reached the server). Null without
+   * APNs, for an ended game, or when APNs fails (the phone then updates the activity locally).
+   */
   async liveActivityChannel(caller: UUID, gameId: UUID): Promise<string | null> {
     const game = await this.deps.store.getGame(gameId)
     if (!game) throw notFound('No such game')
     if (!(await this.deps.store.isSeated(gameId, caller))) throw forbidden('You are not seated in this game')
-    return game.liveActivityChannelId
+    if (game.liveActivityChannelId) return game.liveActivityChannelId
+    return this.deps.broadcaster.channel(gameId).catch((error: unknown) => {
+      this.log(`live activity channel for ${gameId} failed: ${String(error)}`)
+      return null
+    })
   }
 
   /** GET /v1/games/:gameId/ops for an App Clip session. */

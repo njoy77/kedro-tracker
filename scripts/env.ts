@@ -31,7 +31,18 @@ const ROOT = join(import.meta.dir, '..')
 const ENVIRONMENTS = ['development', 'preview', 'production'] as const
 
 /** The API's server-only keys (apps/api/src/config.ts), kept in the kedro-api project. */
-const API_KEYS = ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'KEDRO_CLIP_SECRET', 'KEDRO_LINK_SIGNING_KEY', 'KEDRO_PUBLIC_URL']
+const API_KEYS = [
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_JWT_SECRET',
+  'KEDRO_CLIP_SECRET',
+  'KEDRO_LINK_SIGNING_KEY',
+  'KEDRO_PUBLIC_URL',
+  'APNS_KEY_ID',
+  'APNS_TEAM_ID',
+  'APNS_PRIVATE_KEY',
+  'APNS_BUNDLE_ID',
+  'APNS_ENVIRONMENT',
+]
 
 // Add a target, or a key to an existing one, when an app needs a new secret.
 const TARGETS: Target[] = [

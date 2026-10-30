@@ -210,6 +210,15 @@ export class SupabaseStore implements Store {
     return (await this.inviteKey(gameId)) ?? key
   }
 
+  async claimLiveActivityChannel(gameId: UUID, channelId: string): Promise<string | null> {
+    must(await this.db.from('games').update({ live_activity_channel_id: channelId }).eq('id', gameId).is('live_activity_channel_id', null))
+    return (await this.getGame(gameId))?.liveActivityChannelId ?? null
+  }
+
+  async clearLiveActivityChannel(gameId: UUID, channelId: string): Promise<void> {
+    must(await this.db.from('games').update({ live_activity_channel_id: null }).eq('id', gameId).eq('live_activity_channel_id', channelId))
+  }
+
   // MARK: Finished games and ratings
 
   async projectFinishedGame(projection: FinishedGameProjection): Promise<void> {
@@ -511,6 +520,10 @@ export class SupabaseStore implements Store {
       kind: row.kind as PushTokenRow['kind'],
       gameId: (row.game_id as string | null) ?? null,
     }))
+  }
+
+  async removePushToken(token: string, kind: PushTokenRow['kind']): Promise<void> {
+    must(await this.db.from('push_tokens').delete().eq('token', token).eq('kind', kind))
   }
 
   // MARK: Photos
