@@ -118,53 +118,53 @@ struct LiveTableView: View {
     }
 
     private func tableContent(visible: (state: GameState, isHidden: Bool), voice: Voice) -> some View {
-            VStack(spacing: 14) {
-                SyncPill(syncState: app.transport.syncState, voice: voice)
-                selfReportCard
-                LastRoundCard(
-                    state: visible.state,
-                    voice: voice,
-                    mySeat: session.mySeatID,
-                    viewerIsLearner: viewerIsLearner,
-                    nextDealer: nextDealerNudge,
-                    isHidden: visible.isHidden,
-                    compact: isCompact,
-                    onWhy: { sheet = .why($0) },
-                    onReact: session.mySeatID == nil ? nil : { react($0) }
-                )
-                StandingsView(
-                    state: visible.state,
-                    mySeat: session.mySeatID,
-                    hidesDeltas: visible.isHidden,
-                    excluding: pinnedSeat,
-                    onDealerTap: session.canEdit ? { sheet = .dealer } : nil
-                )
-                if !visible.isHidden, let banter = TableVoice.banter(for: state) {
-                    Text(banter.render(voice, gameID: state.gameID, round: state.rounds.count))
-                        .kedroFont(.roast)
-                        .foregroundStyle(.silver)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 8)
-                        .transition(.opacity)
-                        .id(state.rounds.count)
-                }
+        VStack(spacing: 14) {
+            SyncPill(syncState: app.transport.syncState, voice: voice)
+            selfReportCard
+            LastRoundCard(
+                state: visible.state,
+                voice: voice,
+                mySeat: session.mySeatID,
+                viewerIsLearner: viewerIsLearner,
+                nextDealer: nextDealerNudge,
+                isHidden: visible.isHidden,
+                compact: isCompact,
+                onWhy: { sheet = .why($0) },
+                onReact: session.mySeatID == nil ? nil : { react($0) }
+            )
+            StandingsView(
+                state: visible.state,
+                mySeat: session.mySeatID,
+                hidesDeltas: visible.isHidden,
+                excluding: pinnedSeat,
+                onDealerTap: session.canEdit ? { sheet = .dealer } : nil
+            )
+            if !visible.isHidden, let banter = TableVoice.banter(for: state) {
+                Text(banter.render(voice, gameID: state.gameID, round: state.rounds.count))
+                    .kedroFont(.roast)
+                    .foregroundStyle(.silver)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                    .transition(.opacity)
+                    .id(state.rounds.count)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 12)
-            .animation(.smooth(duration: 0.3), value: nextDealerNudge)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 12)
+        .animation(.smooth(duration: 0.3), value: nextDealerNudge)
     }
 
     private func bottomInset(visible: (state: GameState, isHidden: Bool)) -> some View {
-            VStack(spacing: 0) {
-                if let pinnedSeat, let standing = visible.state.standing(for: pinnedSeat) {
-                    StandingRow(standing: standing, isMe: true, compact: true, hidesDelta: visible.isHidden, showsLeader: !state.rounds.isEmpty)
-                        .padding(.horizontal, 16)
-                        .background(.surface)
-                }
-                bottomBar
+        VStack(spacing: 0) {
+            if let pinnedSeat, let standing = visible.state.standing(for: pinnedSeat) {
+                StandingRow(standing: standing, isMe: true, compact: true, hidesDelta: visible.isHidden, showsLeader: !state.rounds.isEmpty)
+                    .padding(.horizontal, 16)
+                    .background(.surface)
             }
+            bottomBar
+        }
     }
 
     @ViewBuilder

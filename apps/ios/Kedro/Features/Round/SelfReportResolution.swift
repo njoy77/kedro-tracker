@@ -29,8 +29,8 @@ nonisolated enum KnockerResolution: Hashable, Sendable {
 
     static func evaluate(_ report: SelfReportRound?, seats: [SeatID], now: Date) -> KnockerResolution {
         guard let report else { return .collecting(waitingOn: seats) }
-        if let knocker = report.knocker { return .settled(knocker) }
         guard report.waitingOn.isEmpty else { return .collecting(waitingOn: report.waitingOn) }
+        if let knocker = report.knocker { return .settled(knocker) }
         let proposals = report.proposals.sorted { ($0.at, $0.opId.uuidString) < ($1.at, $1.opId.uuidString) }
         guard let latest = proposals.last else { return .undecided(claims: report.claimedKnockers) }
         let rival = proposals.dropLast().last { other in
@@ -87,10 +87,8 @@ nonisolated enum GuestReporters {
 
     /// The seats a phone reports for: its own, then each guest it's the reporter for, in seat order.
     static func seats(reportedBy me: SeatID, in seats: [Seat]) -> [SeatID] {
-        seats.filter { seat in
-            seat.id == me || (seat.isGuest && reporter(for: seat, in: seats) == me)
-        }
-        .map(\.id)
+        let guests = seats.filter { $0.id != me && $0.isGuest && reporter(for: $0, in: seats) == me }.map(\.id)
+        return seats.contains { $0.id == me } ? [me] + guests : guests
     }
 }
 

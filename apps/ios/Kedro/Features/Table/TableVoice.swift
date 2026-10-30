@@ -130,6 +130,15 @@ nonisolated enum TableVoice {
 
     // MARK: Banter
 
+    /// The furthest-back player who needs more than `cookedPointsPerRound` a round to catch the
+    /// leader with `remaining` rounds to play, given `totals` (the B-03 estimate).
+    static func cookedSeat(totals: [SeatID: Int], remaining: Int, ordered: [Standing]) -> Standing? {
+        guard remaining >= 1, let best = totals.values.min() else { return nil }
+        return ordered
+            .filter { (totals[$0.id] ?? 0) - best > cookedPointsPerRound * remaining }
+            .max { (totals[$0.id] ?? 0, $1.seat.order) < (totals[$1.id] ?? 0, $0.seat.order) }
+    }
+
     /// The banter line under the standings (B-xx, or an occasional dealer line D-02…D-05).
     /// Changes only when a round is saved, edited or undone (it's derived from the rounds).
     static func banter(for state: GameState) -> VoicePick? {
@@ -146,6 +155,14 @@ nonisolated enum TableVoice {
         if n >= 2, let last = state.lastRound, last.outcome == .failed,
            timeline.leaders(afterRound: n - 1).contains(last.knocker) {
             return VoicePick(["B-07"], key: "banter")
+        }
+        // B-03 the round someone first becomes cooked (mockup frame 6: "Sam's 21 back with 3 to
+        // play"); while it stays true it drops down the list so the line keeps moving.
+        if let cooked = cookedSeat(totals: now, remaining: remaining, ordered: ordered) {
+            let wasCooked = n >= 2 && cookedSeat(totals: timeline.totals[n - 2], remaining: remaining + 1, ordered: ordered)?.id == cooked.id
+            if !wasCooked {
+                return VoicePick(["B-03"], key: "banter", ["name": cooked.seat.displayName, "gap": cooked.total - (now.values.min() ?? 0), "n": remaining])
+            }
         }
         // B-05: a tie at the top.
         let leaderSeats = ordered.filter { leaders.contains($0.id) }
@@ -167,14 +184,9 @@ nonisolated enum TableVoice {
                 return VoicePick(["B-04"], key: "banter", ["name": comeback.seat.displayName])
             }
         }
-        // B-03: cooked (estimate stated in the line).
-        if remaining >= 1, let best = now.values.min() {
-            let cooked = ordered.reversed().first { standing in
-                standing.total - best > cookedPointsPerRound * remaining
-            }
-            if let cooked {
-                return VoicePick(["B-03"], key: "banter", ["name": cooked.seat.displayName, "gap": cooked.total - best, "n": remaining])
-            }
+        // B-03: still cooked (estimate stated in the line).
+        if let cooked = cookedSeat(totals: now, remaining: remaining, ordered: ordered), let best = now.values.min() {
+            return VoicePick(["B-03"], key: "banter", ["name": cooked.seat.displayName, "gap": cooked.total - best, "n": remaining])
         }
         // B-09: the same player last three rounds running.
         if n >= 3 {
