@@ -186,21 +186,106 @@ struct GameFoldTests {
         #expect(dealt.state.lateOperations.last?.reason == .afterDeal)
     }
 
-    @Test("Seats are fixed after Round 1, and a table holds at most 8")
-    func seatRules() {
-        var game = TestGame()
-        game.setUp()
-        game.record([3, 9, 7], knocker: 0)
+    @Test("A table holds at most 8")
+    func tableFull() {
         let latecomer = Seat(player: .guest(GuestID()), displayName: "Late", order: 9)
-        game.add(.playerSeated(.init(seat: latecomer)))
-        #expect(game.state.seats.count == 3)
-        #expect(game.state.lateOperations.last?.reason == .seatsLocked)
-
         var big = TestGame(players: 8)
         big.setUp(start: false)
         big.add(.playerSeated(.init(seat: latecomer)))
         #expect(big.state.seats.count == 8)
         #expect(big.state.lateOperations.last?.reason == .tableFull)
+    }
+
+    @Test("A late joiner plays from the next round at the highest total, last in the deal")
+    func lateJoin() {
+        var game = TestGame()
+        game.setUp()
+        game.record([3, 9, 7], knocker: 0) // totals −10, 9, 7
+        // A phone can't pick its own starting score or round.
+        var latecomer = Seat(player: .guest(GuestID()), displayName: "Late", order: 0)
+        latecomer.joinedRound = 1
+        latecomer.startingScore = -50
+        game.add(.playerSeated(.init(seat: latecomer)))
+
+        let state = game.state
+        let joined = state.seat(latecomer.id)
+        #expect(state.seats.count == 4)
+        #expect(joined?.joinedRound == 2)
+        #expect(joined?.startingScore == 9)
+        #expect(state.seats.last?.id == latecomer.id)
+        #expect(state.standing(for: latecomer.id)?.total == 9)
+        #expect(state.audit.last?.change == .lateJoin(seat: latecomer.id, round: 2, startingScore: 9))
+        // Whoever was about to deal still does, and the joiner deals after the old last seat.
+        #expect(state.currentDealer == game.seat(1))
+
+        // Round 2 needs the joiner's hand.
+        game.record([3, 9, 7], knocker: 0)
+        #expect(game.state.rounds.count == 1)
+        #expect(game.state.lateOperations.last?.reason == .invalid)
+        var hands = game.round(2, [5, 9, 7], knocker: 0).hands
+        hands[latecomer.id] = 4
+        game.add(.roundRecorded(.init(round: Round(number: 2, hands: hands, knocker: game.seat(0)))))
+        #expect(game.state.rounds.count == 2)
+        #expect(game.state.standing(for: latecomer.id)?.total == 13)
+        #expect(game.state.currentDealer == game.seat(2))
+    }
+
+    @Test("A late joiner can be removed until they've played, and blocks undoing the round before")
+    func lateJoinUndoAndRemove() {
+        var game = TestGame()
+        game.setUp()
+        game.record([3, 9, 7], knocker: 0)
+        let latecomer = Seat(player: .guest(GuestID()), displayName: "Late", order: 9)
+        game.add(.playerSeated(.init(seat: latecomer)))
+
+        game.add(.roundUndone(.init(roundNumber: 1)))
+        #expect(game.state.rounds.count == 1)
+        #expect(game.state.lateOperations.last?.reason == .seatsLocked)
+
+        var removed = game
+        removed.add(.seatRemoved(.init(seatId: latecomer.id)))
+        #expect(removed.state.seats.count == 3)
+        #expect(removed.state.currentDealer == game.seat(1))
+
+        var hands = game.round(2, [5, 9, 7], knocker: 0).hands
+        hands[latecomer.id] = 4
+        game.add(.roundRecorded(.init(round: Round(number: 2, hands: hands, knocker: game.seat(0)))))
+        game.add(.seatRemoved(.init(seatId: latecomer.id)))
+        #expect(game.state.seats.count == 4)
+        #expect(game.state.lateOperations.last?.reason == .seatsLocked)
+        // Editing a round from before they sat down doesn't need their hand.
+        game.add(.roundEdited(.init(round: game.round(1, [3, 9, 8], knocker: 0))))
+        #expect(game.state.rounds[0].round.hands[game.seat(2)] == 8)
+    }
+
+    @Test("Only games with 3+ rounds count for stats")
+    func countedGames() {
+        var short = TestGame()
+        short.setUp()
+        short.record([3, 9, 7], knocker: 0)
+        short.record([3, 9, 7], knocker: 0)
+        short.add(.gameFinished(.init(reason: .endedEarly, finalRounds: short.state.rounds.map(\.round))))
+        #expect(short.state.status == .finished)
+        #expect(!short.state.countsForStats)
+
+        var full = TestGame()
+        full.setUp()
+        full.record([3, 9, 7], knocker: 0)
+        full.record([3, 9, 7], knocker: 0)
+        // Joins for Round 3 only: under 3 rounds played, so left out of this game's stats.
+        let latecomer = Seat(player: .guest(GuestID()), displayName: "Late", order: 9)
+        full.add(.playerSeated(.init(seat: latecomer)))
+        var hands = full.round(3, [3, 9, 7], knocker: 0).hands
+        hands[latecomer.id] = 4
+        full.add(.roundRecorded(.init(round: Round(number: 3, hands: hands, knocker: full.seat(0)))))
+        full.add(.gameFinished(.init(reason: .completed, finalRounds: full.state.rounds.map(\.round))))
+        #expect(full.state.countsForStats)
+
+        let snapshot = StatsSnapshot.build([short.state, full.state])
+        #expect(snapshot.games.map(\.id) == [full.gameID])
+        #expect(snapshot.games.first?.participants.count == 3)
+        #expect(snapshot.games.first?.contains(latecomer.player) == false)
+        #expect(snapshot.games.first?.totals[full.seats[0].player] == full.state.standing(for: full.seat(0))?.total)
     }
 
     @Test("A phone taking over a seat after the start is logged")

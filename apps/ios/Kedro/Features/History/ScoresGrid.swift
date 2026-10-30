@@ -120,7 +120,7 @@ struct ScoresGrid: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .disabled(!canEdit)
+                .disabled(!canEdit || record.scores[seat.id] == nil)
                 .accessibilityLabel(cellLabel(ref))
                 .accessibilityHint(canEdit ? TableText.text("label.cellHint") : "")
                 .accessibilityRotorEntry(id: ref.id, in: rotor)
@@ -170,7 +170,7 @@ struct ScoresGrid: View {
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
-                        .disabled(!canEdit)
+                        .disabled(!canEdit || record.scores[seat.id] == nil)
                         .accessibilityLabel(cellLabel(ref))
                         .accessibilityHint(canEdit ? TableText.text("label.cellHint") : "")
                     }
@@ -232,7 +232,12 @@ struct ScoreCell: View {
     var body: some View {
         let score = record.scores[seat] ?? 0
         HStack(spacing: 2) {
-            if record.knocker == seat, let outcome = record.outcome {
+            if record.scores[seat] == nil {
+                // A late joiner, before their first round.
+                Text("–")
+                    .font(.subheadline)
+                    .foregroundStyle(.silverDim)
+            } else if record.knocker == seat, let outcome = record.outcome {
                 KnockScoreBadge(score: score, outcome: outcome)
             } else {
                 Text(ScoreFormat.string(score))

@@ -236,12 +236,11 @@ One grouped `List`, no wizard:
 
 - **Table:** host name and the table word (regenerate).
 - **Seats · 5 of 8:** reorderable (`onMove`) rows in clockwise order. Each row: avatar, name, role line (*Host*, *Scorekeeper*, *Guest · Ben reports for Sam*, *Played 21 together*), a ⋯ menu (Make scorekeeper · Assign reporter · Move · Remove). Seats added but not yet linked to a phone show "Seat saved · waiting for their phone".
-- **Add:** four rows.
-  - **Played With:** everyone you've played with, people nearby pre-checked at the top, then most recent first.
-  - **Search Kedro:** any signed-up player, by display name or **@handle**. Results show the avatar, handle, and "Played 3 together" or "Never played". Adding someone from search is the host vouching for them, so they're admitted without Ask to Sit.
+- **Add:** three rows.
+  - **Add Players:** one list to pick from, multi-select, no typing needed. Sections: **Nearby** (hosts and players at tables this phone can see), **Played With** (most recent first), then **Everyone** (every other Kedro player A–Z, loaded a page at a time). Rows show the avatar, handle, and "Played 3 together" or "Never played". The search field on top narrows every section and, from 2 characters, searches Kedro by display name or **@handle** ("On Kedro"). Blocked people never appear. Adding someone is the host vouching for them, so they're admitted without Ask to Sit. The list also has **Add a Guest** at the top.
   - **Guest:** a name only. Typing "Sam" suggests "Sam · guest · 2 games with you", so one guest identity builds up history.
   - **Invite with QR:** the rotating QR for anyone in the room. It opens the app if installed, or the App Clip if not. The same link can go by **AirDrop**.
-- Everyone added from Played With or Search gets the "saved you a seat" push (§5.5).
+- Everyone added from Add Players gets the "saved you a seat" push (§5.5).
 - **Game:** Rounds (5 · 6 · 8 · 10 · Custom; default: last time's), **First deal** (default: the host; §6.4), Scoring (**Scorekeeper** | **Everyone reports**), House voice (read-only line plus "Keep it cleaner tonight").
 - **Stakes:** 1–2 lines (J-xx).
 - **Deal** (kedroRed, primary). Disabled under 3 seats with "Cambio needs 3. Two people is just a staring contest." (E-04).
@@ -251,7 +250,7 @@ After **Deal**, every phone flips into the Table and starts its Live Activity.
 ### 5.7 Mid-game and rematch
 
 - **Seated player whose phone joins late:** Sit Down matches their seat by account. A guest taking over their seat on a phone confirms "Is this Sam? · Yes, that's me" (logged).
-- **New person after Round 1:** **Watch** (read-only Table, can send taunts) and auto-queued for the rematch. Seats are fixed after Round 1.
+- **New person after Round 1:** any seated player adds them from ⋯ → **Add Player** (the same Add Players list). They play from the next round, start at the **highest total at the table** at that moment, and take the last seat in the dealing order; whoever was about to deal still deals. A toast says "{name} is in from Round {r}, starting at {score}." (G-10) and On the record logs it. History shows "–" for the rounds before they sat down. They can be removed until they've played a round, and the round before they joined can't be undone (edit it instead). Scanning the table's QR mid-game also seats them this way. A newcomer who finds the table on the Table card instead still gets **Watch** (read-only, can taunt) and is queued for the rematch.
 - **Run It Back:** sends every phone an **invitation** with seats, rounds and mode pre-filled; players accept with one tap. Watchers are pre-accepted. The first dealer rotates one seat.
 
 ### 5.8 App Clip (guest with an iPhone, no app)
@@ -267,18 +266,18 @@ After **Deal**, every phone flips into the Table and starts its Live Activity.
 |---|---|---|---|---|
 | 1 | Kedro player, nearby | **Table card** pops up → **Sit Down** | Player | Instant if you've played with the host or were added; otherwise **Ask to Sit** |
 | 2 | Kedro player, nearby, card dismissed | **Nearby** row on Play → Sit Down | Player | Same as 1 |
-| 3 | Kedro player, played with before | Host adds from **Played With** → "saved you a seat" push → tap | Host | Instant (host vouched) |
-| 4 | Any Kedro player, never played together | Host adds from **Search Kedro** (name or @handle) → push → tap | Host | Instant (host vouched) |
+| 3 | Kedro player, played with before | Host adds from **Add Players** (Played With section) → "saved you a seat" push → tap | Host | Instant (host vouched) |
+| 4 | Any Kedro player, never played together | Host adds from **Add Players** (Everyone, or search by name or @handle) → push → tap | Host | Instant (host vouched) |
 | 5 | Kedro player whose phone can't see the table (no UWB, Local Network off, crowded bar) | Scan the **QR** or receive it by **AirDrop** → opens Kedro → Sit Down | Either | Instant if played-with; otherwise Ask to Sit |
 | 6 | Kedro player, proximity failing entirely | **Join with Code** on Play: type the 2-word table word ("cold deck") | Player | Ask to Sit, unless played-with |
 | 7 | Guest with no phone (or no battery) | Host adds a **Guest** by name; a seated player reports for them | Host | Instant |
 | 8 | Guest with an iPhone, no app | **QR / AirDrop → App Clip** → "That's me" on their guest seat | Either | Matches the seat the host added; if none, Ask to Sit |
 | 9 | Guest who installs mid-game | Signs in → claim token claims the guest seat and history | Guest | Automatic |
 | 10 | Seated player whose phone joins late | Sit Down → matched to their seat by account ("Is this Sam? · Yes, that's me" for guests) | Player | Automatic, logged |
-| 11 | Someone arriving after Round 1 | **Watch** (read-only, can taunt) and queued for the rematch | Player | Seats are fixed after Round 1 |
+| 11 | Someone arriving after Round 1 | A seated player adds them from ⋯ → **Add Player**, or they scan the **QR**; from the Table card they get **Watch** | Any seated player | Late join: next round onward, at the highest total (§5.7) |
 | 12 | The same table again | **Run It Back** invitation, one tap to accept | Any player | Pre-accepted for watchers |
 
-Rules that apply to all of them: a table holds 3–8 seats (a full table offers Watch); the host or any seated phone can **Remove** a seat before Round 1 (logged); and a blocked player can never be added or seated at a table with the person who blocked them.
+Rules that apply to all of them: a table holds 3–8 seats (a full table offers Watch); the host or any seated phone can **Remove** a seat before Round 1, or a late joiner before their first round (logged); and a blocked player can never be added or seated at a table with the person who blocked them.
 
 ---
 
@@ -288,7 +287,7 @@ Presented as a `fullScreenCover`; it minimizes into a `tabViewBottomAccessory` m
 
 ### 6.1 Layout (3–5 players)
 
-1. **Toolbar (glass):** minimize · metadata line "ROUND 6 OF 8" over "COLD DECK · NOAH DEALS" · Rules · History · ⋯ (Invite, Hand off scorekeeping, Table display, Extend, End early, Abandon). A sync pill appears only when something's unusual (F-01–F-03).
+1. **Toolbar (glass):** minimize · metadata line "ROUND 6 OF 8" over "COLD DECK · NOAH DEALS" · Rules · History · **End Game** (flag) · ⋯ (Invite, Hand off scorekeeping, Table display, Extend, Add Player, End Game, Abandon). A sync pill appears only when something's unusual (F-01–F-03).
 2. **Last-round card** (`surfaceRaised`): fact ("**Round 5.** Noah knocked on 2. Nobody came close."), verdict ("**Landed: −10.**"), roast in `roast` (K-xx). If a red King decided it, the roast is the red King line. **Why?** opens the Knock Calculator, prefilled.
 3. **Reactions row** on the last-round card: 5 quick reactions (🔥 💀 🤡 😂 🫡). Counts shown, tap to add yours, one per player per round.
 4. **Standings:** rank (shared shown as "2="), avatar 44 pt with a small **D** dealer chip on the current dealer, name in `headline`, LEADING tag in gold for the leader(s), and the player's chosen **title** under the name in `footnote` (§12.7); on the right, the cumulative `score` with the delta under it in words (`landed −10`, `+9`, `failed · 2 + 10`).
@@ -319,7 +318,7 @@ A phone or iPad propped up in the middle of the table as a shared scoreboard.
 - **The deal passes one seat to the left** each time a round is saved. Undoing the latest round moves it back. Editing older rounds never changes it.
 - **Shown everywhere a player looks:** the Table's metadata line ("COLD DECK · NOAH DEALS"), a **D** chip on the dealer's avatar in the standings, the Live Activity ("Noah deals"), the Dynamic Island expanded view, and display mode.
 - **Next-deal nudge:** right after a round is saved, the last-round card's footer reads "Next deal: Ana" (D-01) for the first 5 s, then settles into the metadata line.
-- **Fixing it:** tap the D chip or the metadata line → "Who's dealing?" avatar row → tap. Logged in On the record ("Ben set the dealer to Cleo"). Sitting a player out (a guest leaves early) isn't supported; seats are fixed after Round 1.
+- **Fixing it:** tap the D chip or the metadata line → "Who's dealing?" avatar row → tap. Logged in On the record ("Ben set the dealer to Cleo"). Sitting a player out (a guest leaves early) isn't supported; after Round 1 people can only be added (late joins, §5.7), not removed.
 - **Voice:** the dealer occasionally gets a line in the banter slot when nothing else is happening (D-02 to D-05), never more than once every 3 rounds.
 
 ### 6.5 Attention rules
@@ -444,9 +443,15 @@ Three tabs: **Scores** (rounds × players grid, knocker cell marked ✓ / = / �
 
 **History → tap the cell → number pad with the old value shown → Save Change** (4 taps). The Save footer lists "What changes" with before → after for every affected score, headed "Here's who this screws." (H-01). Changing the knocker, or any edit that flips a knock outcome, adds a confirmation ("Cleo's knock: failed → landed, 12 → −10. Everyone sees this."). The author of an edit can **Undo** it from On the record until the game finishes.
 
-### 9.3 Extend, end early, abandon, finish
+### 9.3 Extend, end game, abandon, finish
 
-- **Extend**, **End early** and **Abandon** in ⋯, each with a confirmation, all logged. Abandon can be restored for 15 minutes.
+- **Extend** and **Abandon** in ⋯, each with a confirmation, all logged. Abandon can be restored for 15 minutes.
+- **End Game:** any seated player, at any time. It's on the Table's toolbar (flag) and in ⋯, and on Play you can swipe or long-press the live game's row to end it without opening the Table. One confirmation that says up front whether the game counts:
+  - 3+ rounds: "End after Round {r}? It counts, standings as they are." (G-03) → **End Game** (or **Finish Game** once every planned round is in).
+  - 1–2 rounds: "End after Round {r}? Under 3 rounds, so it won't count for stats or the leaderboard. It stays in history." (G-07).
+  - No rounds: "Nobody's played a round yet, so there's nothing to count. End it?" (G-08); ending discards it.
+  - **Abandon** is offered in the same sheet and gets its own confirmation (G-04).
+- **What counts:** a finished game counts for stats, ratings, the leaderboard, badges, titles, the Hall of Shame and Wrapped only with **3+ rounds**, and a player counts in it only with 3+ rounds played (a late joiner may not). The game-end screen of a short game says "Under 3 rounds, so this one doesn't count. Bragging rights only." (G-09).
 - **Finish gate:** when the last planned round is saved, the sheet stays on "That's the last round. Lock it in before anyone starts lawyering." (G-01) with **Finish Game**, **Fix a Round First**, **Play Another Round**. Auto-finishes after 15 minutes of inactivity (logged).
 - After Finish, editing is gone everywhere: "Final. Locked. Complain all you want; it's not changing." (H-04).
 
@@ -477,7 +482,7 @@ A full-screen moment, then a scrollable summary:
 
 ## 12. Stats, rivalries, leaderboard and badges
 
-All derived from the operation log and finished, non-abandoned games (early-ended games count).
+All derived from the operation log and finished, non-abandoned games of 3+ rounds (early-ended games count if they reach 3; §9.3).
 
 ### 12.1 Play tab (between games)
 

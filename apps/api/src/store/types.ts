@@ -137,6 +137,8 @@ export interface Store {
   isHandleAvailable(handle: string, exceptPlayerId?: UUID): Promise<boolean>
   /** Display name contains `query`, or handle starts with it. */
   searchPlayers(query: string, options: { limit: number; excludeIds: readonly UUID[]; handleOnly: boolean }): Promise<PlayerRow[]>
+  /** Every player, ordered by display name (case-insensitive) then ID: rows `offset` to `offset + limit`. */
+  listPlayers(options: { offset: number; limit: number }): Promise<PlayerRow[]>
 
   // Guests
   /** Records a guest seen in a game. The first claim token hash recorded wins. */

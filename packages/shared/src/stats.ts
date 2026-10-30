@@ -1,9 +1,10 @@
 // Finished-game projections and lifetime stats (PRD §5.1). All stats are derived from finished,
-// non-abandoned games (early-ended games count), never from separately maintained counters, so
-// corrections and guest claims always produce correct numbers.
+// non-abandoned games with at least 3 rounds (early-ended games count if they reach 3), never
+// from separately maintained counters, so corrections and guest claims always produce correct
+// numbers.
 
-import type { FinishReason, Round } from './domain.ts'
-import { gameTotals, standings, type FoldedGame } from './fold.ts'
+import { COUNTED_MIN_ROUNDS, type FinishReason, type Round } from './domain.ts'
+import { gameTotals, roundsPlayed, standings, type FoldedGame } from './fold.ts'
 import { seatGuestId, seatIdOf, seatPlayerId, type SeatId, type UUID } from './ids.ts'
 import { knockOutcome, roundScores } from './scoring.ts'
 
@@ -39,11 +40,21 @@ export type FinishedGameProjection = {
   seats: FinishedSeatResult[]
 }
 
-/** Projects a finished game; null unless the fold says it is finished. */
+/** True when a finished game counts for stats, ratings and the leaderboard (3+ rounds). */
+export function countsForStats(game: Pick<FoldedGame, 'rounds'>): boolean {
+  return game.rounds.length >= COUNTED_MIN_ROUNDS
+}
+
+/**
+ * Projects a finished game; null unless the fold says it is finished and it has the rounds to
+ * count. Seats that played fewer than `COUNTED_MIN_ROUNDS` (a late joiner) are left out.
+ */
 export function projectFinishedGame(game: FoldedGame): FinishedGameProjection | null {
   if (game.status !== 'finished' || game.finishedAtMs === null || game.finishReason === null) return null
+  if (!countsForStats(game)) return null
   const totalsBySeat = gameTotals(game)
-  const seats = standings(game).map(({ seat, total, rank, isWinner }): FinishedSeatResult => {
+  const counted = standings(game).filter(({ seat }) => roundsPlayed(game, seatIdOf(seat.player)) >= COUNTED_MIN_ROUNDS)
+  const seats = counted.map(({ seat, total, rank, isWinner }): FinishedSeatResult => {
     const seatId = seatIdOf(seat.player)
     let knocks = 0, landed = 0, tied = 0, failed = 0
     let lowest: number | null = null, highest: number | null = null
@@ -69,7 +80,7 @@ export function projectFinishedGame(game: FoldedGame): FinishedGameProjection | 
       rank: rank.position,
       rankShared: rank.isShared,
       isWinner,
-      roundsPlayed: game.rounds.filter((round) => round.hands[seatId] !== undefined).length,
+      roundsPlayed: roundsPlayed(game, seatId),
       knocks,
       knocksLanded: landed,
       knocksTied: tied,

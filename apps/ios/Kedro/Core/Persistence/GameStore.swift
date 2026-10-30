@@ -39,6 +39,12 @@ extension GameStore {
         try await append([operation]).first
     }
 
+    /// Finished games that count for stats (3+ rounds), oldest first. Stats snapshots apply the
+    /// same rule themselves; this is for the quick counts that read games directly.
+    func countedGames() async throws -> [GameState] {
+        try await finishedGames().filter(\.countsForStats)
+    }
+
     /// The newest lobby or active game, for resuming after a relaunch.
     func liveGames() async throws -> [GameSummary] {
         try await games().filter { $0.status.isLive }

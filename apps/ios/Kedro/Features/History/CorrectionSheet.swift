@@ -19,7 +19,7 @@ struct CorrectionSheet: View {
     init(session: GameSession, roundNumber: Int, focus: SeatID?) {
         self.session = session
         self.roundNumber = roundNumber
-        let seats = session.state.seats.map(\.id)
+        let seats = session.state.seats(inRound: roundNumber).map(\.id)
         if let record = session.state.round(roundNumber) {
             _entry = State(initialValue: RoundEntry(editing: record.round, seats: seats, focus: focus))
         } else {
@@ -33,7 +33,7 @@ struct CorrectionSheet: View {
             RoundEntryPanel(
                 entry: $entry,
                 isCardMode: $isCardMode,
-                seats: state.seats,
+                seats: state.seats(inRound: roundNumber),
                 saveTitle: Literal.text("button.saveChange"),
                 isSaving: isSaving,
                 onSave: save

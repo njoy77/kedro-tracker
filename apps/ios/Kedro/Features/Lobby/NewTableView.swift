@@ -133,7 +133,7 @@ private struct LobbyForm: View {
     @State private var isDealing = false
 
     enum AddRoute: String, Identifiable {
-        case playedWith, search, guest
+        case players, guest
         var id: String { rawValue }
     }
 
@@ -166,8 +166,7 @@ private struct LobbyForm: View {
         }
         .sheet(item: $adding) { route in
             switch route {
-            case .playedWith: PlayedWithSheet(model: model)
-            case .search: SearchKedroSheet(model: model)
+            case .players: AddPlayersSheet(model: model)
             case .guest: GuestSheet(model: model)
             }
         }
@@ -236,9 +235,7 @@ private struct LobbyForm: View {
 
     private var addSection: some View {
         Section {
-            addRow("Played With", systemImage: "person.2") { adding = .playedWith }
-                .disabled(!model.canAdd)
-            addRow("Search Kedro", systemImage: "magnifyingglass", detail: "name or @handle") { adding = .search }
+            addRow("Add Players", systemImage: "person.2", detail: "nearby, played with, everyone") { adding = .players }
                 .disabled(!model.canAdd)
             addRow("Guest", systemImage: "person.badge.plus") { adding = .guest }
                 .disabled(!model.canAdd)

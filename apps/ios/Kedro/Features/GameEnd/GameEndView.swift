@@ -264,6 +264,9 @@ struct GameEndView: View {
         case .completed, nil:
             EmptyView()
         }
+        if !state.countsForStats {
+            note(voice.line("G-09"))
+        }
     }
 
     /// "Send Sam their claim code" for each guest this phone typed in (their seat carries the

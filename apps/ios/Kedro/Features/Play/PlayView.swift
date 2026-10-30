@@ -34,6 +34,7 @@ private struct PlayScreen: View {
     @State private var lobby: LobbyStart?
     @State private var isJoiningWithCode = false
     @State private var isShowingOtherTables = false
+    @State private var isEndingGame = false
 
     private var me: PlayerRef? { app.profile?.identity }
 
@@ -193,6 +194,19 @@ private struct PlayScreen: View {
                     }
                     .frame(minHeight: 44)
                 }
+                // End it from here without opening the Table (design §9.3).
+                .swipeActions(edge: .trailing) {
+                    if live.canEdit {
+                        Button(Literal.text("button.endGame"), systemImage: "flag.checkered") { isEndingGame = true }
+                            .tint(.kedroRed)
+                    }
+                }
+                .contextMenu {
+                    if live.canEdit {
+                        Button(Literal.text("button.endGame"), systemImage: "flag.checkered") { isEndingGame = true }
+                    }
+                }
+                .endGameDialog(live, isPresented: $isEndingGame)
             }
         }
     }

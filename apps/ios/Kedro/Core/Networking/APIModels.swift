@@ -174,6 +174,12 @@ nonisolated struct PlayerSearchResult: Codable, Sendable {
     var players: [PlayerSummary]
 }
 
+/// `GET /v1/players` response: one page of every player A–Z.
+nonisolated struct PlayerDirectoryResult: Codable, Sendable {
+    var players: [PlayerSummary]
+    var next: String?
+}
+
 /// `POST /v1/claims` body and response.
 nonisolated struct ClaimRequest: Codable, Sendable {
     var claimToken: String

@@ -214,7 +214,7 @@ final class PlayModel {
                 // A lobby that never dealt (cancelled) isn't a game.
                 !(game.status == .abandoned && game.roundsPlayed == 0) && game.status != .lobby
             }
-            finished = try await app.store.finishedGames()
+            finished = try await app.store.countedGames()
             try await loadSavedSeats(from: games)
         } catch {
             log.error("Couldn't load Play: \(error.localizedDescription, privacy: .public)")

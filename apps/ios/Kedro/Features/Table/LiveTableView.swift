@@ -15,6 +15,7 @@ struct LiveTableView: View {
     @State private var talk = TalkServices.shared
     @State private var sheet: TableSheet?
     @State private var confirmation: Confirmation?
+    @State private var isEndingGame = false
     @State private var nextDealerNudge: String?
     /// nil follows the device (landscape or iPad); true/false is the ⋯ menu's choice.
     @State private var displayModeChoice: Bool?
@@ -22,7 +23,7 @@ struct LiveTableView: View {
     @State private var revealClock = Date.now
 
     private enum Confirmation: Identifiable {
-        case endEarly, abandon
+        case abandon
         var id: Self { self }
     }
 
@@ -54,6 +55,7 @@ struct LiveTableView: View {
             // Nothing covers the Round sheet: toasts queue until it closes (design §6.5).
             app.toasts.isDeferring = presented == .record
         }
+        .endGameDialog(session, isPresented: $isEndingGame)
         .alert(confirmationTitle, isPresented: isConfirming, presenting: confirmation) { kind in
             confirmationButtons(kind)
         } message: { kind in
@@ -263,6 +265,9 @@ struct LiveTableView: View {
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button(TableText.text("button.rules"), systemImage: "questionmark") { sheet = .rules }
             Button(TableText.text("button.history"), systemImage: "clock.arrow.circlepath") { sheet = .history(.scores) }
+            if session.canEdit {
+                Button(Literal.text("button.endGame"), systemImage: "flag.checkered") { isEndingGame = true }
+            }
             moreMenu
         }
     }
@@ -292,8 +297,10 @@ struct LiveTableView: View {
             if session.canEdit {
                 Section {
                     Button(Literal.text("button.extend"), systemImage: "plus.circle") { sheet = .extend }
-                    Button(Literal.text("button.endEarly"), systemImage: "flag.checkered") { confirmation = .endEarly }
-                        .disabled(state.rounds.isEmpty)
+                    if state.seats.count < GameConfig.seatRange.upperBound, !state.isAwaitingFinish {
+                        Button(Literal.text("button.addPlayer"), systemImage: "person.badge.plus") { sheet = .addPlayer }
+                    }
+                    Button(Literal.text("button.endGame"), systemImage: "flag.checkered") { isEndingGame = true }
                     Button(Literal.text("button.abandon"), systemImage: "xmark.octagon", role: .destructive) { confirmation = .abandon }
                 }
             }
@@ -408,6 +415,8 @@ struct LiveTableView: View {
             HandOffSheet(session: session)
         case .extend:
             ExtendSheet(session: session)
+        case .addPlayer:
+            LateJoinSheet(session: session)
         case .invite:
             InviteQRSheet(
                 token: TableTokenVault.token(for: session.gameID),
@@ -427,7 +436,6 @@ struct LiveTableView: View {
 
     private var confirmationTitle: String {
         switch confirmation {
-        case .endEarly: Literal.text("button.endEarly")
         case .abandon: Literal.text("button.abandon")
         case nil: ""
         }
@@ -436,7 +444,6 @@ struct LiveTableView: View {
     private func confirmationMessage(_ kind: Confirmation) -> String {
         let voice = app.houseVoice(for: state)
         return switch kind {
-        case .endEarly: voice.line("G-03", ["r": state.rounds.count])
         case .abandon: voice.line("G-04")
         }
     }
@@ -444,8 +451,6 @@ struct LiveTableView: View {
     @ViewBuilder
     private func confirmationButtons(_ kind: Confirmation) -> some View {
         switch kind {
-        case .endEarly:
-            Button(Literal.text("button.endEarly")) { run { try await session.finish(reason: .endedEarly) } }
         case .abandon:
             Button(Literal.text("button.abandon"), role: .destructive) { run { try await session.abandon() } }
         }

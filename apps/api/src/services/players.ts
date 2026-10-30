@@ -13,6 +13,7 @@ import { HttpError, notFound } from '../http.ts'
 import { HandleTakenError, type PlayerRow, type PlayerUpdate, type Store } from '../store/types.ts'
 
 export const SEARCH_LIMIT = 20
+export const DIRECTORY_PAGE = 50
 
 export class PlayersService {
   constructor(private readonly store: Store) {}
@@ -56,6 +57,17 @@ export class PlayersService {
       handleOnly,
     })
     return this.summaries(rows)
+  }
+
+  /** One page of every player A–Z (`PlayerDirectoryResponse`). The cursor is the next row offset. */
+  async directory(caller: UUID, cursor: string | undefined, limit = DIRECTORY_PAGE): Promise<{ players: PlayerSummary[]; next: string | null }> {
+    const offset = cursor === undefined || cursor === '' ? 0 : Number(cursor)
+    if (!Number.isInteger(offset) || offset < 0) throw new HttpError(400, 'invalidRequest', 'cursor is not valid')
+    const size = Math.min(Math.max(1, limit), 100)
+    const rows = await this.store.listPlayers({ offset, limit: size })
+    const hidden = await this.hiddenFrom(caller)
+    const visible = rows.filter((row) => row.id !== caller && !hidden.has(row.id))
+    return { players: await this.summaries(visible), next: rows.length === size ? String(offset + size) : null }
   }
 
   async player(caller: UUID, playerId: UUID): Promise<PlayerSummary> {

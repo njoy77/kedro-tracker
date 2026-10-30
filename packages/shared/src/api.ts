@@ -138,6 +138,13 @@ export type UpdateProfileRequest = z.input<typeof updateProfileSchema>
 /** GET /v1/players/search?q= */
 export type SearchPlayersResponse = { players: PlayerSummary[] }
 
+/**
+ * GET /v1/players?cursor=&limit= (an addition: the Add Player list, design §5.6). Every player
+ * A–Z by display name, blocked players (either way) and the caller left out. Pass `next` back as
+ * `cursor` for the following page; null at the end. A page can come back short of `limit`.
+ */
+export type PlayerDirectoryResponse = { players: PlayerSummary[]; next: string | null }
+
 /** GET /v1/handles/:handle (an addition: availability check for onboarding). */
 export type HandleAvailabilityResponse = { handle: string; available: boolean }
 

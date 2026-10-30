@@ -145,6 +145,10 @@ Shown under the standings; changes only when a round is saved.
 | G-04 | Abandon confirm | Abandon this game? It won't count for anyone. You can restore it for 15 minutes. | = | = |
 | G-05 | Extended | {name} added {n} rounds. Now playing to {total}. | = | = |
 | G-06 | Rematch invite | Run it back? Same seats, {n} rounds. | = | = |
+| G-07 | End early confirm, under 3 rounds | End after Round {r}? Under 3 rounds, so it won't count for stats or the leaderboard. It stays in history. | End after Round {r}? Under 3 rounds doesn't count. No stats, no leaderboard. It stays in history. | End after Round {r}? Under 3 rounds is foreplay. Doesn't count for shit. It stays in history. |
+| G-08 | End before Round 1 | Nobody's played a round yet, so there's nothing to count. End it? | Not one round played. End this before it starts? | = |
+| G-09 | Game end, didn't count | Under 3 rounds, so this one doesn't count. Bragging rights only. | = | Under 3 rounds, so this one doesn't count. Talk all the shit you want, it's not on the record. |
+| G-10 | Late join | {name} is in from Round {r}, starting at {score}. | = | = |
 
 ## 9. History and corrections (H)
 
@@ -451,7 +455,7 @@ Settings copy. Sound labels are literal.
 
 ## 20. Literal strings (identical in every level)
 
-Buttons: Sit Down · Ask to Sit · Let {name} In · Remove · New Table · Deal · Record Round {r} · Report Your Hand · Knock · Talk · Send · Next: {name} › · Save Round {r} · Save Change · Undo · Cards · Keep {hand} · Fix {name} · Finish Game · Fix a Round First · Play Another Round · Extend · End Early · Abandon · Restore Game · Run It Back · Send a Receipt · Share Results · Play Again with {name} · Invite with QR · Yes, that's me · Mute Their Taunts · Block · Report · Done.
+Buttons: Sit Down · Ask to Sit · Let {name} In · Remove · New Table · Deal · Record Round {r} · Report Your Hand · Knock · Talk · Send · Next: {name} › · Save Round {r} · Save Change · Undo · Cards · Keep {hand} · Fix {name} · Finish Game · Fix a Round First · Play Another Round · Extend · End Game · End Early · Abandon · Add Player · Restore Game · Run It Back · Send a Receipt · Share Results · Play Again with {name} · Invite with QR · Yes, that's me · Mute Their Taunts · Block · Report · Done.
 
 Fact and verdict lines (templates): "**Round {r}.** {knocker} knocked on {hand}." · "Landed: −10." · "Tied: {hand}." · "Failed: {hand} + 10 = {score}." · Delta captions: "landed · −10", "tied · {hand}", "failed · {hand} + 10".
 

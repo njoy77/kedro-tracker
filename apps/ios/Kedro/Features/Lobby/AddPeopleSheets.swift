@@ -1,54 +1,88 @@
 import SwiftUI
 
-/// Add → Played With (design §5.6): everyone you've played with, most recent first. Pick several,
-/// then Add. Adding is the host vouching: they're seated without Ask to Sit.
-struct PlayedWithSheet: View {
-    let model: LobbyModel
+/// Add Players (design §5.6): one list to pick from, before Deal or mid-game. Nearby people
+/// first (hosts and players at tables this phone can see), then everyone you've played with,
+/// then every other Kedro player A–Z, a page at a time. Typing filters the list and searches
+/// Kedro by name or @handle. Pick several, then Add. Adding is the host vouching: they're seated
+/// without Ask to Sit. "Add a Guest" covers people without the app.
+struct AddPlayersSheet: View {
+    let model: any SeatAdding
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
-    @State private var people: [PlayedWith] = []
-    @State private var selected: Set<PlayerID> = []
+    @State private var nearby: [PlayerSummary] = []
+    @State private var playedWith: [PlayedWith] = []
+    @State private var everyone: [PlayerSummary] = []
+    @State private var nextPage: String?
+    @State private var isLoadingPage = false
+    @State private var searchResults: [PlayerSummary] = []
+    @State private var selected: [PlayerID: PlayerSummary] = [:]
     @State private var isLoading = true
+    @State private var isAddingGuest = false
     @State private var filter = ""
 
-    private var room: Int { GameConfig.seatRange.upperBound - model.seats.count }
+    private var room: Int { model.room }
+    private var needle: String { filter.trimmingCharacters(in: .whitespaces).lowercased() }
+    private var isSearching: Bool { needle.trimmingCharacters(in: CharacterSet(charactersIn: "@")).count >= RemotePlayerDirectory.minimumQueryLength }
 
-    private var visible: [PlayedWith] {
-        let needle = filter.trimmingCharacters(in: .whitespaces).lowercased()
-        return people.filter { person in
-            !model.isSeated(person.player.ref) && !model.hasBlocked(person.player.ref)
-                && (needle.isEmpty || person.player.displayName.lowercased().contains(needle) || person.player.handle.rawValue.contains(needle))
-        }
+    private func shows(_ player: PlayerSummary) -> Bool {
+        guard player.ref != app.profile?.identity, !model.isUnavailable(player.ref) else { return false }
+        let query = needle.trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        return query.isEmpty || player.displayName.lowercased().contains(query) || player.handle.rawValue.contains(query)
+    }
+
+    /// Each section leaves out anyone an earlier section already shows.
+    private var sections: (nearby: [PlayerSummary], playedWith: [PlayerSummary], everyone: [PlayerSummary]) {
+        let nearbyRows = nearby.filter(shows)
+        var shown = Set(nearbyRows.map(\.id))
+        let playedRows = playedWith.map(\.player).filter { shows($0) && !shown.contains($0.id) }
+        shown.formUnion(playedRows.map(\.id))
+        let rest = (isSearching ? searchResults : everyone).filter { shows($0) && !shown.contains($0.id) }
+        return (nearbyRows, playedRows, rest)
     }
 
     var body: some View {
+        let sections = sections
         NavigationStack {
             List {
-                // TODO(networking): "people nearby pre-checked at the top" needs nearby people
-                // (not just tables) from TableDiscovery.
-                ForEach(visible) { person in
-                    let isOn = selected.contains(person.id)
+                Section {
                     Button {
-                        if isOn { selected.remove(person.id) } else if selected.count < room { selected.insert(person.id) }
+                        isAddingGuest = true
                     } label: {
-                        PlayerRow(player: person.player, caption: PlayerRow.playedCaption(person.gamesTogether), isSelected: isOn, showsSelection: true)
+                        Label("Add a Guest", systemImage: "person.badge.plus")
+                            .foregroundStyle(.kedroRed)
+                            .frame(minHeight: 44)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!isOn && selected.count >= room)
+                    .disabled(room == 0)
+                } footer: {
+                    Text(room == 0 ? "The table's full at \(GameConfig.seatRange.upperBound)." : "No app needed for guests. Someone at the table reports for them.")
+                }
+                if !sections.nearby.isEmpty {
+                    Section("Nearby") { rows(sections.nearby) }
+                }
+                if !sections.playedWith.isEmpty {
+                    Section("Played With") { rows(sections.playedWith) }
+                }
+                if !sections.everyone.isEmpty {
+                    Section(isSearching ? "On Kedro" : "Everyone") {
+                        rows(sections.everyone)
+                        if !isSearching, nextPage != nil {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .task { await loadPage() }
+                        }
+                    }
                 }
             }
             .overlay {
                 if isLoading {
                     ProgressView()
-                } else if people.isEmpty {
-                    ContentUnavailableView("Nobody Yet", systemImage: "person.2", description: Text("People you finish a game with show up here."))
-                } else if visible.isEmpty {
+                } else if sections.nearby.isEmpty, sections.playedWith.isEmpty, sections.everyone.isEmpty, !needle.isEmpty {
                     ContentUnavailableView.search(text: filter)
                 }
             }
-            .searchable(text: $filter, prompt: "Name or @handle")
-            .navigationTitle("Played With")
+            .searchable(text: $filter, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name or @handle")
+            .navigationTitle("Add Players")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -56,7 +90,7 @@ struct PlayedWithSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(selected.isEmpty ? "Add" : "Add \(selected.count)") {
-                        let picks = people.filter { selected.contains($0.id) }.map(\.player)
+                        let picks = selected.values.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
                         Task {
                             for player in picks { await model.add(player) }
                             dismiss()
@@ -65,40 +99,64 @@ struct PlayedWithSheet: View {
                     .disabled(selected.isEmpty)
                 }
             }
-            .task {
-                people = (try? await app.directory.playedWith()) ?? []
-                isLoading = false
+            .task { await load() }
+            .task { await watchNearby() }
+            .task(id: needle) { await search() }
+            .sheet(isPresented: $isAddingGuest) {
+                GuestSheet(model: model) { dismiss() }
             }
         }
     }
-}
 
-/// Add → Search Kedro (design §5.6): any signed-up player by name or @handle, with "Played 3
-/// together" or "Never played". Tap to seat them.
-struct SearchKedroSheet: View {
-    let model: LobbyModel
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            PlayerSearchList(
-                caption: { player in PlayerRow.playedCaption(model.playedTogether[player.id]) },
-                isExcluded: { model.isSeated($0.ref) || model.hasBlocked($0.ref) },
-                placement: .navigationBarDrawer(displayMode: .always)
-            ) { player in
-                Task {
-                    await model.add(player)
-                    dismiss()
-                }
+    private func rows(_ players: [PlayerSummary]) -> some View {
+        ForEach(players) { player in
+            let isOn = selected[player.id] != nil
+            Button {
+                if isOn { selected[player.id] = nil } else if selected.count < room { selected[player.id] = player }
+            } label: {
+                PlayerRow(player: player, caption: PlayerRow.playedCaption(model.playedTogether[player.id]), isSelected: isOn, showsSelection: true)
             }
-            .navigationTitle("Search Kedro")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
+            .buttonStyle(.plain)
+            .disabled(!isOn && selected.count >= room)
+        }
+    }
+
+    private func load() async {
+        playedWith = (try? await app.directory.playedWith()) ?? []
+        let first = try? await app.directory.everyone(after: nil)
+        everyone = first?.players ?? []
+        nextPage = first?.next
+        isLoading = false
+    }
+
+    private func loadPage() async {
+        guard let cursor = nextPage, !isLoadingPage else { return }
+        isLoadingPage = true
+        defer { isLoadingPage = false }
+        guard let page = try? await app.directory.everyone(after: cursor) else {
+            nextPage = nil
+            return
+        }
+        let known = Set(everyone.map(\.id))
+        everyone += page.players.filter { !known.contains($0.id) }
+        nextPage = page.next
+    }
+
+    private func search() async {
+        guard isSearching else {
+            searchResults = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+        searchResults = (try? await app.directory.search(needle)) ?? []
+    }
+
+    /// People at tables this phone can see, closest table first.
+    private func watchNearby() async {
+        for await tables in app.discovery.nearbyTables() {
+            var seen: Set<PlayerID> = []
+            nearby = tables.flatMap { [$0.host] + $0.seatedPlayers }.filter { seen.insert($0.id).inserted }
         }
     }
 }
@@ -106,7 +164,9 @@ struct SearchKedroSheet: View {
 /// Add → Guest (design §5.6): a name only. Typing "Sam" suggests "Sam · guest · 2 games with
 /// you", so one guest identity builds up history.
 struct GuestSheet: View {
-    let model: LobbyModel
+    let model: any SeatAdding
+    /// After a guest is added (the Add Players sheet closes too).
+    var onAdded: () -> Void = {}
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -129,12 +189,12 @@ struct GuestSheet: View {
                 } footer: {
                     Text("No app needed. Someone at the table reports for them.")
                 }
-                let reusable = suggestions.filter { !model.isSeated(.guest($0.guestID)) && !model.hasBlocked(.guest($0.guestID)) }
+                let reusable = suggestions.filter { !model.isUnavailable(.guest($0.guestID)) }
                 if !reusable.isEmpty {
                     Section("Played before") {
                         ForEach(reusable) { guest in
                             Button {
-                                add(Seat(player: .guest(guest.guestID), displayName: guest.name, order: model.seats.count, gamesPlayed: guest.gamesTogether))
+                                add(Seat(player: .guest(guest.guestID), displayName: guest.name, order: model.seatCount, gamesPlayed: guest.gamesTogether))
                             } label: {
                                 HStack(spacing: 12) {
                                     AvatarView(avatar: nil, name: guest.name, isGuest: true, size: .compact)
@@ -173,22 +233,23 @@ struct GuestSheet: View {
 
     private func addNew() {
         guard !trimmed.isEmpty else { return }
-        add(Seat(player: .guest(GuestID()), displayName: trimmed, order: model.seats.count, gamesPlayed: 0))
+        add(Seat(player: .guest(GuestID()), displayName: trimmed, order: model.seatCount, gamesPlayed: 0))
     }
 
     private func add(_ seat: Seat) {
         Task {
             await model.add(seat)
             dismiss()
+            onAdded()
         }
     }
 }
 
-#Preview("Played With") {
+#Preview("Add Players") {
     let app = AppModel.preview()
     let model = try? LobbyModel(app: app)
     return Group {
-        if let model { PlayedWithSheet(model: model) }
+        if let model { AddPlayersSheet(model: model) }
     }
     .previewEnvironment(app)
 }

@@ -62,6 +62,8 @@ nonisolated enum AuditChange: Hashable, Sendable {
     case dealerChanged(round: Int, before: SeatID?, after: SeatID)
     case scorekeeperChanged(before: SeatID?, after: SeatID)
     case seatRemoved(seat: SeatID, name: String)
+    /// Someone sat down after Round 1, starting at the highest total.
+    case lateJoin(seat: SeatID, round: Int, startingScore: Int)
     /// A phone took over a seat after the game started ("Is this Sam? · Yes, that's me").
     case seatLinked(seat: SeatID)
     case finished(FinishReason, afterRound: Int)
@@ -121,6 +123,8 @@ nonisolated enum AuditText {
             return "\(actor) handed scorekeeping to \(name(after))"
         case let .seatRemoved(_, removedName):
             return "\(actor) removed \(removedName)"
+        case let .lateJoin(seat, round, startingScore):
+            return "\(name(seat)) joined for Round \(round), starting at \(ScoreFormat.string(startingScore))"
         case .seatLinked(let seat):
             return "\(name(seat))'s phone took the seat"
         case let .finished(reason, afterRound):

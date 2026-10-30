@@ -76,7 +76,7 @@ describe('legacy web history', () => {
 
   test('imported games are claimable: a code moves the history onto the account', async () => {
     const h = harness()
-    const data = { players, games: [legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }])] }
+    const data = { players, games: [legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }, { scores: [14, 1, 3], knockedBy: 'lp1' }])] }
     const report = await importLegacy(data, { store: h.store, services: h.services, apply: true })
     expect(report.imported).toBe(1)
     expect(h.store.finished.size).toBe(1)
@@ -95,5 +95,13 @@ describe('legacy web history', () => {
     expect(mine.body.claimedGuestIds).toEqual([claim.body.guestId])
     // The claimer's phone can now pull the game's log.
     expect((await h.get(`/v1/games/${mine.body.games[0].gameId}/ops`, me)).status).toBe(200)
+  })
+
+  test('a game under 3 rounds is imported as history but not counted for stats', async () => {
+    const h = harness()
+    const data = { players, games: [legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }])] }
+    const report = await importLegacy(data, { store: h.store, services: h.services, apply: true })
+    expect(report.imported).toBe(1)
+    expect(h.store.finished.size).toBe(0)
   })
 })

@@ -28,6 +28,8 @@ nonisolated extension CopyDeck {
         .literal("button.extend", "Button", "Extend"),
         .literal("button.endEarly", "Button", "End Early"),
         .literal("button.abandon", "Button", "Abandon"),
+        .literal("button.endGame", "Button", "End Game"),
+        .literal("button.addPlayer", "Button", "Add Player"),
         .literal("button.restoreGame", "Button", "Restore Game"),
         .literal("button.runItBack", "Button", "Run It Back"),
         .literal("button.sendReceipt", "Button", "Send a Receipt"),

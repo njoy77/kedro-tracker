@@ -68,6 +68,31 @@ describe('players', () => {
     expect((await h.get('/v1/players/search?q=an', ids.noah)).body.players).toHaveLength(1)
   })
 
+  test('the directory lists everyone A–Z in pages, without you or blocked players', async () => {
+    const h = await table()
+    const all = await h.get('/v1/players', ids.noah)
+    expect(all.status).toBe(200)
+    const names = all.body.players.map((p: { displayName: string }) => p.displayName)
+    expect(names).not.toContain('Noah')
+    expect(names).toEqual([...names].sort((a: string, b: string) => a.toLowerCase().localeCompare(b.toLowerCase())))
+    expect(all.body.next).toBeNull()
+
+    const first = await h.get('/v1/players?limit=1', ids.noah)
+    expect(first.body.next).toBe('1')
+    const pages: string[] = []
+    let cursor: string | null = ''
+    while (cursor !== null) {
+      const page: { body: { players: { displayName: string }[]; next: string | null } } = await h.get(`/v1/players?limit=1&cursor=${cursor}`, ids.noah)
+      pages.push(...page.body.players.map((p) => p.displayName))
+      cursor = page.body.next
+    }
+    expect(pages).toEqual(names)
+
+    await h.post('/v1/blocks', ids.ana, { playerId: ids.noah })
+    expect((await h.get('/v1/players', ids.noah)).body.players.map((p: { handle: string }) => p.handle)).not.toContain('ana.k')
+    expect((await h.get('/v1/players?cursor=nope', ids.noah)).status).toBe(400)
+  })
+
   test('blocking yourself or nobody is refused', async () => {
     const h = await table()
     expect((await h.post('/v1/blocks', ids.ana, { playerId: ids.ana })).status).toBe(400)

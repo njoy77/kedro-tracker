@@ -59,7 +59,8 @@ struct ReviewFixTests {
         game.add(.roundRecorded(.init(round: Round(number: 1, hands: hands, knocker: game.seat(1)))))
         game.add(.gameFinished(.init(reason: .completed, finalRounds: [])))
         let owner = game.seats[0].player
-        let options = StatsOptions(aliases: [.guest(guestID): owner])
+        var options = StatsOptions(aliases: [.guest(guestID): owner])
+        options.minimumRounds = 1 // a one-round game, below the 3-round rule
         let snapshot = StatsSnapshot.build([game.state], options: options)
         let stats = try #require(snapshot.games.first)
         #expect(stats.participants.count == 3)

@@ -14,7 +14,9 @@ extension GameState {
     /// - a round recorded twice: the earlier is kept, the other becomes a `RoundConflict`;
     /// - after `GameFinished`, state-changing operations are refused (`lateOperations`), and the
     ///   finisher's `finalRounds` are authoritative;
-    /// - abandon beats everything except a restore within 15 minutes.
+    /// - abandon beats everything except a restore within 15 minutes;
+    /// - seats lock at Round 1, except a late joiner: seated after Round n, they play from
+    ///   Round n + 1 and start at the highest total then (both set here, never taken from a phone).
     ///
     /// - Parameter gameID: The game to fold. Defaults to the first operation's game; operations
     ///   for other games are ignored.
@@ -160,13 +162,17 @@ private nonisolated struct GameReducer {
     }
 
     private mutating func applyPlayerSeated(_ p: Op.PlayerSeated, _ op: GameOperation, _ actor: GameActor) {
-        let incoming = p.seat
+        var incoming = p.seat
+        incoming.joinedRound = nil
+        incoming.startingScore = nil
         if let index = state.seats.firstIndex(where: { $0.id == incoming.id }) {
             let previous = state.seats[index]
             var updated = incoming
             if !state.rounds.isEmpty || state.status != .lobby {
                 updated.order = previous.order // seats are fixed once the game starts
             }
+            updated.joinedRound = previous.joinedRound
+            updated.startingScore = previous.startingScore
             state.seats[index] = updated
             sortSeats()
             if state.status == .active, let device = incoming.deviceID, device != previous.deviceID {
@@ -174,16 +180,38 @@ private nonisolated struct GameReducer {
             }
             return
         }
-        guard state.rounds.isEmpty else { return refuse(op, actor, .seatsLocked) }
         guard state.seats.count < GameConfig.seatRange.upperBound else { return refuse(op, actor, .tableFull) }
+        guard !state.rounds.isEmpty else {
+            state.seats.append(incoming)
+            sortSeats()
+            return
+        }
+        // A late joiner: next round onward, at the highest total, last in the dealing order. The
+        // deal is re-anchored so whoever was about to deal still does.
+        let next = state.rounds.count + 1
+        let dealer = state.dealer(forRound: next)
+        let highest = currentTotals().values.max() ?? 0
+        incoming.joinedRound = next
+        incoming.startingScore = highest
+        incoming.order = (state.seats.map(\.order).max() ?? -1) + 1
+        if let dealer { state.dealerAnchor = DealerAnchor(roundNumber: next, seat: dealer) }
         state.seats.append(incoming)
         sortSeats()
+        log(.lateJoin(seat: incoming.id, round: next, startingScore: highest), op, actor)
     }
 
     private mutating func applySeatRemoved(_ p: Op.SeatRemoved, _ op: GameOperation, _ actor: GameActor) {
         guard let seat = state.seat(p.seatId) else { return }
-        guard state.rounds.isEmpty else { return refuse(op, actor, .seatsLocked) }
+        // A late joiner can be taken back off until they've played a round.
+        guard state.rounds.isEmpty || seat.firstRound > state.rounds.count else { return refuse(op, actor, .seatsLocked) }
+        // Mid-game, keep the deal where it was (passing it on if the leaver was about to deal).
+        var dealer: SeatID?
+        if !state.rounds.isEmpty, let index = state.seats.firstIndex(where: { $0.id == p.seatId }) {
+            let current = state.dealer(forRound: state.rounds.count + 1)
+            dealer = current == p.seatId ? state.seats[(index + 1) % state.seats.count].id : current
+        }
         state.seats.removeAll { $0.id == p.seatId }
+        if let dealer, dealer != p.seatId { state.dealerAnchor = DealerAnchor(roundNumber: state.rounds.count + 1, seat: dealer) }
         if state.dealerAnchor?.seat == p.seatId { state.dealerAnchor = nil }
         if state.config.firstDealerSeat == p.seatId { state.config.firstDealerSeat = nil }
         if state.config.scorekeeperSeat == p.seatId { state.config.scorekeeperSeat = nil }
@@ -250,6 +278,8 @@ private nonisolated struct GameReducer {
 
     private mutating func applyRoundUndone(_ p: Op.RoundUndone, _ op: GameOperation, _ actor: GameActor) {
         guard p.roundNumber == state.rounds.count, p.roundNumber >= 1 else { return refuse(op, actor, .notLatestRound) }
+        // Undoing the round before someone joined would leave them in a round they never sat for.
+        guard !state.seats.contains(where: { $0.firstRound > p.roundNumber }) else { return refuse(op, actor, .seatsLocked) }
         let before = currentTotals()
         state.rounds.removeLast()
         lastTouch[p.roundNumber] = nil
@@ -434,9 +464,10 @@ private nonisolated struct GameReducer {
         }
     }
 
+    /// Every seat in play for the round must have a hand; a late joiner isn't in earlier rounds.
     private func isValid(_ round: Round) -> Bool {
         guard round.isValid, !state.seats.isEmpty else { return false }
-        let seatIDs = Set(state.seats.map(\.id))
+        let seatIDs = Set(state.seats.filter { $0.firstRound <= round.number }.map(\.id))
         return Set(round.hands.keys) == seatIDs && seatIDs.contains(round.knocker)
     }
 
@@ -451,7 +482,7 @@ private nonisolated struct GameReducer {
     }
 
     private func currentTotals() -> [SeatID: Int] {
-        var totals = Dictionary(uniqueKeysWithValues: state.seats.map { ($0.id, 0) })
+        var totals = Dictionary(uniqueKeysWithValues: state.seats.map { ($0.id, $0.startingScore ?? 0) })
         for record in state.rounds {
             for (seat, score) in record.scores { totals[seat, default: 0] += score }
         }

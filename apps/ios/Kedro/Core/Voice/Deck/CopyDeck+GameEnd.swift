@@ -48,6 +48,18 @@ nonisolated extension CopyDeck {
                   clean: "{name} added {n} rounds. Now playing to {total}."),
         CopyEntry("G-06", "Rematch invite",
                   clean: "Run it back? Same seats, {n} rounds."),
+        CopyEntry("G-07", "End early confirm, under 3 rounds",
+                  clean: "End after Round {r}? Under 3 rounds, so it won't count for stats or the leaderboard. It stays in history.",
+                  spicy: "End after Round {r}? Under 3 rounds doesn't count. No stats, no leaderboard. It stays in history.",
+                  unhinged: "End after Round {r}? Under 3 rounds is foreplay. Doesn't count for shit. It stays in history."),
+        CopyEntry("G-08", "End before Round 1",
+                  clean: "Nobody's played a round yet, so there's nothing to count. End it?",
+                  spicy: "Not one round played. End this before it starts?"),
+        CopyEntry("G-09", "Game end, didn't count",
+                  clean: "Under 3 rounds, so this one doesn't count. Bragging rights only.",
+                  unhinged: "Under 3 rounds, so this one doesn't count. Talk all the shit you want, it's not on the record."),
+        CopyEntry("G-10", "Late join",
+                  clean: "{name} is in from Round {r}, starting at {score}."),
     ]
 
     static let history: [CopyEntry] = [

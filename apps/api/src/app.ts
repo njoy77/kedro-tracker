@@ -43,6 +43,7 @@ import {
   type PlayedWithResponse,
   type PlayerSummary,
   type PostOpsResponse,
+  type PlayerDirectoryResponse,
   type SearchPlayersResponse,
   type TauntCheckResponse,
 } from '@kedro/shared'
@@ -225,6 +226,11 @@ export function createApp(deps: AppDeps) {
   v1.put('/players/me', async (c) => {
     const update = await readJson(c, updateProfileSchema)
     return c.json<Player>(await players.updateMe(c.get('user').id, update))
+  })
+
+  v1.get('/players', async (c) => {
+    const limit = optionalInt(c.req.query('limit'), 'limit')
+    return c.json<PlayerDirectoryResponse>(await players.directory(c.get('user').id, c.req.query('cursor'), limit))
   })
 
   v1.get('/players/search', async (c) => {

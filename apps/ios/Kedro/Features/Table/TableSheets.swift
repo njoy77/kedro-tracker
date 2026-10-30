@@ -11,6 +11,7 @@ enum TableSheet: Identifiable, Hashable {
     case liveKnock
     case handOff
     case extend
+    case addPlayer
     case receipt
     case invite
 
@@ -25,6 +26,7 @@ enum TableSheet: Identifiable, Hashable {
         case .liveKnock: "liveKnock"
         case .handOff: "handOff"
         case .extend: "extend"
+        case .addPlayer: "addPlayer"
         case .receipt: "receipt"
         case .invite: "invite"
         }

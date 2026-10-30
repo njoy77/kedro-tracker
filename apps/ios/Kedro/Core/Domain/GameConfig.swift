@@ -22,6 +22,9 @@ nonisolated struct GameConfig: Hashable, Sendable, Codable {
     static let seatRange = 3...8
     /// Default when there's no "last time's" value.
     static let defaultPlannedRounds = 6
+    /// A finished game counts for stats, ratings and the leaderboard only with at least this many
+    /// rounds, and a seat counts in it only if it played this many (a late joiner may not).
+    static let countedMinimumRounds = 3
 
     var plannedRounds: Int
     var scoringMode: ScoringMode

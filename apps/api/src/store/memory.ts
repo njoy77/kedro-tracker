@@ -265,6 +265,13 @@ export class MemoryStore implements Store {
       .map((player) => structuredClone(player))
   }
 
+  async listPlayers(options: { offset: number; limit: number }): Promise<PlayerRow[]> {
+    return [...this.players.values()]
+      .sort((a, b) => compareStrings(a.displayName.toLowerCase(), b.displayName.toLowerCase()) || compareStrings(a.id, b.id))
+      .slice(options.offset, options.offset + options.limit)
+      .map((player) => structuredClone(player))
+  }
+
   // MARK: Guests
 
   async registerGuests(guests: readonly GuestRegistration[]): Promise<void> {

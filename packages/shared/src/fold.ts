@@ -10,6 +10,8 @@
 //   finalRounds are authoritative;
 // - abandon beats everything (including a finish within 15 minutes) except a restore within
 //   15 minutes.
+// - seats lock at Round 1, except a late joiner: seated after Round n, they play from Round n+1
+//   and start at the highest total at the table then (both set here, never taken from a phone).
 
 import type { FinishReason, GameConfig, Round, Seat, TauntContent, TauntTarget } from './domain.ts'
 import { PLANNED_ROUNDS_LIMITS, SEAT_LIMITS } from './domain.ts'
@@ -98,12 +100,22 @@ export function foldGame(operations: readonly Operation[], gameId?: UUID): Folde
 
 export type Standing = { seat: Seat; total: number; rank: Rank; isWinner: boolean }
 
-/** Totals for every seat (0 for seats with no rounds). */
+/** Totals for every seat (a late joiner's starting score included; 0 for seats with no rounds). */
 export function gameTotals(game: FoldedGame): Record<SeatId, number> {
-  const result: Record<SeatId, number> = Object.fromEntries(game.seats.map((seat) => [seatIdOf(seat.player), 0]))
+  const result: Record<SeatId, number> = Object.fromEntries(game.seats.map((seat) => [seatIdOf(seat.player), seat.startingScore ?? 0]))
   const summed = totals(game.rounds.map((round) => roundScores(round.hands, round.knocker)))
-  for (const [seat, total] of Object.entries(summed)) result[seat] = total
+  for (const [seat, total] of Object.entries(summed)) result[seat] = (result[seat] ?? 0) + total
   return result
+}
+
+/** The first round a seat plays (1 unless it joined late). */
+export function joinedRound(seat: Seat): number {
+  return seat.joinedRound ?? 1
+}
+
+/** Rounds a seat has a hand in. */
+export function roundsPlayed(game: FoldedGame, seatId: SeatId): number {
+  return game.rounds.filter((round) => round.hands[seatId] !== undefined).length
 }
 
 /** Standings best first; equal totals keep seat order. Winners share the lowest total. */
@@ -296,16 +308,30 @@ class Reducer {
   private playerSeated(op: Operation<'PlayerSeated'>) {
     const state = this.state
     const incoming = { ...op.payload.seat }
+    delete incoming.joinedRound
+    delete incoming.startingScore
     const id = seatIdOf(incoming.player)
     const index = state.seats.findIndex((seat) => seatIdOf(seat.player) === id)
     if (index >= 0) {
-      if (state.rounds.length > 0 || state.status !== 'lobby') incoming.order = state.seats[index].order
+      const previous = state.seats[index]
+      if (state.rounds.length > 0 || state.status !== 'lobby') incoming.order = previous.order
+      if (previous.joinedRound !== undefined) incoming.joinedRound = previous.joinedRound
+      if (previous.startingScore !== undefined) incoming.startingScore = previous.startingScore
       state.seats[index] = incoming
       this.sortSeats()
       return
     }
-    if (state.rounds.length > 0) return this.refuse(op, 'seatsLocked')
     if (state.seats.length >= SEAT_LIMITS.max) return this.refuse(op, 'tableFull')
+    if (state.rounds.length > 0) {
+      // A late joiner: next round onward, at the highest total, last in the dealing order. The
+      // deal is re-anchored so whoever was about to deal still does.
+      const next = state.rounds.length + 1
+      const dealer = dealerForRound(state, next)
+      incoming.joinedRound = next
+      incoming.startingScore = Math.max(...Object.values(gameTotals(state)))
+      incoming.order = Math.max(...state.seats.map((seat) => seat.order)) + 1
+      if (dealer) state.dealerAnchor = { roundNumber: next, seat: dealer }
+    }
     state.seats.push(incoming)
     this.sortSeats()
   }
@@ -313,9 +339,19 @@ class Reducer {
   private seatRemoved(op: Operation<'SeatRemoved'>) {
     const state = this.state
     const { seatId } = op.payload
-    if (!this.seat(seatId)) return
-    if (state.rounds.length > 0) return this.refuse(op, 'seatsLocked')
-    state.seats = state.seats.filter((seat) => seatIdOf(seat.player) !== seatId)
+    const seat = this.seat(seatId)
+    if (!seat) return
+    // A late joiner can be taken back off until they've played a round.
+    if (state.rounds.length > 0 && joinedRound(seat) <= state.rounds.length) return this.refuse(op, 'seatsLocked')
+    // Mid-game, keep the deal where it was (passing it on if the leaver was about to deal).
+    let dealer: SeatId | null = null
+    if (state.rounds.length > 0) {
+      const ids = state.seats.map((candidate) => seatIdOf(candidate.player))
+      const current = dealerForRound(state, state.rounds.length + 1)
+      dealer = current === seatId ? ids[(ids.indexOf(seatId) + 1) % ids.length] : current
+    }
+    state.seats = state.seats.filter((candidate) => seatIdOf(candidate.player) !== seatId)
+    if (dealer && dealer !== seatId) state.dealerAnchor = { roundNumber: state.rounds.length + 1, seat: dealer }
     if (state.dealerAnchor?.seat === seatId) state.dealerAnchor = null
     if (state.config.firstDealerSeat === seatId) delete state.config.firstDealerSeat
     if (state.config.scorekeeperSeat === seatId) delete state.config.scorekeeperSeat
@@ -356,6 +392,8 @@ class Reducer {
     const state = this.state
     const number = op.payload.roundNumber
     if (number !== state.rounds.length || number < 1) return this.refuse(op, 'notLatestRound')
+    // Undoing the round before someone joined would leave them in a round they never sat for.
+    if (state.seats.some((seat) => joinedRound(seat) > number)) return this.refuse(op, 'seatsLocked')
     state.rounds.pop()
     this.lastTouch.delete(number)
     this.reports.delete(number)
@@ -502,8 +540,9 @@ class Reducer {
     if (!state.dealerAnchor && first) state.dealerAnchor = { roundNumber: 1, seat: first }
   }
 
+  /** Every seat in play for the round must have a hand; a late joiner isn't in earlier rounds. */
   private isValid(round: Round): boolean {
-    const seatIds = new Set(this.state.seats.map((seat) => seatIdOf(seat.player)))
+    const seatIds = new Set(this.state.seats.filter((seat) => joinedRound(seat) <= round.number).map((seat) => seatIdOf(seat.player)))
     if (seatIds.size === 0) return false
     const handKeys = Object.keys(round.hands)
     if (round.hands[round.knocker] === undefined || !seatIds.has(round.knocker)) return false

@@ -131,7 +131,9 @@ struct PlayerStatsTests {
         game.record([0, 5, 6], knocker: 0)
         game.add(.roundEdited(.init(round: game.round(1, [9, 5, 6], knocker: 0))))
         game.add(.gameFinished(.init(reason: .completed, finalRounds: [game.round(1, [9, 5, 6], knocker: 0)])))
-        let snapshot = StatsSnapshot.build([game.state])
+        var options = StatsOptions()
+        options.minimumRounds = 1 // a one-round game, below the 3-round rule
+        let snapshot = StatsSnapshot.build([game.state], options: options)
         let stats = try #require(snapshot.stats(for: game.seats[0].player))
         #expect(stats.failed == 1)
         #expect(stats.bestGame?.score == 19)

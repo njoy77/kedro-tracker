@@ -72,6 +72,12 @@ export const SEAT_LIMITS = { min: 3, max: 8 } as const
 export const PLANNED_ROUNDS_LIMITS = { min: 1, max: 50 } as const
 
 /**
+ * A finished game counts for stats, ratings and the leaderboard only with at least this many
+ * rounds, and a seat counts in it only if it played at least this many (a late joiner may not).
+ */
+export const COUNTED_MIN_ROUNDS = 3
+
+/**
  * A seat at a table (`PlayerSeated.seat`). Optional keys are omitted when nil.
  * `claimTokenHash` is a server extension: the phone that created a guest identity may include the
  * SHA-256 of its claim token so `POST /v1/claims` can verify it later. Only the hash travels.
@@ -88,6 +94,10 @@ export const seatSchema = z.object({
   titleId: z.string().max(16).optional(),
   gamesPlayed: z.number().int().min(0).optional(),
   claimTokenHash: claimTokenHashSchema.optional(),
+  /** Set by the fold, never trusted from a phone: the first round a late joiner plays. */
+  joinedRound: z.number().int().min(1).max(500).optional(),
+  /** Set by the fold, never trusted from a phone: a late joiner's score before their first round. */
+  startingScore: z.number().int().optional(),
 })
 export type Seat = z.infer<typeof seatSchema>
 

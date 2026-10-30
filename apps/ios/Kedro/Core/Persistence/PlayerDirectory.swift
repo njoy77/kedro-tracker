@@ -16,6 +16,27 @@ protocol PlayerDirectory: AnyObject, Sendable {
 
     /// One player, if known.
     func player(_ id: PlayerID) async throws -> PlayerSummary?
+
+    /// Every Kedro player A–Z, a page at a time (the Add Player list's "Everyone"). Pass the
+    /// previous page's `next` to continue; nil starts from the top. Excludes blocked players.
+    func everyone(after cursor: String?) async throws -> PlayerPage
+}
+
+extension PlayerDirectory {
+    /// Without a server, "everyone" is everyone this phone has played with.
+    func everyone(after cursor: String?) async throws -> PlayerPage {
+        guard cursor == nil else { return PlayerPage(players: [], next: nil) }
+        let players = try await playedWith().map(\.player)
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        return PlayerPage(players: players, next: nil)
+    }
+}
+
+/// One page of `PlayerDirectory.everyone(after:)`.
+nonisolated struct PlayerPage: Hashable, Sendable {
+    var players: [PlayerSummary]
+    /// The cursor for the next page; nil at the end.
+    var next: String?
 }
 
 nonisolated struct PlayedWith: Hashable, Sendable, Identifiable {

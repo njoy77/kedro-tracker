@@ -9,6 +9,8 @@ import OSLog
 /// - **Played With** and **guest suggestions** are derived from this phone's finished games (the
 ///   same truth stats use), with each player's summary refreshed from the cache when the server
 ///   has told us something newer (avatar, title, handle).
+/// - **Everyone** pages through `GET /v1/players` (A–Z, blocked players excluded) and caches
+///   it; offline, it falls back to everyone this phone has played with.
 /// - **player(_:)** answers from the cache first, then local games.
 final class RemotePlayerDirectory: PlayerDirectory {
     private let api: APIClient
@@ -59,6 +61,20 @@ final class RemotePlayerDirectory: PlayerDirectory {
 
     func guestSuggestions(matching name: String) async throws -> [GuestSuggestion] {
         try await local.guestSuggestions(matching: name)
+    }
+
+    func everyone(after cursor: String?) async throws -> PlayerPage {
+        do {
+            let page = try await api.listPlayers(after: cursor)
+            cache.store(page.players)
+            return PlayerPage(players: page.players, next: page.next)
+        } catch let error as APIError {
+            log.info("Everyone fell back to this phone: \(String(describing: error), privacy: .public)")
+            guard cursor == nil else { return PlayerPage(players: [], next: nil) }
+            let players = try await playedWith().map(\.player)
+                .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            return PlayerPage(players: players, next: nil)
+        }
     }
 
     func player(_ id: PlayerID) async throws -> PlayerSummary? {

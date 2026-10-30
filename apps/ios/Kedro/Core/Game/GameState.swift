@@ -132,6 +132,15 @@ nonisolated struct GameState: Hashable, Sendable {
     var scorekeeper: SeatID? { config.scorekeeperSeat ?? hostSeat }
 
     /// Who deals a given round, from the anchor and the clockwise seat order.
+    /// The seats with a hand in a round: everyone, less late joiners who sat down after it.
+    func seats(inRound round: Int) -> [Seat] { seats.filter { $0.firstRound <= round } }
+
+    /// True when the game counts for stats, ratings and the leaderboard: finished with at least
+    /// `GameConfig.countedMinimumRounds` rounds. Shorter games stay in history but don't count.
+    var countsForStats: Bool {
+        status == .finished && rounds.count >= GameConfig.countedMinimumRounds
+    }
+
     func dealer(forRound round: Int) -> SeatID? {
         guard !seats.isEmpty else { return nil }
         let anchor = dealerAnchor ?? DealerAnchor(roundNumber: 1, seat: config.firstDealerSeat ?? hostSeat ?? seats[0].id)

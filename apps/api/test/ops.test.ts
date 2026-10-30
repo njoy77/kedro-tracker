@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { RESTORE_WINDOW_MS, hlcString, type WireOperation } from '@kedro/shared'
+import { RESTORE_WINDOW_MS, foldGame, hlcString, parseOperation, type Operation, type WireOperation } from '@kedro/shared'
 import { FILTER_RETRACTION_REASON, SERVER_DEVICE_ID } from '../src/services/ops.ts'
 import { OperationBuilder, fixedUUID, harness, ids, sampleWireOperations, seats } from './support.ts'
 
@@ -131,7 +131,27 @@ describe('POST /v1/ops', () => {
     })
     const response = await h.upload(stranger, sneak)
     expect(response.body.accepted).toEqual([])
-    expect(response.body.rejected.every((row) => row.reason === 'notSeated')).toBe(true)
+    // Late joins are allowed, but only with the table's invite code, like the lobby.
+    expect(response.body.rejected.every((row) => row.reason === 'inviteRequired')).toBe(true)
+  })
+
+  test('mid-game, a stranger with the table code sits down as a late joiner', async () => {
+    const h = await seededHarness()
+    const late = fixedUUID(1, 98)
+    await h.profile(late, 'Lee', 'lee')
+    const ops = sampleWireOperations({ throughRound: 2, finished: false })
+    await h.upload(ids.noah, ops)
+    const code = await h.inviteKey(ids.noah, ids.game)
+    const join = after(ops, (b) => b.add('PlayerSeated', { seat: { player: { kind: 'player', id: late }, displayName: 'Lee', order: 0, startingScore: -99 } }, { actor: late }))
+    const response = await h.upload(late, join, { [ids.game]: code() })
+    expect(response.body.accepted).toHaveLength(1)
+    const folded = foldGame([...ops, ...join].flatMap((wire) => {
+      const result = parseOperation(wire)
+      return result.ok ? [result.value.operation as Operation] : []
+    }))
+    const seat = folded.seats.find((row) => row.displayName === 'Lee')
+    expect(seat?.joinedRound).toBe(3)
+    expect(seat?.startingScore).not.toBe(-99)
   })
 
   test('joining a lobby: a player seats themselves and can then read the log', async () => {

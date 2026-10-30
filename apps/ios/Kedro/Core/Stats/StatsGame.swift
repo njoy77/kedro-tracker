@@ -11,11 +11,19 @@ nonisolated struct StatsOptions: Hashable, Sendable {
     var excluded: Set<PlayerRef> = []
     /// People who finished Learn and the Score a Round drill (Did the Reading).
     var didTheReading: Set<PlayerRef> = []
+    /// Rounds a game needs to count, and a seat needs to have played to count in it. Always
+    /// `GameConfig.countedMinimumRounds` in the app; tests with one-round fixtures lower it.
+    var minimumRounds = GameConfig.countedMinimumRounds
 
     init(aliases: [PlayerRef: PlayerRef] = [:], excluded: Set<PlayerRef> = [], didTheReading: Set<PlayerRef> = []) {
         self.aliases = aliases
         self.excluded = excluded
         self.didTheReading = didTheReading
+    }
+
+    /// Whether a folded game counts (`GameState.countsForStats` at the app's threshold).
+    func counts(_ state: GameState) -> Bool {
+        state.status == .finished && state.rounds.count >= minimumRounds
     }
 
     /// The identity a seat counts as.
@@ -116,9 +124,9 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
         return Scoring.winners(cumulative[round - 1])
     }
 
-    /// Builds the stats view of a folded game. Returns nil unless the game is finished.
+    /// Builds the stats view of a folded game. Returns nil unless it counts (`StatsOptions.counts`).
     init?(state: GameState, index: Int, options: StatsOptions) {
-        guard state.status == .finished, !state.rounds.isEmpty else { return nil }
+        guard options.counts(state) else { return nil }
         id = state.gameID
         self.index = index
         tableWord = state.config.tableWord
@@ -128,8 +136,13 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
 
         // One participant per person. A claimed guest seated beside the account that later
         // claimed it counts once, as the account's own seat (the server's ratedGames does the
-        // same), so its hands and score are dropped instead of being merged in.
+        // same), so its hands and score are dropped instead of being merged in. A late joiner
+        // who played fewer than 3 rounds doesn't count either.
+        let played = state.rounds.reduce(into: [SeatID: Int]()) { counts, record in
+            for seat in record.round.hands.keys { counts[seat, default: 0] += 1 }
+        }
         let counted = Self.countedSeats(state.seats, options: options)
+            .filter { played[$0.id, default: 0] >= options.minimumRounds }
         participants = counted.map { seat in
             StatsParticipant(
                 ref: options.canonical(seat.player), seatedAs: seat.player, name: seat.displayName,
@@ -155,9 +168,17 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
             )
             return StatsRound(number: record.number, hands: hands, knocker: person(record.knocker), scores: scores, outcome: record.outcome)
         }
-        var running: [PlayerRef: Int] = Dictionary(participants.map { ($0.ref, 0) }, uniquingKeysWith: { first, _ in first })
+        // Late joiners enter the running totals at their starting score on their first round.
+        let lateStarts = counted.filter { $0.firstRound > 1 }
+        var running: [PlayerRef: Int] = Dictionary(
+            participants.filter { participant in !lateStarts.contains { options.canonical($0.player) == participant.ref } }.map { ($0.ref, 0) },
+            uniquingKeysWith: { first, _ in first }
+        )
         var cumulative: [[PlayerRef: Int]] = []
         for round in rounds {
+            for seat in lateStarts where seat.firstRound == round.number {
+                running[options.canonical(seat.player)] = seat.startingScore ?? 0
+            }
             for (ref, score) in round.scores { running[ref, default: 0] += score }
             cumulative.append(running)
         }
@@ -191,7 +212,7 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
     /// Normalizes and orders a store's finished games (oldest first, ties by game ID).
     static func normalize(_ states: [GameState], options: StatsOptions) -> [StatsGame] {
         let finished = states
-            .filter { $0.status == .finished && !$0.rounds.isEmpty }
+            .filter(options.counts)
             .sorted { lhs, rhs in
                 let left = lhs.finishedAt ?? lhs.latestHLC?.date ?? .distantPast
                 let right = rhs.finishedAt ?? rhs.latestHLC?.date ?? .distantPast

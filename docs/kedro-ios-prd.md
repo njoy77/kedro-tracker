@@ -127,7 +127,9 @@ Players in a Kedro game are **always physically together**. That fact is the fou
 Requirements:
 - **Effortless co-located joining.** When people with Kedro open are together and a game is starting or underway nearby, joining it should take little more than a confirmation. Using proximity capabilities (for example Bluetooth or local-network discovery, Nearby Interaction, or similar Apple frameworks) is strongly encouraged. The mechanism and the experience are up to the design.
 - **Host-led setup.** A host can always start a game and add players directly: people they have played with before, any Kedro user, or guests by name.
+- **Pick from a list.** Adding players starts from a list to pick from, with no typing needed: people nearby first, then people you have played with, then every other Kedro user A–Z. Typing narrows the list and searches Kedro by name or @handle. Blocked people never appear.
 - **Played-with list.** People you have played with before are easy to add to a new game.
+- **Late joins.** Any player in a game in progress can add someone after Round 1. The late joiner plays from the next round, starts at the **highest total at the table** at that moment (so joining late is never an advantage), and takes the last seat in the dealing order. The deal is not disturbed. A late joiner can be removed until they have played a round.
 - **Rematch.** After a game, the same table can start another game with the same players with minimal effort.
 - Supported table size: **3–8 players**.
 - At setup, the game records the planned number of rounds and the scoring mode (4.2).
@@ -165,7 +167,9 @@ The device should not sleep while a game is active and on screen.
 
 ### 4.6 Ending a game
 - When the planned rounds are complete, the app recognizes that the game is over.
-- Any player can end the game early. Early-ended games count fully in stats.
+- Any player can end the game at any time, from the game itself or without opening it. The confirmation says up front whether the game will count.
+- **A game counts only with at least 3 rounds.** Games ended with fewer stay in history, clearly marked, but don't count for stats, ratings, the leaderboard, badges, titles, the Hall of Shame, or Wrapped. Within a counted game, a player who played fewer than 3 rounds (a late joiner) doesn't count either.
+- Ending a game before any round is played simply discards it.
 - Ending a game deserves a moment: the winner (or co-winners), the final standings, and the game's highlights (for example best round, successful knocks, biggest comeback).
 - A game can be **abandoned**, which is distinct from ending early. Abandoned games stay in history, clearly marked, and are excluded from all stats, leaderboards, and achievements. Any player in the game can abandon it.
 
@@ -194,7 +198,7 @@ All stats are **derived from recorded rounds and games**. They are not stored as
 
 | Stat | Definition |
 |---|---|
-| Games played | Completed (non-abandoned) games, including early-ended ones |
+| Games played | Completed (non-abandoned) games of 3+ rounds, including early-ended ones |
 | Wins | Games won, including shared wins |
 | Win rate | Wins ÷ games played |
 | Best game | Lowest final cumulative score |
@@ -321,5 +325,9 @@ Suggested judging criteria, mapped to goals:
 | 7 | Web history migration | Migrate; legacy users become claimable guest identities. |
 | 8 | Achievement catalog | Proposed by the designs in the tournament. |
 | 9 | Wrong-stick penalty | Handled at the table; already reflected in hand value. |
+| 10 | Short games | A game counts for stats only with 3+ rounds; a player counts in it only with 3+ rounds played. |
+| 11 | Late joins | Allowed after Round 1, at the highest total at the table, from the next round. |
+| 12 | Who can end a game | Any seated player, at any time. |
+| 13 | Adding players | A browsable list (nearby, played with, everyone A–Z) with search on top. |
 
 *Kedro iOS PRD v3.0 · October 2026*

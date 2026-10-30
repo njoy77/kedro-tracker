@@ -384,6 +384,11 @@ export class SupabaseStore implements Store {
       .slice(0, options.limit)
   }
 
+  async listPlayers(options: { offset: number; limit: number }): Promise<PlayerRow[]> {
+    const rows = must(await this.db.from('players').select('*').order('display_name').order('id').range(options.offset, options.offset + options.limit - 1))
+    return rows.map(toPlayerRow)
+  }
+
   // MARK: Guests
 
   async registerGuests(guests: readonly GuestRegistration[]): Promise<void> {

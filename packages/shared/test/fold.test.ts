@@ -159,16 +159,95 @@ describe('foldGame: conflict rules', () => {
     expect(foldGame(ops).status).toBe('abandoned')
   })
 
-  test('seats lock after Round 1 and the table holds 8', () => {
+  test('the table holds 8', () => {
     const newSeat = (n: number) => ({ seat: { player: { kind: 'guest', id: fixedUUID(9, n) }, displayName: `G${n}`, order: 10 + n } })
-    const locked = withExtra(sampleWireOperations({ throughRound: 1, finished: false }), (b) => b.add('PlayerSeated', newSeat(1)))
-    expect(foldGame(locked).seats).toHaveLength(5)
-    expect(foldGame(locked).late[0].reason).toBe('seatsLocked')
     const full = withExtra(sampleWireOperations({ throughRound: 0, finished: false }), (b) => {
       for (let n = 1; n <= 4; n++) b.add('PlayerSeated', newSeat(n))
     })
     expect(foldGame(full).seats).toHaveLength(8)
     expect(foldGame(full).late[0].reason).toBe('tableFull')
+  })
+
+  test('a late joiner plays from the next round at the highest total, last in the deal', () => {
+    const guest = { kind: 'guest' as const, id: fixedUUID(9, 1) }
+    const guestSeat = `g:${guest.id}`
+    const before = foldGame(parsed(sampleWireOperations({ throughRound: 2, finished: false })))
+    const highest = Math.max(...Object.values(gameTotals(before)))
+    const ops = withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      // A phone can't pick its own starting score or round.
+      b.add('PlayerSeated', { seat: { player: guest, displayName: 'Late', order: 0, joinedRound: 1, startingScore: -50 } })
+    })
+    const game = foldGame(ops)
+    const late = game.seats.find((seat) => seat.displayName === 'Late')
+    expect(game.seats).toHaveLength(6)
+    expect(late?.joinedRound).toBe(3)
+    expect(late?.startingScore).toBe(highest)
+    expect(game.seats[game.seats.length - 1].displayName).toBe('Late')
+    expect(gameTotals(game)[guestSeat]).toBe(highest)
+    // Whoever was about to deal still deals.
+    expect(dealerForRound(game, 3)).toBe(dealerForRound(before, 3))
+
+    // Round 3 needs the joiner's hand; earlier rounds don't.
+    const third = sampleRounds[2]
+    const without = withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      b.add('PlayerSeated', { seat: { player: guest, displayName: 'Late', order: 9 } })
+      b.add('RoundRecorded', { round: third })
+    })
+    expect(foldGame(without).rounds).toHaveLength(2)
+    expect(foldGame(without).late.at(-1)?.reason).toBe('invalid')
+    const withHand = withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      b.add('PlayerSeated', { seat: { player: guest, displayName: 'Late', order: 9 } })
+      b.add('RoundRecorded', { round: { ...third, hands: { ...third.hands, [guestSeat]: 20 } } })
+    })
+    expect(foldGame(withHand).rounds).toHaveLength(3)
+    expect(gameTotals(foldGame(withHand))[guestSeat]).toBe(highest + 20)
+  })
+
+  test("a late joiner can be removed until they've played, and blocks undoing the round before", () => {
+    const guest = { kind: 'guest' as const, id: fixedUUID(9, 1) }
+    const guestSeat = `g:${guest.id}`
+    const seated = (b: OperationBuilder) => b.add('PlayerSeated', { seat: { player: guest, displayName: 'Late', order: 9 } })
+    const undo = foldGame(withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      seated(b)
+      b.add('RoundUndone', { roundNumber: 2 })
+    }))
+    expect(undo.rounds).toHaveLength(2)
+    expect(undo.late.at(-1)?.reason).toBe('seatsLocked')
+
+    const removed = foldGame(withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      seated(b)
+      b.add('SeatRemoved', { seatId: guestSeat })
+    }))
+    expect(removed.seats).toHaveLength(5)
+
+    const third = sampleRounds[2]
+    const played = foldGame(withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      seated(b)
+      b.add('RoundRecorded', { round: { ...third, hands: { ...third.hands, [guestSeat]: 20 } } })
+      b.add('SeatRemoved', { seatId: guestSeat })
+    }))
+    expect(played.seats).toHaveLength(6)
+    expect(played.late.at(-1)?.reason).toBe('seatsLocked')
+  })
+
+  test('only games with 3+ rounds, and seats that played 3+, count for stats', () => {
+    const short = foldGame(withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      b.add('GameFinished', { reason: 'endedEarly', finalRounds: [] })
+    }))
+    expect(short.status).toBe('finished')
+    expect(projectFinishedGame(short)).toBeNull()
+
+    const guest = { kind: 'guest' as const, id: fixedUUID(9, 1) }
+    const guestSeat = `g:${guest.id}`
+    const third = sampleRounds[2]
+    const lateGame = foldGame(withExtra(sampleWireOperations({ throughRound: 2, finished: false }), (b) => {
+      b.add('PlayerSeated', { seat: { player: guest, displayName: 'Late', order: 9 } })
+      b.add('RoundRecorded', { round: { ...third, hands: { ...third.hands, [guestSeat]: 20 } } })
+      b.add('GameFinished', { reason: 'endedEarly', finalRounds: [] })
+    }))
+    const projection = projectFinishedGame(lateGame)
+    expect(projection?.seats).toHaveLength(5)
+    expect(projection?.seats.some((seat) => seat.seatId === guestSeat)).toBe(false)
   })
 
   test('self-report completes a round once everyone reported and one knock was claimed', () => {

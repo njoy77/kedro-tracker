@@ -53,6 +53,12 @@ extension APIClient {
         return result.players
     }
 
+    /// `GET /v1/players?cursor=`: every player A–Z, a page at a time; blocked players excluded.
+    func listPlayers(after cursor: String?) async throws -> PlayerDirectoryResult {
+        let query = cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? []
+        return try await send("GET", "v1/players", query: query)
+    }
+
     /// `GET /v1/players/:playerId/profile`: the server's rating, global rank and lifetime stats.
     func playerProfile(_ player: PlayerID) async throws -> PlayerProfileResponse {
         try await send("GET", "v1/players/\(player.uuidString.lowercased())/profile")

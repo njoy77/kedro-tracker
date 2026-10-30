@@ -39,7 +39,7 @@ struct OnTheRecordView: View {
 
     private func conflictCard(_ conflict: RoundConflict, voice: Voice) -> some View {
         let state = session.state
-        let hands = state.seats.map { seat in
+        let hands = state.seats(inRound: conflict.roundNumber).map { seat in
             "\(seat.displayName) \(ScoreFormat.string(conflict.rejected.hands[seat.id] ?? 0))"
         }
         return VStack(alignment: .leading, spacing: 6) {

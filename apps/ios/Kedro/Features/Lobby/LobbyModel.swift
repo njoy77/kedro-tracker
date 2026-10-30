@@ -170,7 +170,7 @@ final class LobbyModel {
         do {
             let playedWith = try await app.directory.playedWith()
             playedTogether = Dictionary(playedWith.map { ($0.player.id, $0.gamesTogether) }, uniquingKeysWith: max)
-            finished = try await app.store.finishedGames()
+            finished = try await app.store.countedGames()
         } catch {
             log.error("Couldn't load the lobby: \(error.localizedDescription, privacy: .public)")
         }

@@ -74,8 +74,12 @@ struct StatsHistory {
         games.compactMap { operations in operations.first.map { GameState.fold(operations, gameID: $0.gameId) } }
     }
 
+    /// The fixtures' games are mostly one round, so the 3-round rule is lowered to 1 here;
+    /// `GameFoldTests.countedGames` covers the rule itself.
     func snapshot(_ options: StatsOptions = StatsOptions()) -> StatsSnapshot {
-        StatsSnapshot.build(states, options: options, calendar: Self.utc)
+        var options = options
+        options.minimumRounds = 1
+        return StatsSnapshot.build(states, options: options, calendar: Self.utc)
     }
 
     static var utc: Calendar {

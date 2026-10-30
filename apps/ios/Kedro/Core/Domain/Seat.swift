@@ -32,11 +32,20 @@ nonisolated struct Seat: Hashable, Sendable, Codable, Identifiable {
     /// A guest seat sat in by the phone that owns that guest identity: the lowercase hex SHA-256
     /// of its claim token, so the server can match a later `POST /v1/claims` (never the token).
     var claimTokenHash: String?
+    /// A late joiner's first round. Set by the fold, never taken from a phone's operation.
+    var joinedRound: Int?
+    /// A late joiner's score before their first round: the highest total at the table when they
+    /// sat down. Set by the fold, never taken from a phone's operation.
+    var startingScore: Int?
 
     var id: SeatID { player.seatID }
 
+    /// The first round this seat plays (1 unless they joined late).
+    var firstRound: Int { joinedRound ?? 1 }
+
     private enum CodingKeys: String, CodingKey {
         case player, displayName, order, handle, avatar, reporter, languageLevel, gamesPlayed, claimTokenHash
+        case joinedRound, startingScore
         case deviceID = "deviceId"
         case titleID = "titleId"
     }
