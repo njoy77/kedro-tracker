@@ -20,7 +20,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 - Use **Bun** for everything JavaScript: `bun install`, `bun run <script>`, `bun add`. Do not use npm, yarn, or pnpm, and do not commit `package-lock.json`.
 - Run commands from the repo root with the root scripts (`bun run dev`, `bun run build`, `bun run typecheck`, `bun run ios:build`) or target a workspace with `bun run --filter '@kedro/<name>' <script>`.
 - Node is not installed on the main dev machine. CLIs that need Node can run on Bun with `bun --bun <cli>`.
-- The repo lives in an iCloud-synced folder. Keep build output (Xcode DerivedData, etc.) out of the repo, or code signing fails on iCloud's extended attributes.
+- The repo lives in `~/Developer/Kedro`, outside iCloud. Keep it out of iCloud-synced folders (Desktop, Documents): iCloud makes conflict copies of git's own files, offloads them, and uploads the local secrets files. Keep build output (Xcode DerivedData, etc.) out of the repo too.
 
 ## Environment variables and keys
 
