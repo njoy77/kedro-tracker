@@ -5,8 +5,6 @@ import {
   aggregateStats,
   compareStrings,
   hlcString,
-  normalizeForFilter,
-  subjectOf,
   type FinishedGameProjection,
   type FinishedSeatResult,
   type PlayerStats,
@@ -31,6 +29,7 @@ import {
   type SeatRow,
   type Store,
 } from './types.ts'
+import { guestSuggestionsFrom, orderStatsRows, playedWithFrom, type FinishedSeatDetail } from './shared.ts'
 
 type StoredOp = OpRow & { receivedAt: number }
 type GuestRow = GuestRegistration & { claimedBy: UUID | null; claimedAt: number | null }
@@ -152,55 +151,36 @@ export class MemoryStore implements Store {
 
   async playerStats(playerIds?: readonly UUID[]): Promise<PlayerStats[]> {
     const wanted = playerIds ? new Set(playerIds.map((id) => `p:${id}`)) : null
-    const rows = this.liveFinished().flatMap(({ projection, seats }) =>
-      seats
-        .filter((seat) => seat.playerId !== null)
-        .map((seat) => ({
-          gameId: projection.gameId,
-          finishedAtMs: projection.finishedAtMs,
-          subject: subjectOf(seat),
-          total: seat.total,
-          isWinner: seat.isWinner,
-          roundsPlayed: seat.roundsPlayed,
-          knocks: seat.knocks,
-          knocksLanded: seat.knocksLanded,
-          knocksTied: seat.knocksTied,
-          knocksFailed: seat.knocksFailed,
-        }))
-        .filter((row) => !wanted || wanted.has(row.subject)),
-    )
-    return [...aggregateStats(rows).values()]
+    const rows = orderStatsRows(this.finishedSeatDetails().filter((seat) => seat.playerId !== null))
+    return [...aggregateStats(rows).values()].filter((entry) => !wanted || wanted.has(entry.subject))
   }
 
   async playedWith(playerId: UUID): Promise<PlayedWithRow[]> {
-    const together = new Map<UUID, PlayedWithRow>()
-    for (const { projection, seats } of this.liveFinished()) {
-      if (!seats.some((seat) => seat.playerId === playerId)) continue
-      for (const seat of seats) {
-        if (!seat.playerId || seat.playerId === playerId) continue
-        const row = together.get(seat.playerId) ?? { playerId: seat.playerId, gamesTogether: 0, lastPlayedMs: 0 }
-        row.gamesTogether += 1
-        row.lastPlayedMs = Math.max(row.lastPlayedMs, projection.finishedAtMs)
-        together.set(seat.playerId, row)
-      }
-    }
-    return [...together.values()].sort((a, b) => b.lastPlayedMs - a.lastPlayedMs)
+    return playedWithFrom(this.finishedSeatDetails(), playerId)
   }
 
   async guestSuggestions(playerId: UUID, name: string): Promise<GuestSuggestionRow[]> {
-    const wanted = normalizeForFilter(name, { lookalikes: false })
-    const counts = new Map<UUID, GuestSuggestionRow>()
-    for (const { seats } of this.liveFinished()) {
-      if (!seats.some((seat) => seat.playerId === playerId)) continue
-      for (const seat of seats) {
-        if (!seat.guestId || seat.playerId) continue
-        if (wanted && !normalizeForFilter(seat.displayName, { lookalikes: false }).includes(wanted)) continue
-        const row = counts.get(seat.guestId) ?? { guestId: seat.guestId, name: seat.displayName, gamesTogether: 0 }
-        row.gamesTogether += 1
-        counts.set(seat.guestId, row)
-      }
-    }
-    return [...counts.values()].sort((a, b) => b.gamesTogether - a.gamesTogether)
+    return guestSuggestionsFrom(this.finishedSeatDetails(), playerId, name)
+  }
+
+  private finishedSeatDetails(): FinishedSeatDetail[] {
+    return this.liveFinished().flatMap(({ projection, seats }) =>
+      seats.map((seat) => ({
+        gameId: projection.gameId,
+        finishedAtMs: projection.finishedAtMs,
+        seatId: seat.seatId,
+        playerId: seat.playerId,
+        guestId: seat.guestId,
+        displayName: seat.displayName,
+        total: seat.total,
+        isWinner: seat.isWinner,
+        roundsPlayed: seat.roundsPlayed,
+        knocks: seat.knocks,
+        knocksLanded: seat.knocksLanded,
+        knocksTied: seat.knocksTied,
+        knocksFailed: seat.knocksFailed,
+      })),
+    )
   }
 
   private liveFinished(): FinishedGameRow[] {

@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
     "@kedro/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.1",
     "hono": "^4.6.0",
-    "jose": "^6"
+    "jose": "^6",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

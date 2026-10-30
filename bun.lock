@@ -16,6 +16,7 @@
         "@supabase/supabase-js": "^2.49.1",
         "hono": "^4.6.0",
         "jose": "^6",
+        "zod": "^3.25.0",
       },
       "devDependencies": {
         "@types/bun": "latest",

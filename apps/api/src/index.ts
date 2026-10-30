@@ -1,17 +1,33 @@
-import { Hono } from 'hono'
-import { logger } from 'hono/logger'
-import { API_VERSION, type HealthResponse } from '@kedro/shared'
+// Server entry (`bun run dev` / `bun run start`). Configuration: see config.ts.
 
-const app = new Hono()
+import { createApp } from './app.ts'
+import { DevTokenVerifier, SupabaseTokenVerifier, type TokenVerifier } from './auth.ts'
+import { loadConfig } from './config.ts'
+import { MemoryStore } from './store/memory.ts'
+import { SupabaseStore } from './store/supabase.ts'
+import type { Store } from './store/types.ts'
 
-app.use('*', logger())
+const config = loadConfig()
+const log = (message: string) => console.error(`[kedro-api] ${message}`)
 
-app.get('/health', (c) => c.json<HealthResponse>({ status: 'ok', version: API_VERSION }))
+let store: Store
+let verifier: TokenVerifier
+if (config.supabase) {
+  if (config.devAuth) throw new Error('KEDRO_DEV_AUTH cannot be used with Supabase credentials')
+  store = new SupabaseStore(config.supabase)
+  verifier = new SupabaseTokenVerifier(config.supabase)
+} else {
+  store = new MemoryStore()
+  verifier = config.devAuth ? new DevTokenVerifier() : { verify: async () => null }
+  log(
+    `Supabase is not configured (missing ${config.missing.join(', ')}): using an in-memory store. ` +
+      (config.devAuth ? 'KEDRO_DEV_AUTH=1: tokens are "dev:<uuid>".' : 'Every /v1 request will be unauthorized; set KEDRO_DEV_AUTH=1 to try it locally.'),
+  )
+}
 
-// Routes for games, players, and leaderboards will be mounted here, e.g.
-// app.route('/v1/games', games)
+const { app } = createApp({ store, verifier, log, logRequests: true })
 
 export default {
-  port: Number(process.env.PORT ?? 8787),
+  port: config.port,
   fetch: app.fetch,
 }
