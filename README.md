@@ -4,7 +4,7 @@ Score tracker for Kedro, organized as a [Bun](https://bun.sh) workspace monorepo
 
 ```
 apps/
-  web/      React + Vite web app (Supabase-backed)
+  web/      React + Vite web app (keeps score through the API, like the iOS app)
   api/      Bun + Hono API
   ios/      Native SwiftUI iOS app (Xcode project)
 packages/

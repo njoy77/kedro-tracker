@@ -8,7 +8,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 
 | Path | What it is |
 |---|---|
-| `apps/web` | React + Vite web app, deployed to Vercel (root directory `apps/web`) |
+| `apps/web` | React + Vite web app on the same API as iOS (Google sign-in), deployed to Vercel (root directory `apps/web`). Local: run `dev:seed` for the API, then `dev:web` and sign in as a test account |
 | `apps/api` | Bun + Hono API |
 | `apps/ios` | Native SwiftUI iOS app. Read `apps/ios/AGENTS.md` before changing it |
 | `packages/shared` | TypeScript types and constants shared by web and api |
