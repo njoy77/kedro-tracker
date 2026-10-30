@@ -26,10 +26,10 @@ struct LearnView: View {
             }
 
             Section {
-                NavigationLink(value: LearnRoute.cards) {
+                NavigationLink(value: AppRoute.learnCards) {
                     row("Learn Cambio in 2 Minutes", "Setup, card values, powers, sticking and the knock. Then a quiz.", systemImage: "rectangle.stack")
                 }
-                NavigationLink(value: LearnRoute.drill) {
+                NavigationLink(value: AppRoute.scoreRoundDrill) {
                     row("Score a Round", "Practice rounds with the cards face up: landed, tied, failed and going out.", systemImage: "number.square")
                 }
             }
@@ -44,12 +44,6 @@ struct LearnView: View {
             }
         }
         .navigationTitle("Learn Cambio")
-        .navigationDestination(for: LearnRoute.self) { route in
-            switch route {
-            case .cards: LearnCardsView()
-            case .drill: ScoreRoundDrill()
-            }
-        }
     }
 
     private func row(_ title: String, _ detail: String, systemImage: String) -> some View {
@@ -65,12 +59,6 @@ struct LearnView: View {
         }
         .padding(.vertical, 4)
     }
-}
-
-/// Feature-internal pushes from Learn.
-enum LearnRoute: Hashable {
-    case cards
-    case drill
 }
 
 #Preview {

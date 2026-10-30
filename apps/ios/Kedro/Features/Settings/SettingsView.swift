@@ -93,11 +93,6 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
-        .navigationDestination(for: SettingsRoute.self) { route in
-            switch route {
-            case .profile: ProfileEditView()
-            }
-        }
         .sheet(isPresented: $isClaiming) { ClaimCodeSheet() }
         #if DEBUG
         .sheet(isPresented: $isPickingTestAccount) { DevAccountPicker() }
@@ -118,7 +113,7 @@ struct SettingsView: View {
     private var profileSection: some View {
         if let profile = app.profile {
             Section {
-                NavigationLink(value: SettingsRoute.profile) {
+                NavigationLink(value: AppRoute.editProfile) {
                     HStack(spacing: 14) {
                         AvatarView(avatar: profile.avatar, name: profile.displayName, isGuest: profile.isGuest, size: .standings)
                         VStack(alignment: .leading, spacing: 2) {
@@ -194,11 +189,6 @@ struct SettingsView: View {
     }
 }
 
-/// Feature-internal pushes from Settings.
-enum SettingsRoute: Hashable {
-    case profile
-}
-
 /// One sound: preview, what it is, and its toggle (dimmed while the master switch is off).
 private struct SoundMomentRow: View {
     let moment: SoundMoment
@@ -226,7 +216,7 @@ private struct SoundMomentRow: View {
 }
 
 #Preview("Settings") {
-    NavigationStack { SettingsView() }
+    NavigationStack { SettingsView().appRouteDestinations() }
         .previewEnvironment()
         .environment(\.soundPreview, SoundPreviewAction { _ in })
 }
@@ -234,6 +224,6 @@ private struct SoundMomentRow: View {
 #Preview("Under 18") {
     let model = AppModel.preview()
     model.preferences.isUnder18 = true
-    return NavigationStack { SettingsView() }
+    return NavigationStack { SettingsView().appRouteDestinations() }
         .previewEnvironment(model)
 }
