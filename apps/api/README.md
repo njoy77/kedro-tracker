@@ -44,9 +44,14 @@ The database schema is `supabase/migrations/0002_kedro_v3.sql` and `0003_securit
 
 ## Production
 
-Vercel project **kedro-api** (root directory `apps/api`, `vercel.json`: Hono preset on the Bun
-runtime; `index.ts` is the entrypoint), deployed from `main` at `https://api.playkedro.com`. The
-iOS Release build points there (`apps/ios/Config/API.xcconfig`).
+Vercel project **kedro-api** (root directory `apps/api`), deployed from `main` at
+`https://api.playkedro.com`. The iOS Release build points there (`apps/ios/Config/API.xcconfig`).
+
+`vercel.json` runs `bun run build`, which bundles `src/index.ts` into `dist/index.js` (Hono left
+external, so Vercel's Hono preset recognizes the entrypoint), and Vercel serves it on the Bun
+runtime. Vercel's own TypeScript step would type-check without our tsconfig base and leave the
+`.ts` import paths in place, so it gets JavaScript only. `bunx vercel build` (after
+`vercel pull --project kedro-api`) reproduces a deploy's build locally.
 
 Keys, production only (`--project api` defaults to production):
 
