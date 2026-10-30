@@ -58,10 +58,90 @@ nonisolated struct SinceYouLastLookedItem: Hashable, Sendable, Identifiable {
     }
 }
 
-/// What the Lobby agent's Play tab reads (design §12.1). `StatsModel` implements it.
+/// Where someone stands, for every place the 5-step meter or a rank shows (Table card, lobby
+/// seat, game end, widgets; design §12.5).
+nonisolated struct PlayerProgress: Hashable, Sendable {
+    var player: PlayerRef
+    var gamesPlayed: Int
+    var isRanked: Bool
+    /// The meter value while unranked ("3 of 5"); nil once ranked.
+    var meter: Int?
+    /// Shown only once ranked.
+    var rating: Int?
+    var playedWithRank: Rank?
+    var globalRank: Rank?
+    /// The closest badge (Next up / the Next Badge widget).
+    var nextBadge: BadgeProgress?
+    /// "3 of 5. Finish 2 more and you're ranked." (L-01) while unranked.
+    func meterLine(voice: Voice) -> String? {
+        guard let meter else { return nil }
+        return voice.line("L-01", ["n": meter, "left": Ratings.rankedAfterGames - meter])
+    }
+}
+
+/// The Wrapped slot on top of Play (design §12.9): the card in December, a progress line before.
+nonisolated struct WrappedSlot: Hashable, Sendable {
+    enum State: Hashable, Sendable {
+        /// Ready: push `AppRoute.wrapped(year:)`.
+        case ready
+        /// Not enough games this year yet.
+        case needsGames(played: Int, needed: Int)
+    }
+
+    var year: Int
+    var state: State
+    /// "Your 2026 in Kedro." or "Play 4 more games this year to get your Wrapped. (6 of 10)"
+    var text: String
+}
+
+/// What the Lobby agent's Play tab reads (design §12.1, §12.5). `StatsModel` implements it;
+/// get it with `StatsModel.shared(for: app.store)` and keep it fresh with `follow(_:viewer:)`.
 protocol StakesProvider: AnyObject {
+    /// Tonight's stakes: one line for the Table card and the lobby.
     func tonightsStakes(for me: PlayerRef, table: [PlayerRef], voice: Voice) -> TonightStakes
+    /// The "Since you last looked" feed (pass `AppPreferences.lastLookedAt`).
     func sinceYouLastLooked(for me: PlayerRef, since: Date?, voice: Voice) -> [SinceYouLastLookedItem]
+    /// The Wrapped slot: nil outside December unless last year's is still current.
+    func wrappedSlot(for me: PlayerRef, voice: Voice, now: Date) -> WrappedSlot?
+    /// Meter, rating and ranks for anyone (a lobby seat, the Table card).
+    func progress(for me: PlayerRef) -> PlayerProgress
+}
+
+extension StatsSnapshot {
+    func progress(for ref: PlayerRef) -> PlayerProgress {
+        let ref = options.canonical(ref)
+        let record = record(ref)
+        let games = record?.gamesPlayed ?? 0
+        let ranked = record?.isRanked ?? false
+        return PlayerProgress(
+            player: ref, gamesPlayed: games, isRanked: ranked,
+            meter: ranked ? nil : games,
+            rating: ranked ? record?.displayRating : nil,
+            playedWithRank: ranked ? ratingRank(of: ref, scope: .playedWith, viewer: ref) : nil,
+            globalRank: ranked ? ratingRank(of: ref, scope: .global, viewer: ref) : nil,
+            nextBadge: record.flatMap { BadgeEvaluator.progress($0).first }
+        )
+    }
+
+    /// The Play tab's Wrapped slot. In December: this year's card (or its progress line). From
+    /// January until the next one: last year's card if there was one.
+    func wrappedSlot(for ref: PlayerRef, voice: Voice, now: Date = .now) -> WrappedSlot? {
+        let year = calendar.component(.year, from: now)
+        let month = calendar.component(.month, from: now)
+        if month == 12 {
+            switch wrappedAvailability(for: ref, year: year, now: now) {
+            case .available:
+                return WrappedSlot(year: year, state: .ready, text: voice.line("WR-01", ["year": String(year)]))
+            case let .needsGames(played, needed):
+                let text = voice.line("WR-23", ["left": needed - played]) + " (\(played) of \(needed))"
+                return WrappedSlot(year: year, state: .needsGames(played: played, needed: needed), text: text)
+            case .arrives:
+                return nil
+            }
+        }
+        guard wrappedAvailability(for: ref, year: year - 1, now: now) == .available else { return nil }
+        return WrappedSlot(year: year - 1, state: .ready, text: voice.line("WR-01", ["year": String(year - 1)]))
+    }
 }
 
 extension StatsSnapshot {
