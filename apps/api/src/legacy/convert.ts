@@ -93,6 +93,16 @@ function legacyHands(scores: Record<string, number>, order: readonly string[], k
   return hands
 }
 
+/**
+ * An imported game's table word: "Web · Oct 25" (the day it started, Eastern time, where the
+ * group plays), so a history of web games doesn't read as one word over and over.
+ */
+export function legacyTitle(startMs: number): string {
+  if (!startMs) return 'Web game'
+  const day = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }).format(new Date(startMs))
+  return `Web · ${day}`
+}
+
 export function convertLegacy(
   data: LegacyExport,
   claimTokenHashFor: (legacyPlayerId: string) => string,
@@ -172,7 +182,7 @@ export function convertLegacy(
       if (player.emoji) seat.avatar = { kind: 'emoji', emoji: player.emoji, colorIndex: parseInt(guest.guestId.slice(0, 2), 16) % EMOJI_COLOR_COUNT }
       return seat
     })
-    add('GameCreated', { config: { plannedRounds: Math.min(Math.max(rounds.length, 1), 50), scoringMode: 'scorekeeper', tableWord: 'Legacy', imported: true }, host: order[0] }, startMs)
+    add('GameCreated', { config: { plannedRounds: Math.min(Math.max(rounds.length, 1), 50), scoringMode: 'scorekeeper', tableWord: legacyTitle(startMs), imported: true }, host: order[0] }, startMs)
     for (const seat of seats) add('PlayerSeated', { seat })
     add('GameStarted', { seatOrder: order, firstDealer: order[0] })
     for (const [index, round] of rounds.entries()) add('RoundRecorded', { round }, timestamps[index])

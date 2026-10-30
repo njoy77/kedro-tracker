@@ -174,6 +174,18 @@ nonisolated struct PlayerSearchResult: Codable, Sendable {
     var players: [PlayerSummary]
 }
 
+/// `GET /v1/players/me/played-with` response: everyone the account shared a counted game with,
+/// guest history they've since claimed included.
+nonisolated struct PlayedWithResult: Codable, Sendable {
+    nonisolated struct Row: Codable, Sendable {
+        var player: PlayerSummary
+        var gamesTogether: Int
+        var lastPlayedAt: Date?
+    }
+
+    var players: [Row]
+}
+
 /// `GET /v1/players` response: one page of every player A–Z.
 nonisolated struct PlayerDirectoryResult: Codable, Sendable {
     var players: [PlayerSummary]

@@ -83,6 +83,21 @@ struct GameEndSummaryTests {
         #expect(summary.highlights.contains(.knocks(landed: 4, tied: 2, failed: 2)))
     }
 
+    @Test("A late joiner who never played isn't last; an inherent knock gets its own highlight")
+    func lateJoinerAndWentOut() {
+        var game = TestGame()
+        game.setUp()
+        game.add(.roundRecorded(.init(round: Round(number: 1, hands: game.round(1, [0, 3, -1], knocker: 0).hands, knocker: game.seat(0), isInherent: true))))
+        let latecomer = Seat(player: .guest(GuestID()), displayName: "Late", order: 9)
+        game.add(.playerSeated(.init(seat: latecomer)))
+        game.add(.gameFinished(.init(reason: .endedEarly, finalRounds: game.state.rounds.map(\.round))))
+        let summary = GameEndSummary(game.state)
+        let last = summary.lastPlaceLine?.render(Voice(level: .clean), gameID: game.gameID, round: 1)
+        #expect(last == "P1: 3. Dead last.")
+        #expect(summary.highlights.contains(.wentOut(count: 1, landed: 0)))
+        #expect(!summary.highlights.contains { if case .knocks = $0 { true } else { false } })
+    }
+
     @Test("Run It Back: same seats clockwise from the host, first deal rotates one seat")
     func rematch() throws {
         let plan = try #require(Rematch(from: state, host: PreviewData.anaSeat))

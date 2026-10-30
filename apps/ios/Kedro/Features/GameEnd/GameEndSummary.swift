@@ -30,6 +30,8 @@ nonisolated struct GameEndSummary: Sendable {
     enum Highlight: Hashable, Sendable {
         case bestHand(seat: SeatID, hand: Int, round: Int)
         case knocks(landed: Int, tied: Int, failed: Int)
+        /// Inherent knocks (went out with all four cards), apart from knocks: how many, how many −10.
+        case wentOut(count: Int, landed: Int)
         case comeback(seat: SeatID, worst: Int, afterRound: Int, final: Int)
         case decided(round: Int, seat: SeatID)
     }
@@ -88,14 +90,16 @@ nonisolated struct GameEndSummary: Sendable {
             }
         }
 
-        // Last place and lost by one
-        if let last = standings.last, standings.count >= 2, !last.isLeader {
+        // Last place and lost by one, among people who played a round (a late joiner who sat
+        // down after the last round never played, so isn't last at anything).
+        let played = standings.filter { standing in state.rounds.contains { $0.round.hands[standing.id] != nil } }
+        if let last = played.last, played.count >= 2, !last.isLeader {
             let id = last.total == 99 ? "W-11" : "W-10"
             lastPlaceLine = VoicePick([id], key: "lastPlace", ["name": last.seat.displayName, "score": last.total])
         } else {
             lastPlaceLine = nil
         }
-        if winners.count == 1, let best = standings.first, let second = standings.dropFirst().first,
+        if winners.count == 1, let best = played.first, let second = played.dropFirst().first,
            second.total - best.total == 1 {
             lostByOne = second.id
         } else {
@@ -166,7 +170,13 @@ nonisolated struct GameEndSummary: Sendable {
             $0.tied += $1.tied
             $0.failed += $1.failed
         }
-        result.append(.knocks(landed: totals.landed, tied: totals.tied, failed: totals.failed))
+        let wentOut = state.rounds.filter(\.round.isInherentKnock)
+        if !totals.isEmpty || wentOut.isEmpty {
+            result.append(.knocks(landed: totals.landed, tied: totals.tied, failed: totals.failed))
+        }
+        if !wentOut.isEmpty {
+            result.append(.wentOut(count: wentOut.count, landed: wentOut.count { $0.outcome == .landed }))
+        }
 
         // Biggest comeback: the largest climb from a worst position to the final one.
         if n >= 2 {
@@ -206,6 +216,8 @@ nonisolated struct GameEndSummary: Sendable {
             TableText.text("label.highlight.bestHand", ["name": name(seat), "hand": hand, "r": round])
         case let .knocks(landed, tied, failed):
             TableText.text("label.highlight.knocks", ["landed": landed, "tied": tied, "failed": failed])
+        case let .wentOut(count, landed):
+            TableText.text("label.highlight.wentOut", ["n": count, "landed": landed])
         case let .comeback(seat, worst, round, final):
             TableText.text("label.highlight.comeback", [
                 "name": name(seat), "pos": Rank(position: worst, isShared: false).ordinal, "r": round,

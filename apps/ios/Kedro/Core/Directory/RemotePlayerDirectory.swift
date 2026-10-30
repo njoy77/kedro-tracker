@@ -6,9 +6,10 @@ import OSLog
 /// - **Search Kedro** asks `GET /v1/players/search?q=` (display name or @handle, blocked players
 ///   excluded by the server) and caches every result. Offline or signed out, it answers from the
 ///   cache plus the players on this phone's games, so the lobby still finds the regulars.
-/// - **Played With** and **guest suggestions** are derived from this phone's finished games (the
-///   same truth stats use), with each player's summary refreshed from the cache when the server
-///   has told us something newer (avatar, title, handle).
+/// - **Played With** asks `GET /v1/players/me/played-with`, which knows who claimed which guest
+///   history (this phone's games still show those people as the guests they were). Offline, it's
+///   derived from this phone's finished games, refreshed from the cache.
+/// - **Guest suggestions** come from this phone's finished games.
 /// - **Everyone** pages through `GET /v1/players` (A–Z, blocked players excluded) and caches
 ///   it; offline, it falls back to everyone this phone has played with.
 /// - **player(_:)** answers from the cache first, then local games.
@@ -52,7 +53,16 @@ final class RemotePlayerDirectory: PlayerDirectory {
     }
 
     func playedWith() async throws -> [PlayedWith] {
-        try await local.playedWith().map { entry in
+        do {
+            let rows = try await api.playedWith()
+            cache.store(rows.map(\.player))
+            return rows
+                .map { PlayedWith(player: $0.player, gamesTogether: $0.gamesTogether, lastPlayed: $0.lastPlayedAt) }
+                .sorted { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) }
+        } catch let error as APIError {
+            log.info("Played With fell back to this phone: \(String(describing: error), privacy: .public)")
+        }
+        return try await local.playedWith().map { entry in
             var entry = entry
             if let fresher = cache.player(entry.player.id) { entry.player = fresher }
             return entry
@@ -86,7 +96,7 @@ final class RemotePlayerDirectory: PlayerDirectory {
     /// Sit, nearby alerts).
     func hasPlayedWith(_ person: PlayerRef) async -> Bool {
         guard case .player(let id) = person else { return false }
-        return ((try? await local.playedWith()) ?? []).contains { $0.player.id == id }
+        return ((try? await playedWith()) ?? []).contains { $0.player.id == id }
     }
 
     private func offlineSearch(_ needle: String) async throws -> [PlayerSummary] {

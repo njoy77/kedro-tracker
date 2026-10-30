@@ -57,6 +57,7 @@ describe('legacy web history', () => {
     expect(result.skipped.map((row) => row.reason).sort()).toEqual(['abandoned', 'noRounds'])
     const folded = fold(result.games[0])
     expect(folded.status).toBe('finished')
+    expect(folded.config.tableWord).toBe('Web · Nov 14') // 1_700_000_000_000 is Nov 14, 2023 in New York
     // Totals match the legacy totals: 9, 12, 24.
     const totals = gameTotals(folded)
     expect(folded.seats.map((seat) => totals[seatIdOf(seat.player)])).toEqual([9, 12, 24])

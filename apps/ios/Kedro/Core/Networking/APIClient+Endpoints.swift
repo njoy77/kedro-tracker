@@ -53,6 +53,13 @@ extension APIClient {
         return result.players
     }
 
+    /// `GET /v1/players/me/played-with`: everyone the account has played with, by account (so a
+    /// guest who claimed their history counts as the person, not the old guest seat).
+    func playedWith() async throws -> [PlayedWithResult.Row] {
+        let result: PlayedWithResult = try await send("GET", "v1/players/me/played-with")
+        return result.players
+    }
+
     /// `GET /v1/players?cursor=`: every player A–Z, a page at a time; blocked players excluded.
     func listPlayers(after cursor: String?) async throws -> PlayerDirectoryResult {
         let query = cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? []

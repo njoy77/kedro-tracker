@@ -290,7 +290,7 @@ struct GameFoldTests {
         #expect(live.state.rounds.isEmpty)
 
         var imported = TestGame()
-        imported.add(.gameCreated(.init(config: GameConfig(plannedRounds: 3, tableWord: "Legacy", imported: true), host: imported.seat(0))))
+        imported.add(.gameCreated(.init(config: GameConfig(plannedRounds: 3, tableWord: "Web · Oct 25", imported: true), host: imported.seat(0))))
         for seat in imported.seats { imported.add(.playerSeated(.init(seat: seat))) }
         imported.add(.gameStarted(.init(seatOrder: imported.seats.map(\.id), firstDealer: imported.seat(0))))
         // The web marked a tie though the knocker was lowest alone: the saved scores stand.

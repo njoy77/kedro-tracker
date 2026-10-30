@@ -102,6 +102,7 @@ nonisolated enum TableText {
         .literal("label.badgesEarned", "Game end", "Badges earned"),
         .literal("label.highlight.bestHand", "Highlight", "Best hand: {name}, {hand} in Round {r}."),
         .literal("label.highlight.knocks", "Highlight", "Knocks: {landed} landed · {tied} tied · {failed} failed."),
+        .literal("label.highlight.wentOut", "Highlight", "Went out with all four cards: {n} · {landed} at −10."),
         .literal("label.highlight.comeback", "Highlight", "Biggest comeback: {name}, {pos} after Round {r}, finished {final}."),
         .literal("label.highlight.decided", "Highlight", "Round {r} decided it: {name} took the lead for good."),
         .literal("label.ratingChange", "Game end row", "rating {delta} → {rating}"),

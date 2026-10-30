@@ -129,6 +129,21 @@ struct ServicesTests {
         #expect(try await directory.search("  ").isEmpty)
     }
 
+    @Test("Played With asks the server, which knows who claimed which guest history")
+    func directoryPlayedWithServer() async throws {
+        let chrissy = PlayerSummary(id: PlayerID(), displayName: "Chrissy", handle: Handle(constant: "chrissy"), avatar: .curated(.spade))
+        let http = MockHTTP { request in
+            #expect(request.path == "/v1/players/me/played-with")
+            return (200, MockHTTP.json(PlayedWithResult(players: [.init(player: chrissy, gamesTogether: 13, lastPlayedAt: nil)])))
+        }
+        let local = LocalPlayerDirectory(store: InMemoryGameStore()) { nil }
+        let directory = RemotePlayerDirectory(api: .mock(http), local: local, cache: PlayerCache(url: nil))
+        let rows = try await directory.playedWith()
+        #expect(rows.map(\.player) == [chrissy])
+        #expect(rows.first?.gamesTogether == 13)
+        #expect(await directory.hasPlayedWith(chrissy.ref))
+    }
+
     @Test("Played With comes from finished games on this phone")
     func directoryPlayedWith() async throws {
         let store = InMemoryGameStore(operations: PreviewData.historyOperations)
