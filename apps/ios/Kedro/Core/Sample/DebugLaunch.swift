@@ -25,7 +25,19 @@ enum DebugLaunch {
         return Screen(rawValue: arguments[index + 1]) ?? .play
     }
 
+    /// `-KedroAccount <handle>`: signs in as that account on the local test server
+    /// (`bun run --filter '@kedro/api' dev:seed`) and opens `-KedroScreen`, without demo data.
+    static var account: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-KedroAccount"), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
     static func run(app: AppModel, auth: AuthStore) async {
+        if let handle = account {
+            await signIn(handle: handle, app: app, auth: auth)
+            return
+        }
         guard isRequested else { return }
         // Let the saved session restore first, or it would sign the test user back out.
         for _ in 0..<50 where auth.state == .loading {
@@ -54,6 +66,32 @@ enum DebugLaunch {
                 app.navigate(to: .settings, in: .play)
             case .play:
                 app.selectedTab = .play
+            }
+        } catch {
+            app.toasts.show(error.localizedDescription)
+        }
+    }
+
+    private static func signIn(handle: String, app: AppModel, auth: AuthStore) async {
+        for _ in 0..<50 where auth.state == .loading {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: AppConfig.apiBaseURL.appending(path: "dev/accounts"))
+            let accounts = try JSONDecoder().decode([String: [DevAccount]].self, from: data)["accounts"] ?? []
+            guard let account = accounts.first(where: { $0.handle == handle }) else {
+                app.toasts.show("No test account @\(handle)")
+                return
+            }
+            DevAccountSession.save(id: account.id, name: account.displayName)
+            try await DevAccountPicker.adoptProfile(app: app)
+            app.preferences.hasCompletedOnboarding = true
+            auth.signInAsDevAccount(id: account.id, name: account.displayName)
+            switch screen {
+            case .board: app.selectedTab = .board
+            case .profile: app.selectedTab = .you
+            case .settings: app.navigate(to: .settings, in: .play)
+            case .play, .table, .gameEnd: app.selectedTab = .play
             }
         } catch {
             app.toasts.show(error.localizedDescription)

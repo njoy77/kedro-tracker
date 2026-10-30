@@ -11,6 +11,27 @@ bun run --filter '@kedro/api' typecheck
 KEDRO_DEV_AUTH=1 bun run --filter '@kedro/api' dev   # no Supabase: memory store, "Bearer dev:<uuid>"
 ```
 
+## Testing against real data (local)
+
+```sh
+bun run env:pull                                  # once: writes apps/api/.env.local
+bun run --filter '@kedro/api' dev:seed            # :8787, seeded from the web app
+```
+
+`dev:seed` runs the in-memory store with dev auth and, at startup, reads the web app's
+`kedro_kv` rows **read-only** (anon key), imports them with the legacy importer, and makes every
+legacy username a signed-up test account that has claimed its history (`src/dev/seed.ts`).
+Nothing is written to Supabase; a restart re-reads the latest web data. `GET /dev/accounts` lists
+the accounts. In a Debug build of the iOS app, **Sign In as a Test Account** (Welcome screen or
+Settings → Account) picks one, or launch with `-KedroAccount <handle>`:
+
+```sh
+xcrun simctl launch booted com.njoy77.kedro -KedroAccount njoy -KedroScreen board
+```
+
+Web games the importer can't reproduce exactly (rounds without a knock, or a −10 on someone who
+didn't knock) are skipped; the startup log says how many.
+
 ## Configuration
 
 `bun run env:pull` writes `apps/api/.env.local` from Vercel (see `.env.example` and `src/config.ts`):

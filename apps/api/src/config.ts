@@ -11,6 +11,8 @@
 //                              attestations (random per process when unset; set it in production)
 //   KEDRO_PUBLIC_URL           optional; the API's public origin, used in profile photo URLs
 //   KEDRO_DEV_AUTH=1           local only, no Supabase: in-memory store, tokens are "dev:<uuid>"
+//   KEDRO_DEV_SEED=legacy      with KEDRO_DEV_AUTH: load the web app's players and games (read-only)
+//                              as signed-up test accounts (src/dev/seed.ts; `bun run dev:seed`)
 //
 // APNs (Live Activity broadcast pushes) is not configured yet: see push/liveActivity.ts.
 
@@ -18,6 +20,10 @@ export type ApiConfig = {
   port: number
   supabase: { url: string; anonKey: string; serviceRoleKey: string; jwtSecret?: string } | null
   devAuth: boolean
+  /** `legacy`: seed the in-memory store from the web app's data. */
+  devSeed?: 'legacy'
+  /** Where the web app's data is read from for `devSeed` (the anon key only reads). */
+  legacySource?: { url: string; anonKey: string }
   clipSecret?: string
   linkSigningKey?: string
   publicUrl?: string
@@ -41,6 +47,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         ? { url: url.replace(/\/+$/, ''), anonKey, serviceRoleKey, jwtSecret: env.SUPABASE_JWT_SECRET || undefined }
         : null,
     devAuth: env.KEDRO_DEV_AUTH === '1',
+    devSeed: env.KEDRO_DEV_SEED === 'legacy' ? 'legacy' : undefined,
+    legacySource: url && anonKey ? { url, anonKey } : undefined,
     clipSecret: env.KEDRO_CLIP_SECRET || undefined,
     linkSigningKey: env.KEDRO_LINK_SIGNING_KEY || undefined,
     publicUrl: env.KEDRO_PUBLIC_URL || undefined,

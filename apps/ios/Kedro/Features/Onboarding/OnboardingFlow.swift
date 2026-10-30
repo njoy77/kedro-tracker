@@ -125,6 +125,9 @@ struct WelcomeStep: View {
     @Environment(AuthStore.self) private var auth
     @State private var isLearning = false
     @State private var isClaiming = false
+    #if DEBUG
+    @State private var isPickingTestAccount = false
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -161,6 +164,10 @@ struct WelcomeStep: View {
                 .font(.subheadline)
                 .foregroundStyle(.silver)
                 .frame(minHeight: 44)
+                Button("Sign In as a Test Account") { isPickingTestAccount = true }
+                    .font(.subheadline)
+                    .foregroundStyle(.silver)
+                    .frame(minHeight: 44)
                 #endif
 
                 Button(app.voice.line("O-04")) { isLearning = true }
@@ -194,6 +201,9 @@ struct WelcomeStep: View {
         .sheet(isPresented: $isClaiming) {
             ClaimCodeSheet()
         }
+        #if DEBUG
+        .sheet(isPresented: $isPickingTestAccount) { DevAccountPicker() }
+        #endif
     }
 }
 

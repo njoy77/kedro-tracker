@@ -54,6 +54,12 @@ final class AuthStore {
     /// Mirrors Supabase auth events into `state`. Call once from the root view's `.task`.
     func observeAuthChanges() async {
         for await (_, session) in client.auth.authStateChanges {
+            #if DEBUG
+            if session == nil, let account = DevAccountSession.saved {
+                signInAsDevAccount(id: account.id, name: account.name)
+                continue
+            }
+            #endif
             state = session.map { .signedIn($0.user) } ?? .signedOut
         }
     }
@@ -104,6 +110,11 @@ final class AuthStore {
 
     func signOut() async throws {
         #if DEBUG
+        if DevAccountSession.saved != nil {
+            DevAccountSession.clear()
+            state = .signedOut
+            return
+        }
         if case .signedIn(let user) = state, user.id == Self.testUserID {
             state = .signedOut
             return
@@ -129,6 +140,22 @@ final class AuthStore {
             userMetadata: ["full_name": .string("Noah"), "given_name": .string("Noah")],
             aud: "authenticated",
             email: "test@kedro.dev",
+            createdAt: now,
+            updatedAt: now
+        ))
+    }
+
+    /// Signs in as an account on the local test server (`DevAccountPicker`). The API calls carry
+    /// `dev:<id>`, and the choice survives relaunches until Sign Out. Debug builds only.
+    func signInAsDevAccount(id: UUID, name: String) {
+        DevAccountSession.save(id: id, name: name)
+        let now = Date.now
+        state = .signedIn(User(
+            id: id,
+            appMetadata: [:],
+            userMetadata: ["full_name": .string(name), "given_name": .string(name)],
+            aud: "authenticated",
+            email: nil,
             createdAt: now,
             updatedAt: now
         ))

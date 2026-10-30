@@ -7,8 +7,9 @@ import OSLog
 /// server so every phone shows the same thing for the same person.
 ///
 /// The phone's own `StatsSnapshot` only sees games stored on this phone, which is right for
-/// Played With, rivalries and your own detail screens, but not for "everyone" or for someone you
-/// barely know. Screens prefer these values when they're loaded and fall back to the local ones
+/// rivalries and your own detail screens, but not for "everyone", for someone you barely know,
+/// or for the Played With board: only the server knows which of the guests at your old tables
+/// have since claimed their history onto an account. Screens prefer these values when they're loaded and fall back to the local ones
 /// offline or without an account.
 @Observable
 final class ServerStats {
@@ -16,6 +17,8 @@ final class ServerStats {
 
     /// Global boards by sort, as last fetched.
     private(set) var global: [LeaderboardSort: Leaderboard] = [:]
+    /// Played With boards by sort, as last fetched (for the signed-in viewer).
+    private(set) var playedWith: [LeaderboardSort: Leaderboard] = [:]
     /// Profiles by player, as last fetched.
     private(set) var profiles: [PlayerID: PlayerProfileResponse] = [:]
 
@@ -25,16 +28,28 @@ final class ServerStats {
     /// How long a fetched value is fresh enough not to ask again.
     static let freshFor: TimeInterval = 60
 
-    /// Fetches the Global board for a sort (no-op without an account, or while fresh).
-    func loadGlobal(api: APIClient, sort: LeaderboardSort, viewer: PlayerRef?, force: Bool = false) async {
-        let key = "global.\(sort.rawValue)"
+    /// Fetches a board for a scope and sort (no-op without an account, or while fresh).
+    func load(_ scope: LeaderboardScope, api: APIClient, sort: LeaderboardSort, viewer: PlayerRef?, force: Bool = false) async {
+        let key = "\(scope.rawValue).\(sort.rawValue)"
         guard force || isStale(key), await api.hasAccount() else { return }
         do {
-            let response = try await api.leaderboard(scope: "global", sort: sort.rawValue)
-            global[sort] = Self.leaderboard(from: response, sort: sort, viewer: viewer)
+            let response = try await api.leaderboard(scope: scope.rawValue, sort: sort.rawValue)
+            let board = Self.leaderboard(from: response, scope: scope, sort: sort, viewer: viewer)
+            switch scope {
+            case .global: global[sort] = board
+            case .playedWith: playedWith[sort] = board
+            }
             fetchedAt[key] = .now
         } catch {
-            log.info("Global board not loaded: \(String(describing: error), privacy: .public)")
+            log.info("\(scope.rawValue) board not loaded: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// The fetched board for a scope and sort, if any.
+    func board(_ scope: LeaderboardScope, sort: LeaderboardSort) -> Leaderboard? {
+        switch scope {
+        case .global: global[sort]
+        case .playedWith: playedWith[sort]
         }
     }
 
@@ -62,7 +77,7 @@ final class ServerStats {
     // MARK: Mapping
 
     /// The server board as the same `Leaderboard` the Board renders for local scopes.
-    nonisolated static func leaderboard(from response: LeaderboardResponse, sort: LeaderboardSort, viewer: PlayerRef?) -> Leaderboard {
+    nonisolated static func leaderboard(from response: LeaderboardResponse, scope: LeaderboardScope = .global, sort: LeaderboardSort, viewer: PlayerRef?) -> Leaderboard {
         let rankCounts = Dictionary(response.rows.compactMap(\.rank).map { ($0, 1) }, uniquingKeysWith: +)
         func identity(_ player: PlayerSummary) -> StatsParticipant {
             StatsParticipant(ref: player.ref, seatedAs: player.ref, name: player.displayName, avatar: player.avatar, handle: player.handle, titleID: player.titleID)
@@ -86,7 +101,7 @@ final class ServerStats {
             UnrankedRow(ref: row.player.ref, identity: identity(row.player), gamesPlayed: row.gamesPlayed, isViewer: row.isMe || row.player.ref == viewer)
         }
         return Leaderboard(
-            scope: .global, sort: sort,
+            scope: scope, sort: sort,
             ranked: rows.filter { $0.rank != nil },
             belowMinimum: rows.filter { $0.rank == nil },
             notYetRanked: unranked,

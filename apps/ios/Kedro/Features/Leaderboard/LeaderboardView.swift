@@ -17,10 +17,11 @@ struct LeaderboardView: View {
     private var viewer: PlayerRef? { app.profile?.identity }
     private var voice: Voice { app.voice }
 
-    /// Global is the server's board over every finished game (one source of truth); this phone's
-    /// own history stands in only while it's offline or has no account.
+    /// Both boards are the server's (one source of truth, and the only place that knows which
+    /// guests have claimed their history onto accounts); this phone's own history stands in only
+    /// while it's offline or has no account.
     private func board(_ snapshot: StatsSnapshot) -> Leaderboard {
-        if effectiveScope == .global, let remote = server.global[sort] { return remote }
+        if let remote = server.board(effectiveScope, sort: sort) { return remote }
         return snapshot.leaderboard(scope: effectiveScope, sort: sort, viewer: viewer)
     }
 
@@ -55,11 +56,10 @@ struct LeaderboardView: View {
         .animation(.smooth, value: scope)
         .task { await stats.follow(app.store, viewer: viewer) }
         .task(id: GlobalKey(scope: effectiveScope, sort: sort)) {
-            guard effectiveScope == .global else { return }
-            await server.loadGlobal(api: app.api, sort: sort, viewer: viewer)
+            await server.load(effectiveScope, api: app.api, sort: sort, viewer: viewer)
         }
         .refreshable {
-            if effectiveScope == .global { await server.loadGlobal(api: app.api, sort: sort, viewer: viewer, force: true) }
+            await server.load(effectiveScope, api: app.api, sort: sort, viewer: viewer, force: true)
         }
         .onChange(of: scope) { showsWholeGlobalBoard = false }
     }

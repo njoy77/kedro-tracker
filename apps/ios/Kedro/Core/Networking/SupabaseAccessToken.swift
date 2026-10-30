@@ -25,9 +25,18 @@ nonisolated enum SupabaseAccessToken {
     /// nil when signed out or nothing is registered yet. The DEBUG test user has no Supabase
     /// session, so it gets nil and stays local.
     static let current: @Sendable () async -> String? = {
+        #if DEBUG
+        if let token = devToken.withLock({ $0 }) { return token }
+        #endif
         guard let client = registered.withLock({ $0 }) else { return nil }
         return try? await client.auth.session.accessToken
     }
+
+    #if DEBUG
+    /// A local test server's account (`dev:<uuid>`, apps/api `bun run dev:seed`), used instead of
+    /// a Supabase session while set. Debug builds only; see `AuthStore.signInAsDevAccount`.
+    static let devToken = Mutex<String?>(nil)
+    #endif
 
     /// A token provider bound to one client.
     static func provider(for client: SupabaseClient) -> @Sendable () async -> String? {

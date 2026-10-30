@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
+    "dev:seed": "KEDRO_DEV_AUTH=1 KEDRO_DEV_SEED=legacy bun src/index.ts",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"

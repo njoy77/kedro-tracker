@@ -12,6 +12,9 @@ struct SettingsView: View {
     @Environment(\.soundPreview) private var soundPreview
     @Environment(NetworkServices.self) private var network: NetworkServices?
     @State private var isClaiming = false
+    #if DEBUG
+    @State private var isPickingTestAccount = false
+    #endif
     @State private var isConfirmingSignOut = false
 
     var body: some View {
@@ -96,6 +99,9 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $isClaiming) { ClaimCodeSheet() }
+        #if DEBUG
+        .sheet(isPresented: $isPickingTestAccount) { DevAccountPicker() }
+        #endif
         .confirmationDialog("Sign out of Kedro?", isPresented: $isConfirmingSignOut, titleVisibility: .visible) {
             Button("Sign Out", role: .destructive) {
                 Task { try? await auth.signOut() }
@@ -143,6 +149,7 @@ struct SettingsView: View {
                     .listRowInsets(EdgeInsets())
                 #if DEBUG
                 Button("Continue as Test User") { auth.signInAsTestUser() }
+                Button("Sign In as a Test Account") { isPickingTestAccount = true }
                 #endif
             }
             Button("Got a claim code?") { isClaiming = true }
