@@ -110,5 +110,49 @@ nonisolated enum TableText {
         // Display mode
         .literal("label.holdToRecord", "Display mode", "Hold to record a round"),
         .literal("label.lastTurns", "Display mode", "{name} knocked · last turns"),
+        .literal("label.ofTotal", "Display mode", "of {total}"),
+        .literal("label.displayUnlocked", "Display mode", "Unlocked for 10 seconds"),
+
+        // Attention (toasts)
+        .literal("label.liveKnock", "Toast eyebrow", "LIVE KNOCK"),
+        .literal("label.tauntEyebrow", "Toast eyebrow", "{from} → {to}"),
+        .literal("label.tauntEyebrowCustom", "Toast eyebrow", "{from} → {to} · custom"),
+        .literal("label.theTable", "Taunt target", "the table"),
+        .literal("label.tauntAnnouncement", "VoiceOver", "{from} to {to}: {message}"),
+
+        // Live knock sheet
+        .literal("label.liveKnockHint", "Live knock", "Everyone gets a heads-up. It pre-fills the Round sheet."),
+        .literal("button.clearKnock", "Live knock", "Clear the Knock"),
+
+        // Menus and confirmations
+        .literal("button.invite", "Menu", "Invite"),
+        .literal("label.extendBy", "Extend", "Now playing to {total}."),
+        .literal("label.handOffHint", "Hand off", "They record the rounds from their phone."),
+        .literal("label.dealerHint", "Dealer picker", "The deal passes left from here. Everyone sees the change."),
+        .literal("label.finishGate", "Bottom bar", "Lock in the final scores"),
+        .literal("label.waitingOnFinish", "Bottom bar caption", "Last round's in · waiting on Finish Game"),
+        .literal("label.syncPill", "Sync pill", "Sync status"),
+        .literal("label.lobbyHint", "Lobby", "The table opens when the host taps Deal."),
+
+        // History
+        .literal("label.historyFooterLocked", "History", "Final. Locked."),
+        .literal("label.conflictTitle", "History", "Round {r}, the other version"),
+        .literal("label.conflictBy", "History", "Saved by {name} at {time}"),
+        .literal("label.roundRow", "History list", "Round {r}"),
+        .literal("label.edit", "History", "Fix"),
+        .literal("label.whatChangesLine", "Correction", "{name}: R{r} {old} → {new} · total {oldTotal} → {newTotal}"),
+        .literal("label.whatChangesTotalOnly", "Correction", "{name}: total {oldTotal} → {newTotal}"),
+        .literal("label.cellHint", "History", "Double-tap to fix this score"),
+        .literal("label.rotorRounds", "History rotor", "Rounds"),
+        .literal("label.rotorEdited", "History rotor", "Edited"),
+        .literal("label.rotorKnocks", "History rotor", "Knocks"),
+        .literal("label.knockerCell", "History", "knocked, {outcome}"),
+
+        // Game end
+        .literal("label.knockRecordNone", "Game end row", "no knocks"),
+        .literal("label.shareTitle", "Share", "{word}: {name} wins"),
+        .literal("label.shareFooter", "Share", "Scored with Kedro"),
+        .literal("label.runItBackTitle", "Rematch", "Run It Back"),
+        .literal("label.badgeFor", "Game end", "{name} · {badge}"),
     ])
 }

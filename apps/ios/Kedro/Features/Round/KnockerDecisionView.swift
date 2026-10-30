@@ -138,7 +138,7 @@ private struct SelfReportAutoCommit: ViewModifier {
             guard case .ready(let knocker) = KnockerResolution.evaluate(state.selfReport, seats: state.seats.map(\.id), now: .now),
                   knocker == proposal.knocker, state.status.isLive
             else { return }
-            try? await session.resolveKnocker(knocker)
+            _ = try? await session.resolveKnocker(knocker)
         }
     }
 }

@@ -17,7 +17,11 @@ struct RoundSheet: View {
 
     var body: some View {
         if session.state.config.scoringMode == .selfReport {
-            ReportHandSheet(session: session)
+            if session.state.isAwaitingFinish {
+                SelfReportFinishGateSheet(session: session, onFixRound: onFixRound)
+            } else {
+                ReportHandSheet(session: session)
+            }
         } else {
             ScorekeeperRoundSheet(session: session, onFixRound: onFixRound)
         }
@@ -164,6 +168,33 @@ private struct ScorekeeperRoundSheet: View {
             },
             duration: .seconds(5)
         ))
+    }
+}
+
+/// Self-report mode lands on the finish gate when the last planned round saves itself.
+private struct SelfReportFinishGateSheet: View {
+    let session: GameSession
+    var onFixRound: (() -> Void)?
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            FinishGateView(session: session, onFixRound: {
+                dismiss()
+                onFixRound?()
+            }, onDone: { dismiss() })
+            .background(.surface)
+            .navigationTitle(TableText.text("label.round", ["r": session.state.rounds.count]))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(TableText.text("button.close")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
 

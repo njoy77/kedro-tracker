@@ -8,6 +8,8 @@ struct StandingsView: View {
     var mySeat: SeatID?
     /// Hides last-round deltas (self-report values before the shared reveal).
     var hidesDeltas = false
+    /// A seat left out of the list because it's pinned elsewhere (your row at AX2+, design §6.2).
+    var excluding: SeatID?
     var onDealerTap: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -16,8 +18,9 @@ struct StandingsView: View {
 
     var body: some View {
         let compact = state.seats.count >= Self.compactThreshold
+        let rows = state.standings.filter { $0.id != excluding }
         VStack(spacing: 0) {
-            ForEach(Array(state.standings.enumerated()), id: \.element.id) { index, standing in
+            ForEach(Array(rows.enumerated()), id: \.element.id) { index, standing in
                 if index > 0 { Divider().overlay(.rule) }
                 StandingRow(
                     standing: standing,
