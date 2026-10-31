@@ -847,6 +847,7 @@ function LoginScreen({ error, devAccounts, onGoogle, onDevAccount }) {
           </div>
         )}
       </div>
+      <a href="/privacy.html" style={{ color: C.creamDim, fontSize: 12, textAlign: 'center', marginTop: 18 }}>Privacy Policy</a>
     </div>
   );
 }
