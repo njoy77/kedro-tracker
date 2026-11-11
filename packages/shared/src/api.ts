@@ -348,6 +348,12 @@ export type RecordsResponse = {
 
 export type HealthResponse = { status: 'ok'; version: string }
 
+/** GET /health/push (503 for `error`): whether the API can reach APNs, checked at most every 5 minutes. */
+export type PushHealthResponse =
+  | { apns: 'unconfigured' }
+  | { apns: 'ok'; environment: 'production' | 'sandbox'; channels: number; checkedAt: string }
+  | { apns: 'error'; environment: 'production' | 'sandbox'; error: string; checkedAt: string }
+
 /** ISO 8601 with whole seconds and a Z ("2026-10-24T21:00:00Z"), which Swift's `.iso8601` decodes. */
 export function isoSeconds(date: Date | number | string): string {
   return new Date(date).toISOString().replace(/\.\d{3}Z$/, 'Z')

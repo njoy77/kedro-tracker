@@ -70,3 +70,5 @@ xcodebuild -exportArchive -archivePath ~/Library/Developer/Xcode/Archives/Kedro.
 ```
 
 `Config/ExportOptions.plist` uploads straight to App Store Connect. Release builds talk to the production API (`Config/API.xcconfig`), and `ITSAppUsesNonExemptEncryption` is `NO` in the app's and the App Clip's Info.plist, so builds skip the export-compliance question. The app icon must have no alpha channel, or the upload is rejected.
+
+Pushes: `Config/Kedro.entitlements` says `aps-environment` `development`, and the archive keeps it (it is signed for development). The export re-signs with the App Store profile, which sets `production`, so TestFlight and App Store builds register production tokens, the environment the production API sends to. After a release, `https://api.playkedro.com/health/push` should answer `"apns":"ok"` (`apps/api/README.md`, Pushes). Debug builds on a phone need the phone registered with the team (connect it to Xcode once).
