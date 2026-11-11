@@ -7,6 +7,7 @@ A static site, no build step. It makes the links the iOS app creates (`KedroLink
 | `/.well-known/apple-app-site-association` | Universal links for `/t/*`, `/s/*`, `/claim` and `/claim/*` (opens Kedro), and the App Clip (`com.njoy77.kedro.Clip`). Served as `application/json` with no redirect, as Apple requires |
 | `/t/{gameID}?k={token}` | Table invite (QR / AirDrop). With the app or App Clip available, iOS never shows this page |
 | `/s/{gameID}?host=&word=` | "Saved you a seat": shows the table word for **Join with Code** |
+| `/privacy` | The privacy policy (App Store Connect, Google sign-in consent screen) |
 | `/claim/{code}`, `/claim?code=` | Guest claim code. A universal link: with Kedro installed it opens **Claim Your Games** with the code filled in (`ClaimLink`). This page, with Copy and how to redeem it, is the fallback without the app |
 
 - Run it locally with `bun run dev:site` (http://localhost:3001). `dev.ts` applies `vercel.json`'s rewrites and headers.
