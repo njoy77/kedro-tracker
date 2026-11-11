@@ -24,7 +24,9 @@ extension GuestClaimCodeStoring {
 }
 
 nonisolated enum GuestClaimCodes {
-    /// 24 random bytes, base64url: what `POST /v1/claims` accepts (16–256 characters).
+    /// 24 random bytes, base64url without padding: 32 URL-safe characters (letters, digits, `-`,
+    /// `_`), so they fit in a claim link's path. `POST /v1/claims` accepts 16–256 characters and
+    /// `PendingClaims.isValid` accepts these; keep the two in step if this changes.
     static func newCode() -> String {
         var bytes = [UInt8](repeating: 0, count: 24)
         let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)

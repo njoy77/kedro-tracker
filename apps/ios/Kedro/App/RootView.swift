@@ -6,6 +6,8 @@ struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(AuthStore.self) private var auth
     @State private var minimumSplashElapsed = false
+    /// A claim link the app was opened with; shown once the splash is gone.
+    @State private var claimLink: ClaimLink?
 
     private var showsSplash: Bool {
         !minimumSplashElapsed || auth.state == .loading
@@ -31,6 +33,14 @@ struct RootView: View {
         .animation(.smooth, value: showsSplash)
         .animation(.smooth, value: app.needsOnboarding(isSignedIn: isSignedIn))
         .toastHost(app.toasts)
+        // playkedro.com/claim/<code>: "Claim Your Games" with the code filled in, over onboarding
+        // or the tabs. Saving it claims now if signed in, else at sign-in (AccountSync).
+        .onOpenURL { url in
+            if let link = ClaimLink(url: url) { claimLink = link }
+        }
+        .sheet(item: Binding(get: { showsSplash ? nil : claimLink }, set: { claimLink = $0 })) { link in
+            ClaimCodeSheet(code: link.code)
+        }
         .task { await auth.observeAuthChanges() }
         .task { await app.start() }
         #if DEBUG

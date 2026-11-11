@@ -4,10 +4,10 @@ A static site, no build step. It makes the links the iOS app creates (`KedroLink
 
 | Path | What it is |
 |---|---|
-| `/.well-known/apple-app-site-association` | Universal links for `/t/*` and `/s/*` (opens Kedro), and the App Clip (`com.njoy77.kedro.Clip`). Served as `application/json` with no redirect, as Apple requires |
+| `/.well-known/apple-app-site-association` | Universal links for `/t/*`, `/s/*`, `/claim` and `/claim/*` (opens Kedro), and the App Clip (`com.njoy77.kedro.Clip`). Served as `application/json` with no redirect, as Apple requires |
 | `/t/{gameID}?k={token}` | Table invite (QR / AirDrop). With the app or App Clip available, iOS never shows this page |
 | `/s/{gameID}?host=&word=` | "Saved you a seat": shows the table word for **Join with Code** |
-| `/claim/{code}`, `/claim?code=` | Guest claim code with Copy and how to redeem it. Not a universal link: the app doesn't route `/claim` yet |
+| `/claim/{code}`, `/claim?code=` | Guest claim code. A universal link: with Kedro installed it opens **Claim Your Games** with the code filled in (`ClaimLink`). This page, with Copy and how to redeem it, is the fallback without the app |
 
 - Run it locally with `bun run dev:site` (http://localhost:3001). `dev.ts` applies `vercel.json`'s rewrites and headers.
 - Deployed by the Vercel project `kedro-site` (root directory `apps/site`, output `public`), which owns `playkedro.com`; `www.playkedro.com` redirects to it. The API is on `api.playkedro.com` (project `kedro-api`).

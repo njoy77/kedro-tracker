@@ -90,14 +90,69 @@ struct ClaimCodeTests {
         ("https://playkedro.com/claim/abc123def", "abc123def"),
         ("https://playkedro.com/claim?code=zz99zz", "zz99zz"),
         ("  abcdef  ", "abcdef"),
+        ("kedro-legacy-4f6c2a9e", "kedro-legacy-4f6c2a9e"),
+        ("Ab_cD-3fG_hIj-KlmN_0pQr-StUv_WxYz", "Ab_cD-3fG_hIj-KlmN_0pQr-StUv_WxYz"),
+        ("https://playkedro.com/claim/a_b-c_d-e_f", "a_b-c_d-e_f"),
+        ("https://playkedro.com/claim?code=__--__", "__--__"),
     ])
     func parses(input: String, expected: String) {
         #expect(PendingClaims.code(from: input) == expected)
     }
 
-    @Test("Junk isn't a code", arguments: ["", "abc", "has spaces in it", "emoji🦊code"])
+    @Test("Junk isn't a code", arguments: ["", "abc", "has spaces in it", "emoji🦊code", "ｆｕｌｌｗｉｄｔｈ", "café-code", "abc+def/ghi=", String(repeating: "a", count: 65)])
     func rejects(input: String) {
         #expect(PendingClaims.code(from: input) == nil)
+    }
+
+    @Test("Every code a host makes is one the claim sheet takes")
+    func generatedCodesParse() {
+        for _ in 0..<500 {
+            let code = GuestClaimCodes.newCode()
+            #expect(code.count == 32)
+            #expect(PendingClaims.code(from: code) == code, "\(code)")
+            let link = URL(string: "https://playkedro.com/claim/\(code)") ?? URL(filePath: "/")
+            #expect(ClaimLink(url: link)?.code == code, "\(code)")
+        }
+    }
+
+    @Test("Claim links open the claim sheet with their code", arguments: [
+        ("https://playkedro.com/claim/kedro-legacy-4f6c2a9e", "kedro-legacy-4f6c2a9e"),
+        ("https://playkedro.com/claim/Ab_cD-3fG_hIj", "Ab_cD-3fG_hIj"),
+        ("https://playkedro.com/claim/Ab_cD-3fG_hIj/", "Ab_cD-3fG_hIj"),
+        ("https://PlayKedro.com/claim?code=zz99zz", "zz99zz"),
+        ("https://www.playkedro.com/claim/abc123def", "abc123def"),
+        ("kedro://claim/abc_123_def", "abc_123_def"),
+    ])
+    func claimLinks(string: String, expected: String) throws {
+        let url = try #require(URL(string: string))
+        #expect(ClaimLink(url: url)?.code == expected)
+    }
+
+    @Test("A claim link without a valid code still opens the sheet, empty", arguments: [
+        "https://playkedro.com/claim",
+        "https://playkedro.com/claim?code=abc",
+        "https://playkedro.com/claim/has%20space",
+    ])
+    func claimLinksWithoutCode(string: String) throws {
+        let url = try #require(URL(string: string))
+        let link = try #require(ClaimLink(url: url))
+        #expect(link.code == nil)
+    }
+
+    @Test("Other links aren't claim links", arguments: [
+        "https://playkedro.com/t/4f6c0000-0000-4000-8000-000000000001?k=abc123",
+        "https://playkedro.com/s/4f6c0000-0000-4000-8000-000000000001",
+        "https://playkedro.com/",
+        "https://playkedro.com/claims/abc123def",
+        "https://playkedro.com/claim/abc123def/extra",
+        "https://evil.example/claim/abc123def",
+        "https://api.playkedro.com/claim/abc123def",
+        "kedro://table/4f6c0000-0000-4000-8000-000000000001",
+        "mailto:claim@playkedro.com",
+    ])
+    func notClaimLinks(string: String) throws {
+        let url = try #require(URL(string: string))
+        #expect(ClaimLink(url: url) == nil)
     }
 }
 
