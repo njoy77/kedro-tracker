@@ -4,6 +4,9 @@
  *  the pages say Kedro is in a private beta and to ask the host for an invite. */
 export const INSTALL_URL = null
 
+/** The web app, for people without an iPhone (and anyone at a computer). */
+export const WEB_APP_URL = 'https://kedro-tracker.vercel.app'
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The path segment after `/t/`, `/s/` or `/claim/`. */
