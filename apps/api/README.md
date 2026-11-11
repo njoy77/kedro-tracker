@@ -60,7 +60,25 @@ bun run env:push SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon>
 bun run env:push SUPABASE_SERVICE_ROLE_KEY --project api --sensitive   # value on stdin
 bun scripts/api-keys.ts                                               # KEDRO_CLIP_SECRET, KEDRO_LINK_SIGNING_KEY
 bun run env:push KEDRO_PUBLIC_URL=https://api.playkedro.com --project api
+bun run env:push APNS_KEY_ID=<key id> --project api                  # the APNs auth key (Apple Developer → Keys)
+bun run env:push APNS_PRIVATE_KEY --project api --sensitive          # the .p8 contents on stdin
 ```
+
+### Pushes
+
+With `APNS_KEY_ID` and `APNS_PRIVATE_KEY` set, the API sends pushes itself over HTTP/2
+(`src/push/apns.ts`, on `node:http2`: Bun's `fetch` has no HTTP/2): an ES256 provider token
+signed every 50 minutes and one session per APNs host, reused while the instance is warm. Team
+and bundle ID default to `2RXNMCM34K` / `com.njoy77.kedro`; `APNS_ENVIRONMENT` is `production`
+(TestFlight and App Store builds, the default on Vercel) or `sandbox` (Debug builds, the default
+locally). Without the key the senders are stubs that log what they would send.
+
+- **Live Activities** (`push/liveActivity.ts`): one APNs broadcast channel per game, created when a
+  phone first asks for it at Deal or the game first changes, kept in `games.live_activity_channel_id`,
+  and deleted after the `end` event. Needs **Broadcast** push enabled for the App ID's Push
+  Notifications capability.
+- **Alerts** (`push/notifications.ts`): N-01 "saved you a seat" to each of the player's device
+  tokens, sent after the response. A token APNs answers 410 for is deleted.
 
 On Vercel production (or with `NODE_ENV=production` elsewhere) the server refuses to start
 without Supabase, `KEDRO_CLIP_SECRET`, `KEDRO_LINK_SIGNING_KEY` and `KEDRO_PUBLIC_URL`, and every
@@ -96,7 +114,7 @@ Every `/v1` route needs `Authorization: Bearer <Supabase access token>`. Errors 
 | `POST /v1/receipts` | `{gameId, toPlayerId, receiptKey}` → `{ok}` | both must have been seated; one per rival per game |
 | `POST /v1/push/tokens` | `{token, kind, gameId?}` → `{ok}` | hex token; a per-game token needs a seat |
 | `GET /v1/leaderboard?scope=&sort=&limit=` | → `{scope, sort, rows, notYetRanked, notYetRankedCount, me?}` | |
-| `GET /v1/games/:gameId/live-activity` | → `{channelId}` | addition; the APNs broadcast channel (null until APNs is set up); seated players only |
+| `GET /v1/games/:gameId/live-activity` | → `{channelId}` | addition; the APNs broadcast channel, created on first use for a live game (null without APNs or after the game ends); seated players only |
 | `POST /v1/clip/sessions` | `{gameId, tableToken, deviceId}` → `{accessToken, expiresAt}` | addition, no Authorization; a 6-hour token for one game and one phone (`KEDRO_CLIP_SECRET`) |
 | `POST /v1/clip/claims` | `{gameId, seatId}` → `{claimToken}` | addition, clip token only; the guest seat linked to the clip's phone; 409 when it already has one |
 
@@ -104,8 +122,7 @@ An App Clip token works only on `POST /v1/ops`, `GET /v1/games/:gameId/ops` (its
 `POST /v1/clip/claims`. Its uploads may only link the phone to an existing guest seat and act for
 that seat (HandReported, ReactionAdded, a canned TauntSent); anything else is rejected `notAllowed`.
 Taunts are limited to 3 per sender per round (1 custom) for every caller. A player seated in the
-lobby without a phone gets N-01 "saved you a seat" (built by `push/notifications.ts`; not sent
-until APNs is configured).
+lobby without a phone gets N-01 "saved you a seat" (`push/notifications.ts`).
 
 ### Op ingest
 
@@ -122,5 +139,5 @@ until APNs is configured).
    projection and (when the set of finished games changed) every rating.
 7. Custom taunts are re-checked with the server filter; a blocked one gets a server-written
    `TauntRetracted` (`deviceId` `00000000-0000-4000-8000-00000000c0de`, `reason: "filtered"`).
-8. The Live Activity broadcaster is called with the new state (a stub until APNs is configured,
-   see `src/push/liveActivity.ts`).
+8. The Live Activity broadcaster sends the new state to the game's channel after the response
+   (`src/push/liveActivity.ts`; a stub without APNs).

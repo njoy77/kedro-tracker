@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Someone saved you a seat · Kedro</title>
+    <meta name="description" content="There's a game of Cambio with your name on it." />
+    <meta property="og:title" content="Someone saved you a seat" />
+    <meta property="og:description" content="There's a game of Cambio with your name on it." />
+    <meta property="og:image" content="https://playkedro.com/assets/logo.png" />
+    <meta name="theme-color" content="#0A0A0E" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <main>
+      <a href="/"><img class="logo" src="/assets/logo.png" width="640" height="362" alt="Kedro" /></a>
+
+      <section id="seat">
+        <h1 id="title">Someone saved you a seat</h1>
+        <p class="lead">There's a game of Cambio with your name on it.</p>
+
+        <div id="word-card" class="card" hidden>
+          <span class="label">Table word</span>
+          <span id="word" class="word"></span>
+          <p>Got Kedro? Open it, tap <strong>Join with Code</strong> on Play, and type the table word.</p>
+        </div>
+
+        <a id="install" class="button" hidden>Get Kedro</a>
+        <p id="beta" class="note" hidden></p>
+      </section>
+
+      <section id="broken" hidden>
+        <h1>This link's broken</h1>
+        <p class="lead">Ask whoever sent it to add you to the table again.</p>
+      </section>
+    </main>
+
+    <footer>Kedro keeps score for Cambio. <a href="/">playkedro.com</a></footer>
+
+    <script type="module">
+      import { isGameID, pathPart, query, setText, setUpInstall, show } from '/assets/site.js'
+
+      if (isGameID(pathPart(1))) {
+        const host = query('host')
+        const word = query('word')
+        if (host) {
+          setText('title', `${host} saved you a seat`)
+          document.title = `${host} saved you a seat · Kedro`
+        }
+        if (word) {
+          setText('word', word)
+          show('word-card')
+        }
+        setUpInstall(host)
+      } else {
+        show('seat', false)
+        show('broken')
+      }
+    </script>
+  </body>
+</html>

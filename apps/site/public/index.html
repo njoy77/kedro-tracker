@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Kedro · Keep score. Talk trash.</title>
+    <meta name="description" content="Kedro does the math, so nobody has to trust whoever's three drinks deep. A Cambio score tracker for iPhone." />
+    <meta property="og:title" content="Kedro" />
+    <meta property="og:description" content="Keep score. Talk trash. A Cambio score tracker for iPhone." />
+    <meta property="og:image" content="https://playkedro.com/assets/logo.png" />
+    <meta name="theme-color" content="#0A0A0E" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/assets/logo.png" width="640" height="362" alt="Kedro" />
+      <h1>Keep score. Talk trash.</h1>
+      <p class="lead">Kedro does the math, so nobody has to trust whoever's three drinks deep.</p>
+      <p>A Cambio score tracker for iPhone: live scores at the table, a leaderboard, rivalries and receipts.</p>
+
+      <a id="install" class="button" hidden>Get Kedro</a>
+      <p id="beta" class="note" hidden></p>
+    </main>
+
+    <footer>Kedro keeps score for Cambio.</footer>
+
+    <script type="module">
+      import { setUpInstall } from '/assets/site.js'
+
+      setUpInstall(null)
+    </script>
+  </body>
+</html>

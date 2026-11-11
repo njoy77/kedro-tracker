@@ -3,20 +3,23 @@
 import type { UpdateProfileRequest, WireOperation } from '@kedro/shared'
 import { createApp } from '../src/app.ts'
 import { DevTokenVerifier } from '../src/auth.ts'
+import type { Apns } from '../src/push/apns.ts'
 import { StubLiveActivityBroadcaster } from '../src/push/liveActivity.ts'
 import { MemoryStore } from '../src/store/memory.ts'
 import { INVITE_WINDOW_MS, inviteCode } from '../src/services/invites.ts'
 
 export { fixedUUID, ids, sampleSeats, sampleWireOperations, seats, OperationBuilder, SAMPLE_START_MS } from '../../../packages/shared/test/fixtures/sampleGame.ts'
 
-export function harness(options: { now?: () => number; defer?: (work: Promise<unknown>) => void } = {}) {
+/** With `apns`, the real senders run against it instead of the stubs. */
+export function harness(options: { now?: () => number; defer?: (work: Promise<unknown>) => void; apns?: Apns } = {}) {
   const store = new MemoryStore()
   const broadcaster = new StubLiveActivityBroadcaster()
   const logs: string[] = []
   const { app, services } = createApp({
     store,
     verifier: new DevTokenVerifier(),
-    broadcaster,
+    apns: options.apns,
+    broadcaster: options.apns ? undefined : broadcaster,
     defer: options.defer,
     now: options.now,
     log: (message) => logs.push(message),

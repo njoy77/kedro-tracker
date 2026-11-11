@@ -119,6 +119,10 @@ export interface Store {
   inviteKey(gameId: UUID): Promise<string | null>
   /** Registers the table's invite key unless one is already registered. Returns the key now on record. */
   setInviteKey(gameId: UUID, key: string, registeredBy: UUID): Promise<string>
+  /** Records the game's Live Activity broadcast channel unless one is recorded. Returns the one on record (null: no such game). */
+  claimLiveActivityChannel(gameId: UUID, channelId: string): Promise<string | null>
+  /** Forgets the game's channel if it is still this one. */
+  clearLiveActivityChannel(gameId: UUID, channelId: string): Promise<void>
 
   // Finished games and ratings
   projectFinishedGame(projection: FinishedGameProjection): Promise<void>
@@ -170,4 +174,6 @@ export interface Store {
   addReceipt(receipt: { gameId: UUID; fromPlayerId: UUID; toPlayerId: UUID; receiptKey: string }): Promise<boolean>
   upsertPushToken(token: PushTokenRow): Promise<void>
   pushTokens(filter: { gameId?: UUID; playerIds?: readonly UUID[]; kind: PushTokenRow['kind'] }): Promise<PushTokenRow[]>
+  /** Forgets a token APNs no longer accepts (every player and game it was registered for). */
+  removePushToken(token: string, kind: PushTokenRow['kind']): Promise<void>
 }

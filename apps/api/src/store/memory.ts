@@ -142,6 +142,18 @@ export class MemoryStore implements Store {
     return this.inviteKeys.get(gameId) ?? key
   }
 
+  async claimLiveActivityChannel(gameId: UUID, channelId: string): Promise<string | null> {
+    const game = this.games.get(gameId)
+    if (!game) return null
+    game.liveActivityChannelId ??= channelId
+    return game.liveActivityChannelId
+  }
+
+  async clearLiveActivityChannel(gameId: UUID, channelId: string): Promise<void> {
+    const game = this.games.get(gameId)
+    if (game?.liveActivityChannelId === channelId) game.liveActivityChannelId = null
+  }
+
   // MARK: Finished games and ratings
 
   async projectFinishedGame(projection: FinishedGameProjection): Promise<void> {
@@ -381,5 +393,9 @@ export class MemoryStore implements Store {
         (filter.gameId === undefined || token.gameId === filter.gameId) &&
         (!players || players.has(token.playerId)),
     )
+  }
+
+  async removePushToken(token: string, kind: PushTokenRow['kind']): Promise<void> {
+    for (const [key, row] of this.tokens) if (row.token === token && row.kind === kind) this.tokens.delete(key)
   }
 }
