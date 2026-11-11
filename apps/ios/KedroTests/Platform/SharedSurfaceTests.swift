@@ -10,7 +10,7 @@ struct KedroLinkTests {
     func invite() {
         let link = KedroLink(url: URL(string: "https://playkedro.com/t/4f6c0000-0000-4000-8000-000000000001?k=abc123") ?? URL(filePath: "/"))
         #expect(link == .invite(gameID: game, token: "abc123"))
-        #expect(KedroLink(url: URL(string: "https://KEDRO.app/t/4f6c0000-0000-4000-8000-000000000001") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
+        #expect(KedroLink(url: URL(string: "https://PlayKedro.com/t/4f6c0000-0000-4000-8000-000000000001") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
         #expect(KedroLink(url: URL(string: "https://playkedro.com/t/4f6c0000-0000-4000-8000-000000000001?k=") ?? URL(filePath: "/")) == .invite(gameID: game, token: nil))
     }
 
