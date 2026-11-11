@@ -55,3 +55,18 @@ bun run --filter '@kedro/ios' test
 ```
 
 Build output goes to Xcode's default DerivedData (outside the repo). Never pass `-derivedDataPath` pointing inside the repo: it bloats the working tree, and code signing fails on iCloud's extended attributes if the repo ever ends up in an iCloud-synced folder again.
+
+## Releasing to TestFlight
+
+The App Store Connect app is **Kedro!** (app ID 6833270091; "Kedro" was taken) on team 2RXNMCM34K. Internal testers are in the group **Kedro Team**, which gets every processed build automatically.
+
+1. Build from a clean, pushed `main`, so every build maps to a commit.
+2. Bump `CURRENT_PROJECT_VERSION` (the build number) for all targets in one commit; App Store Connect refuses a number it has seen. `MARKETING_VERSION` changes only for a new release version.
+3. Archive and upload (from `apps/ios`; signing is automatic with the Xcode account on the machine):
+
+```bash
+xcodebuild -project Kedro.xcodeproj -scheme Kedro -configuration Release -destination 'generic/platform=iOS' -archivePath ~/Library/Developer/Xcode/Archives/Kedro.xcarchive -allowProvisioningUpdates archive
+xcodebuild -exportArchive -archivePath ~/Library/Developer/Xcode/Archives/Kedro.xcarchive -exportOptionsPlist Config/ExportOptions.plist -exportPath "$TMPDIR/kedro-export" -allowProvisioningUpdates
+```
+
+`Config/ExportOptions.plist` uploads straight to App Store Connect. Release builds talk to the production API (`Config/API.xcconfig`), and `ITSAppUsesNonExemptEncryption` is `NO` in the app's and the App Clip's Info.plist, so builds skip the export-compliance question. The app icon must have no alpha channel, or the upload is rejected.
