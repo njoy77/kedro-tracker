@@ -1,0 +1,169 @@
+/* playkedro.com: the pages people without Kedro land on. Colors are the app's dark tokens
+   (docs/kedro-ios-design.md §3.3); dark only, since the logo always sits on a dark surface. */
+
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('/assets/BebasNeue-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --night: #0a0a0e;
+  --surface: #13131a;
+  --rule: #2a2a33;
+  --cream: #f5efe6;
+  --silver: #c0c0c0;
+  --silver-dim: #888888;
+  --red: #e63946;
+  --red-deep: #b81d2a;
+  --display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: linear-gradient(#15151c, #08080c) fixed, var(--night);
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(32px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  color: var(--cream);
+  font: 17px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-align: center;
+}
+
+main {
+  width: 100%;
+  max-width: 420px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo {
+  display: block;
+  width: min(280px, 72vw);
+  height: auto;
+  margin-bottom: 8px;
+}
+
+h1 {
+  margin: 0;
+  font: 400 40px/1 var(--display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+p {
+  margin: 0;
+  color: var(--silver);
+}
+
+.lead {
+  color: var(--cream);
+}
+
+.card {
+  width: 100%;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.label {
+  font: 400 15px/1 var(--display);
+  letter-spacing: 0.04em;
+  color: var(--silver-dim);
+  text-transform: uppercase;
+}
+
+.word {
+  font: 400 44px/1 var(--display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.code {
+  font: 600 22px/1.2 ui-monospace, 'SF Mono', Menlo, monospace;
+  color: var(--cream);
+  overflow-wrap: anywhere;
+}
+
+ol {
+  margin: 0;
+  padding-left: 1.4em;
+  text-align: left;
+  color: var(--silver);
+}
+
+ol strong {
+  color: var(--cream);
+  font-weight: 600;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--red);
+  color: var(--cream);
+  font: 400 22px/1 var(--display);
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:active {
+  background: var(--red-deep);
+}
+
+.button.secondary {
+  background: var(--rule);
+}
+
+.note {
+  font-size: 15px;
+  color: var(--silver-dim);
+}
+
+footer {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--silver-dim);
+}
+
+footer a {
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* A page's states (the link worked, the link is broken) are sections that flow straight into main. */
+section {
+  display: contents;
+}

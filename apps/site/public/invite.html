@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>You're invited to a table · Kedro</title>
+    <meta name="description" content="Someone's starting a game of Cambio and wants you at the table." />
+    <meta property="og:title" content="You're invited to a table" />
+    <meta property="og:description" content="Someone's starting a game of Cambio and wants you at the table." />
+    <meta property="og:image" content="https://playkedro.com/assets/logo.png" />
+    <!-- Once Kedro has an App Store ID, add the App Clip banner (Safari, Messages):
+         <meta name="apple-itunes-app" content="app-id=APP_STORE_ID, app-clip-bundle-id=com.njoy77.kedro.Clip, app-clip-display=card" /> -->
+    <meta name="theme-color" content="#0A0A0E" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <main>
+      <a href="/"><img class="logo" src="/assets/logo.png" width="640" height="362" alt="Kedro" /></a>
+
+      <section id="invite">
+        <h1>You're invited to a table</h1>
+        <p class="lead">Someone's starting a game of Cambio and wants you in it.</p>
+
+        <div class="card">
+          <span class="label">On an iPhone</span>
+          <p>Scan the table's code with the Camera app. Kedro opens right there, no download.</p>
+          <p class="note">The code changes every minute, so scan the one on the host's screen, not a screenshot.</p>
+        </div>
+
+        <div class="card">
+          <span class="label">No iPhone?</span>
+          <p>Ask the host to add you as a guest. Someone at the table reports your hand for you.</p>
+        </div>
+
+        <a id="install" class="button" hidden>Get Kedro</a>
+        <p id="beta" class="note" hidden></p>
+      </section>
+
+      <section id="broken" hidden>
+        <h1>This link's broken</h1>
+        <p class="lead">Ask the host to show the table's code again.</p>
+      </section>
+    </main>
+
+    <footer>Kedro keeps score for Cambio. <a href="/">playkedro.com</a></footer>
+
+    <script type="module">
+      import { isGameID, pathPart, setUpInstall, show } from '/assets/site.js'
+
+      if (isGameID(pathPart(1))) {
+        setUpInstall(null)
+      } else {
+        show('invite', false)
+        show('broken')
+      }
+    </script>
+  </body>
+</html>

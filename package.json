@@ -9,6 +9,7 @@
     "dev": "bun run --filter '@kedro/web' --filter '@kedro/api' dev",
     "dev:web": "bun run --filter '@kedro/web' dev",
     "dev:api": "bun run --filter '@kedro/api' dev",
+    "dev:site": "bun run --filter '@kedro/site' dev",
     "build": "bun run --filter '@kedro/web' build",
     "typecheck": "bun run --filter '*' typecheck",
     "ios:open": "bun run --filter '@kedro/ios' open",
