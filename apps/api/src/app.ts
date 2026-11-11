@@ -50,8 +50,9 @@ import {
 } from '@kedro/shared'
 import { requireAuth, type AuthEnv, type TokenVerifier } from './auth.ts'
 import { HttpError, badRequest, errorBody, readJson, uuidParam } from './http.ts'
-import { StubLiveActivityBroadcaster, type LiveActivityBroadcaster } from './push/liveActivity.ts'
-import { StubNotifier, type Notifier } from './push/notifications.ts'
+import type { Apns } from './push/apns.ts'
+import { ApnsLiveActivityBroadcaster, StubLiveActivityBroadcaster, type LiveActivityBroadcaster } from './push/liveActivity.ts'
+import { ApnsNotifier, StubNotifier, type Notifier } from './push/notifications.ts'
 import { ClipService, ClipTokens } from './services/clip.ts'
 import { decodeInviteKey } from './services/invites.ts'
 import { LeaderboardService } from './services/leaderboard.ts'
@@ -66,6 +67,8 @@ import type { Store } from './store/types.ts'
 export type AppDeps = {
   store: Store
   verifier: TokenVerifier
+  /** Sends pushes (push/apns.ts); without it, and without `broadcaster` / `notifier`, the stubs only log. */
+  apns?: Apns
   broadcaster?: LiveActivityBroadcaster
   notifier?: Notifier
   /** Signs App Clip session tokens (KEDRO_CLIP_SECRET); a random per-process secret when unset. */
@@ -74,7 +77,7 @@ export type AppDeps = {
   linkSigningKey?: string
   /** The API's public origin for photo URLs (KEDRO_PUBLIC_URL); the request's origin when unset. */
   publicUrl?: string
-  /** Keeps background work (Live Activity broadcasts) going after the response; see OpsService. */
+  /** Keeps background work (Live Activity broadcasts, alert pushes) going after the response; see OpsService. */
   defer?: (work: Promise<unknown>) => void
   now?: () => number
   log?: (message: string) => void
@@ -98,12 +101,13 @@ export type Services = {
 const OK: OkResponse = { ok: true }
 const HLC_STRING = /^[0-9]{15}-[0-9]{5}-.{1,64}$/
 
-export function createServices({ store, broadcaster, notifier, clipSecret, linkSigningKey, defer, now, log }: Omit<AppDeps, 'verifier'>): Services {
+export function createServices({ store, apns, broadcaster, notifier, clipSecret, linkSigningKey, defer, now, log }: Omit<AppDeps, 'verifier'>): Services {
   const ratings = new RatingsService(store)
   const filter = new TauntFilter(store, now)
   const players = new PlayersService(store)
   const clipTokens = new ClipTokens(clipSecret, now)
-  const alerts = notifier ?? new StubNotifier(store, log)
+  const alerts = notifier ?? (apns ? new ApnsNotifier({ apns, store, defer, now, log }) : new StubNotifier(store, log))
+  const live = broadcaster ?? (apns ? new ApnsLiveActivityBroadcaster({ apns, store, now, log }) : new StubLiveActivityBroadcaster(log))
   return {
     ratings,
     filter,
@@ -112,7 +116,7 @@ export function createServices({ store, broadcaster, notifier, clipSecret, linkS
     notifier: alerts,
     clip: new ClipService(store, clipTokens, now),
     link: new LinkAttestor(linkSigningKey, now),
-    ops: new OpsService({ store, ratings, filter, broadcaster: broadcaster ?? new StubLiveActivityBroadcaster(log), notifier: alerts, defer, now, log }),
+    ops: new OpsService({ store, ratings, filter, broadcaster: live, notifier: alerts, defer, now, log }),
     leaderboard: new LeaderboardService(store, players),
     social: new SocialService(store, players, ratings),
   }
