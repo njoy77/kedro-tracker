@@ -29,6 +29,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 - `bun run env:push KEY=value` adds or updates a key in Vercel (all environments by default), then pulls.
 - The API's server-only keys live in a second Vercel project, `kedro-api` (production only): `bun run env:push KEY --project api --sensitive`. See `apps/api/README.md`.
 - When an app needs a new key, push it to Vercel and add it to `TARGETS` in `scripts/env.ts`.
+- Sign-in providers live in Supabase Auth: Apple (the iPhone app natively, the web through OAuth with the Services ID `com.njoy77.kedro.web`) and Google (web). The web's Apple client secret expires every 6 months: regenerate it with `bun scripts/apple-client-secret.ts --key <AuthKey_….p8>` and paste it into Supabase.
 
 ## iOS
 

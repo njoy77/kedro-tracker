@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
 import { HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
 import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
-import { devSignInAvailable, isSignedIn, onAuthChange, signInAsDevAccount, signInWithGoogle, signOut } from './lib/auth';
+import { devSignInAvailable, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
 import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
@@ -347,6 +347,19 @@ export default function KedroApp() {
     setLive(true);
   }, [log, refreshGames]);
 
+  /** Moves a guest's history onto this account; the outcome shows on Profile. */
+  const redeemClaim = useCallback(async (code, me) => {
+    const token = code.trim().replace(/^.*[/=]/, '');
+    if (!token) return;
+    try {
+      const result = await api.claim(token);
+      setClaimMessage(`Done: ${result.gamesClaimed} game${result.gamesClaimed === 1 ? '' : 's'} are now yours.`);
+      await loadData(me);
+    } catch (error) {
+      setClaimMessage(error.code === 'alreadyClaimed' ? 'Someone already claimed that history.' : error.status === 404 ? "That code doesn't match anyone." : error.status === 400 ? "That doesn't look like a claim code. Check it and try again." : (error.message || 'Could not claim that code'));
+    }
+  }, [loadData]);
+
   /** Signed in: load the profile (or ask for one), then everything else. */
   const enter = useCallback(async () => {
     try {
@@ -354,6 +367,13 @@ export default function KedroApp() {
       const me = { ...webPlayer(player), createdAt: player.createdAt };
       setUser(me);
       await loadData(me);
+      // Arrived from a claim link: redeem it and show how it went.
+      const claim = takePendingClaim();
+      if (claim) {
+        await redeemClaim(claim, me);
+        navigate('profile', 'forward');
+        return;
+      }
       navigate('home', 'forward');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'profileRequired') { navigate('onboarding', 'forward'); return; }
@@ -361,10 +381,11 @@ export default function KedroApp() {
       setAuthError(error.message || 'Could not reach Kedro. Try again.');
       navigate('login', 'back');
     }
-  }, [loadData]);
+  }, [loadData, redeemClaim]);
 
   useEffect(() => {
     let cancelled = false;
+    stashClaimFromURL();
     (async () => {
       const signedIn = await isSignedIn();
       if (devSignInAvailable) api.devAccounts().then(r => !cancelled && setDevAccounts(r.accounts ?? [])).catch(() => {});
@@ -401,9 +422,9 @@ export default function KedroApp() {
   }
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
-  async function handleGoogle() {
+  async function handleSignIn(signIn) {
     setAuthError('');
-    const { error } = await signInWithGoogle();
+    const { error } = await signIn();
     if (error) setAuthError(error.message);
   }
 
@@ -446,16 +467,8 @@ export default function KedroApp() {
     }
   }
 
-  async function handleClaim(code) {
-    const token = code.trim().replace(/^.*[/=]/, '');
-    if (!token) return;
-    try {
-      const result = await api.claim(token);
-      setClaimMessage(`Done: ${result.gamesClaimed} game${result.gamesClaimed === 1 ? '' : 's'} are now yours.`);
-      await loadData(user);
-    } catch (error) {
-      setClaimMessage(error.code === 'alreadyClaimed' ? 'Someone already claimed that history.' : error.status === 404 ? "That code doesn't match anyone." : (error.message || 'Could not claim that code'));
-    }
+  function handleClaim(code) {
+    return redeemClaim(code, user);
   }
 
   // ── Game logic ───────────────────────────────────────────────────────────────
@@ -668,7 +681,7 @@ export default function KedroApp() {
           {view === 'login' && (
             <LoginScreen
               error={authError} devAccounts={devAccounts}
-              onGoogle={handleGoogle} onDevAccount={handleDevAccount}
+              onApple={() => handleSignIn(signInWithApple)} onGoogle={() => handleSignIn(signInWithGoogle)} onDevAccount={handleDevAccount}
             />
           )}
 
@@ -819,7 +832,7 @@ function SplashScreen() {
   );
 }
 
-function LoginScreen({ error, devAccounts, onGoogle, onDevAccount }) {
+function LoginScreen({ error, devAccounts, onApple, onGoogle, onDevAccount }) {
   return (
     <div className="screen" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -830,7 +843,12 @@ function LoginScreen({ error, devAccounts, onGoogle, onDevAccount }) {
       <div style={s.card({ padding: 28 })}>
         <div style={{ ...s.h2, fontSize: 26, marginBottom: 8 }}>Who's talking shit?</div>
         <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 20 }}>Sign in to keep score. Same account, same scoreboard as the Kedro iPhone app.</div>
-        <button className="btn-red btn-press" onClick={onGoogle} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15 }}>Continue with Google</button>
+        <button className="btn-press" onClick={onApple} style={{ ...s.btn('ghost'), width: '100%', padding: 14, fontSize: 15, background: '#fff', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+          Continue with Apple
+        </button>
+        <button className="btn-red btn-press" onClick={onGoogle} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15, marginTop: 10 }}>Continue with Google</button>
+        <div style={{ color: C.creamDim, fontSize: 12, marginTop: 12, textAlign: 'center' }}>On an iPhone? Use Apple, the same as in the app, so it's one account.</div>
         {error && <div style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{error}</div>}
         {devAccounts.length > 0 && (
           <div style={{ marginTop: 22 }}>
@@ -1793,6 +1811,9 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
 
 function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, profileError, claimMessage, onClaim }) {
   const [claimCode, setClaimCode] = useState('');
+  const claimMessageRef = useRef(null);
+  // A claim link lands here with the outcome at the bottom of the page: bring it into view.
+  useEffect(() => { if (claimMessage) claimMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, [claimMessage]);
   const userGames = games.filter(g => g.status === 'complete' && g.players.find(p => p.id === user.id));
   return (
     <div className="screen" style={{ paddingTop: 28, paddingBottom: 60 }}>
@@ -1937,7 +1958,7 @@ function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, o
           <input style={s.input({ flex: 1 })} placeholder="kedro-legacy-…" value={claimCode} onChange={e => setClaimCode(e.target.value)} autoCapitalize="none" autoCorrect="off" />
           <button className="btn-red btn-press" disabled={!claimCode.trim()} onClick={() => onClaim(claimCode)} style={s.btn('red', { opacity: claimCode.trim() ? 1 : 0.5 })}>Claim</button>
         </div>
-        {claimMessage && <div style={{ color: C.cream, fontSize: 13, marginTop: 10 }}>{claimMessage}</div>}
+        {claimMessage && <div ref={claimMessageRef} style={{ color: C.cream, fontSize: 13, marginTop: 10 }}>{claimMessage}</div>}
       </div>
 
       <button className="btn-press" onClick={onLogout} style={{ ...s.btn('ghost', { width: '100%' }) }}>Sign Out</button>
