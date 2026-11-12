@@ -1,9 +1,13 @@
 import SwiftUI
 
 /// The four tabs (design §15). Each tab owns a `NavigationStack` that resolves `AppRoute`s.
-/// The live game is a `fullScreenCover` that minimizes into the tab bar's bottom accessory.
+/// Search is the system search tab (`role: .search`): it sits apart from the other tabs, and
+/// selecting it turns the tab bar into the search field. The live game is a `fullScreenCover` that
+/// minimizes into the tab bar's bottom accessory.
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
+    /// The Search tab's query. Kept here, above the tab, so it survives switching tabs.
+    @State private var searchQuery = ""
 
     private var stats: StatsModel { .shared(for: app.store) }
 
@@ -28,10 +32,19 @@ struct MainTabView: View {
             }
             Tab(value: AppTab.search, role: .search) {
                 NavigationStack(path: $app.searchPath) {
-                    SearchView().appRouteDestinations()
+                    SearchView(query: searchQuery).appRouteDestinations()
                 }
+                // On the search tab's stack, not the TabView: there it would also put a search
+                // field in the other tabs' nav bars (and leave one active after cancelling).
+                .searchable(text: $searchQuery, prompt: "Name or @handle")
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             }
         }
+        // Selecting Search activates the field in the tab bar, and its close button goes back to the
+        // previous tab. On iOS 27 this is also what gives the search tab its own button beside the
+        // bar (UIKit's `automaticallyActivatesSearch`, which makes a search tab prominent).
+        .tabViewSearchActivation(.searchTabSelection)
         .tint(.kedroRed)
         .liveGameAccessory(isEnabled: app.liveGame != nil && !app.isTablePresented)
         // Taunt toasts and sounds for the live game, minimized or not (one monitor per game).

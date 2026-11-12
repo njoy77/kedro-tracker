@@ -1,18 +1,17 @@
 import SwiftUI
 
-/// Searches every Kedro player by display name or @handle through `PlayerDirectory` (blocked
-/// players are already excluded). Shared by the Search tab and the lobby's Search Kedro.
+/// Results for a player search by display name or @handle through `PlayerDirectory` (blocked
+/// players are already excluded). It doesn't own a search field: the Search tab's field lives in
+/// the tab bar (`MainTabView` applies `.searchable`), so the query comes in.
 struct PlayerSearchList: View {
+    let query: String
     /// The caption after the @handle ("Played 3 together").
     var caption: (PlayerSummary) -> String? = { _ in nil }
     /// Results to hide (already seated, yourself).
     var isExcluded: (PlayerSummary) -> Bool = { _ in false }
-    /// `.automatic` in the Search tab (the tab bar's search field); a drawer in sheets.
-    var placement: SearchFieldPlacement = .automatic
     let onSelect: (PlayerSummary) -> Void
 
     @Environment(AppModel.self) private var app
-    @State private var query = ""
     @State private var results: [PlayerSummary] = []
     @State private var isSearching = false
     @State private var failed = false
@@ -39,9 +38,6 @@ struct PlayerSearchList: View {
                 ContentUnavailableView.search(text: trimmed)
             }
         }
-        .searchable(text: $query, placement: placement, prompt: "Name or @handle")
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
         .task(id: trimmed) { await search(trimmed) }
     }
 
@@ -65,9 +61,17 @@ struct PlayerSearchList: View {
     }
 }
 
-#Preview {
+#Preview("Empty") {
     NavigationStack {
-        PlayerSearchList { _ in }
+        PlayerSearchList(query: "") { _ in }
+            .navigationTitle("Search")
+    }
+    .previewEnvironment()
+}
+
+#Preview("Results") {
+    NavigationStack {
+        PlayerSearchList(query: "ma") { _ in }
             .navigationTitle("Search")
     }
     .previewEnvironment()
