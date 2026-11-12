@@ -8,7 +8,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 
 | Path | What it is |
 |---|---|
-| `apps/web` | React + Vite web app, deployed to Vercel (root directory `apps/web`) |
+| `apps/web` | React + Vite web app on the same API as iOS (Google sign-in), deployed to Vercel (root directory `apps/web`). Local: run `dev:seed` for the API, then `dev:web` and sign in as a test account |
 | `apps/api` | Bun + Hono API |
 | `apps/site` | Static site for `playkedro.com`: the iOS app's universal link / App Clip file and the pages its links open without the app. Vercel project `kedro-site`. See `apps/site/README.md` |
 | `apps/ios` | Native SwiftUI iOS app. Read `apps/ios/AGENTS.md` before changing it |
@@ -30,6 +30,7 @@ Kedro is a score tracker organized as a Bun workspace monorepo:
 - `bun run env:push KEY=value` adds or updates a key in Vercel (all environments by default), then pulls.
 - The API's server-only keys live in a second Vercel project, `kedro-api` (production only): `bun run env:push KEY --project api --sensitive`. See `apps/api/README.md`.
 - When an app needs a new key, push it to Vercel and add it to `TARGETS` in `scripts/env.ts`.
+- Sign-in providers live in Supabase Auth: Apple (the iPhone app natively, the web through OAuth with the Services ID `com.njoy77.kedro.web`) and Google (web). The web's Apple client secret expires every 6 months: regenerate it with `bun scripts/apple-client-secret.ts --key <AuthKey_….p8>` and paste it into Supabase.
 
 ## iOS
 

@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { supabase } from './lib/supabase';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
-import { LEADERBOARD_MINIMUMS, legacyLeaderboard } from '@kedro/shared';
+import { HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
+import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
+import { devSignInAvailable, inAppBrowser, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
+import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
 
@@ -34,20 +36,22 @@ const C = {
   white: '#ffffff',
 };
 
-const db = {
-  async get(key) {
-    const { data } = await supabase.from('kedro_kv').select('value').eq('key', key).maybeSingle();
-    return data?.value ?? null;
-  },
-  async set(key, val) {
-    await supabase.from('kedro_kv').upsert({ key, value: val }, { onConflict: 'key' });
-  },
-  async del(key) {
-    await supabase.from('kedro_kv').delete().eq('key', key);
-  },
-};
+// A player in the shape the screens use: `id` is the seat ID ("p:<uuid>" or "g:<uuid>"), `ref` the
+// {kind, id} a seat needs.
+function webPlayer(summary) {
+  return { id: `p:${summary.id}`, ref: { kind: 'player', id: summary.id }, playerId: summary.id, username: summary.displayName, emoji: emojiOf(summary.avatar), handle: summary.handle, avatar: summary.avatar };
+}
 
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function webGuest(guestId, name) {
+  return { id: `g:${guestId}`, ref: { kind: 'guest', id: guestId }, username: name, emoji: '👤', isGuest: true };
+}
+
+/** A handle suggestion from a name: lowercase letters, digits, dots and underscores, 3–20 long. */
+function suggestedHandle(name) {
+  const base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9._]/g, '').slice(0, 20);
+  return base.length >= 3 ? base : `${base}${'kedro'.slice(0, 3 - base.length)}`.slice(0, 20);
+}
+
 const EMOJIS = ['🐴','🏇','🦄','🐎','🎠','🏆','🌾','🍀','🔱','⚜️','🌿','🪄','🎯','🌙','⭐'];
 const RANK_BADGES = ['🥇','🥈','🥉'];
 const SUITS = ['♠','♥','♦','♣'];
@@ -254,26 +258,29 @@ export default function KedroApp() {
   const [user, setUser]               = useState(null);
   const [allPlayers, setAllPlayers]   = useState([]);
   const [allGames, setAllGames]       = useState([]);
-  const [session, setSession]         = useState(null);
   const [historyGame, setHistoryGame] = useState(null);
   const [postGameData, setPostGameData] = useState(null);
   const [live, setLive]               = useState(false);
   const [navDir, setNavDir]           = useState('forward');
+  const logRef                        = useRef(null);
+  if (!logRef.current) logRef.current = new GameLog();
+  const log = logRef.current;
+  const claimedRef = useRef(new Set());
+  const userRef = useRef(null);
+  userRef.current = user;
 
-  // Login state
-  const [lUsername, setLUsername]         = useState('');
-  const [lStep, setLStep]                 = useState('username');
-  const [lFoundPlayer, setLFoundPlayer]   = useState(null);
-  const [lError, setLError]               = useState('');
-  const [rName, setRName]                 = useState('');
-  const [rEmoji, setREmoji]               = useState('🐴');
+  // Sign-in and onboarding state
+  const [authError, setAuthError]     = useState('');
+  const [devAccounts, setDevAccounts] = useState([]);
+  const [rName, setRName]             = useState('');
+  const [rHandle, setRHandle]         = useState('');
+  const [rEmoji, setREmoji]           = useState('🐴');
 
   // Game state
   const [ngSelected, setNgSelected]         = useState([]);
   const [roundInputs, setRoundInputs]       = useState({});
   const [roundError, setRoundError]         = useState('');
   const [knockedBy, setKnockedBy]           = useState(null);
-  const [knockResult, setKnockResult]       = useState(null); // 'correct' | 'incorrect' | 'tied' | null
   const [lastRoundDeltas, setLastRoundDeltas] = useState(null);
   const [isSavingRound, setIsSavingRound]   = useState(false);
   const isSavingRoundRef                    = useRef(false);
@@ -284,71 +291,129 @@ export default function KedroApp() {
   const [editingRound, setEditingRound]     = useState(null);
   const [editInputs, setEditInputs]         = useState({});
 
-  // Combo box login state
-  const [lDropdownOpen, setLDropdownOpen]   = useState(false);
-
-  // Edit profile / delete state
+  // Edit profile / claim state
   const [editingProfile, setEditingProfile]   = useState(false);
   const [editUsername, setEditUsername]         = useState('');
   const [editEmoji, setEditEmoji]             = useState('');
-  const [deletePlayerConfirm, setDeletePlayerConfirm] = useState(false);
+  const [profileError, setProfileError]       = useState('');
+  const [claimMessage, setClaimMessage]       = useState('');
 
-  // Clear game data state
-  const [deleteGameConfirm, setDeleteGameConfirm] = useState(null);
-  const [clearAllConfirm, setClearAllConfirm]     = useState(false);
-
-  // Neigh tracker state
+  // Neigh tracker state (this phone only: the shared game log has no neighs)
   const [neighCounts, setNeighCounts] = useState({});
   const [inherentKnock, setInherentKnock] = useState(null);
 
   // Dashboard state
   const [dashboardView, setDashboardView] = useState('table');
 
-  // ── Initial load ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function load() {
-      const p = await db.get('kedro_players') || [];
-      const g = await db.get('kedro_games')   || [];
-      const active = await db.get('kedro_session');
-      setAllPlayers(p); setAllGames(g);
-      if (active) setSession(active);
+  // The game in play: the newest unfinished game this player is seated in.
+  const session = useMemo(
+    () => allGames.filter(g => g.status === 'active').sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0))[0] ?? null,
+    [allGames],
+  );
 
-      // Restore logged-in user from localStorage
-      let loggedInUser = null;
-      try {
-        const saved = localStorage.getItem('kedro_user');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const found = p.find(pl => pl.id === parsed.id);
-          if (found && !found.deleted) { loggedInUser = found; setUser(found); }
-        }
-      } catch {}
+  // ── Loading ─────────────────────────────────────────────────────────────────
+  /** Re-folds every game in the log into the screens' shape, newest first. */
+  const refreshGames = useCallback((me = userRef.current) => {
+    const aliasFor = (seatId) => {
+      const ref = parseSeatId(seatId);
+      return ref?.kind === 'guest' && claimedRef.current.has(ref.id) && me ? me.id : seatId;
+    };
+    const games = log.gameIds()
+      .map(id => toWebGame(log.folded(id), aliasFor))
+      .filter(g => g.folded.created)
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0));
+    setAllGames(games);
+    return games;
+  }, [log]);
 
-      setTimeout(() => navigate(loggedInUser ? 'home' : 'login', 'forward'), 1800);
+  /** Fetches this player's games (and their logs) and the player directory. */
+  const loadData = useCallback(async (me) => {
+    const mine = await api.myGames();
+    claimedRef.current = new Set(mine.claimedGuestIds);
+    const ids = mine.games.map(g => g.gameId);
+    for (let i = 0; i < ids.length; i += 6) await Promise.all(ids.slice(i, i + 6).map(id => log.pull(id)));
+    await log.flush();
+    const games = refreshGames(me);
+
+    const [players, guests] = await Promise.all([fetchAllPlayers(), api.guests('').catch(() => ({ guests: [] }))]);
+    const seen = new Set(players.map(p => `p:${p.id}`));
+    const guestRows = [];
+    for (const g of guests.guests) if (!seen.has(`g:${g.guestId}`)) { seen.add(`g:${g.guestId}`); guestRows.push(webGuest(g.guestId, g.name)); }
+    // Guests from this player's games (e.g. web history no one has claimed yet).
+    for (const game of games) for (const p of game.players) {
+      if (p.kind === 'guest' && p.id === p.seatId && !seen.has(p.id)) { seen.add(p.id); guestRows.push({ ...webGuest(p.seatId.slice(2), p.username), emoji: p.emoji }); }
     }
-    load();
-  }, []);
+    setAllPlayers([...players.map(webPlayer), ...guestRows]);
+    setLive(true);
+  }, [log, refreshGames]);
 
-  // ── Realtime sync ───────────────────────────────────────────────────────────
+  /** Moves a guest's history onto this account; the outcome shows on Profile. */
+  const redeemClaim = useCallback(async (code, me) => {
+    const token = code.trim().replace(/^.*[/=]/, '');
+    if (!token) return;
+    try {
+      const result = await api.claim(token);
+      setClaimMessage(`Done: ${result.gamesClaimed} game${result.gamesClaimed === 1 ? '' : 's'} are now yours.`);
+      await loadData(me);
+    } catch (error) {
+      setClaimMessage(error.code === 'alreadyClaimed' ? 'Someone already claimed that history.' : error.status === 404 ? "That code doesn't match anyone." : error.status === 400 ? "That doesn't look like a claim code. Check it and try again." : (error.message || 'Could not claim that code'));
+    }
+  }, [loadData]);
+
+  /** Signed in: load the profile (or ask for one), then everything else. */
+  const enter = useCallback(async () => {
+    try {
+      const player = await api.me();
+      const me = { ...webPlayer(player), createdAt: player.createdAt };
+      setUser(me);
+      await loadData(me);
+      // Arrived from a claim link: redeem it and show how it went.
+      const claim = takePendingClaim();
+      if (claim) {
+        await redeemClaim(claim, me);
+        navigate('profile', 'forward');
+        return;
+      }
+      navigate('home', 'forward');
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'profileRequired') { navigate('onboarding', 'forward'); return; }
+      if (error instanceof ApiError && error.status === 401) { await signOut(); navigate('login', 'back'); return; }
+      setAuthError(error.message || 'Could not reach Kedro. Try again.');
+      navigate('login', 'back');
+    }
+  }, [loadData, redeemClaim]);
+
   useEffect(() => {
-    const channel = supabase
-      .channel('kedro-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'kedro_kv' }, (payload) => {
-        const key   = payload.new?.key || payload.old?.key;
-        const value = payload.eventType === 'DELETE' ? null : payload.new?.value;
-        if (key === 'kedro_players') setAllPlayers(value || []);
-        else if (key === 'kedro_games')   setAllGames(value || []);
-        else if (key === 'kedro_session') setSession(value || null);
-        setLive(true);
-      })
-      .subscribe(status => { if (status === 'SUBSCRIBED') setLive(true); });
-    return () => supabase.removeChannel(channel);
+    let cancelled = false;
+    stashClaimFromURL();
+    (async () => {
+      const signedIn = await isSignedIn();
+      if (devSignInAvailable) api.devAccounts().then(r => !cancelled && setDevAccounts(r.accounts ?? [])).catch(() => {});
+      setTimeout(() => { if (!cancelled) (signedIn ? enter() : navigate('login', 'forward')); }, 1200);
+    })();
+    // Back from Google: Supabase stores the session, then this fires (also on token refreshes,
+    // which aren't new sign-ins: only enter when nobody is signed in here yet).
+    const stop = onAuthChange(event => { if (event === 'SIGNED_IN' && !cancelled && !userRef.current) enter(); });
+    return () => { cancelled = true; stop(); };
+    // Once, on launch: `enter` is stable (it only reads refs and setters).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── DB helpers ───────────────────────────────────────────────────────────────
-  async function savePlayers(p) { setAllPlayers(p); await db.set('kedro_players', p); }
-  async function saveGames(g)   { setAllGames(g);   await db.set('kedro_games', g); }
-  async function saveSession(s) { setSession(s);    await db.set('kedro_session', s); }
+  // ── Live sync: follow the game in play, retry uploads ─────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(async () => {
+      try {
+        if (session) await log.pull(session.id);
+        await log.flush();
+        refreshGames();
+        setLive(true);
+      } catch {
+        setLive(false);
+      }
+    }, session ? 3000 : 15000);
+    return () => clearInterval(timer);
+  }, [user, session?.id, log, refreshGames]);
 
   // ── Navigation ───────────────────────────────────────────────────────────────
   function navigate(newView, dir = 'forward') {
@@ -357,139 +422,88 @@ export default function KedroApp() {
   }
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
-  function handleUsernameNext() {
-    const u = lUsername.trim();
-    if (!u) return;
-    const found = allPlayers.find(p => p.username.toLowerCase() === u.toLowerCase());
-    if (found) { setLFoundPlayer(found); setLStep('confirm'); }
-    else { setLStep('notfound'); }
-    setLError('');
+  async function handleSignIn(signIn) {
+    setAuthError('');
+    const { error } = await signIn();
+    if (error) setAuthError(error.message);
   }
 
-  function handleLogin(player) {
-    setUser(player);
-    localStorage.setItem('kedro_user', JSON.stringify(player));
-    setLUsername(''); setLStep('username'); setLFoundPlayer(null); setLError('');
-    navigate('home', 'forward');
+  function handleDevAccount(account) {
+    signInAsDevAccount(account.id);
+    enter();
   }
 
   async function handleRegister() {
     const name = rName.trim();
-    if (!name) { setLError('Enter a username'); return; }
-    if (allPlayers.find(p => p.username.toLowerCase() === name.toLowerCase())) { setLError('Username taken'); return; }
-    const np = { id: uid(), username: name, emoji: rEmoji, createdAt: Date.now() };
-    await savePlayers([...allPlayers, np]);
-    handleLogin(np);
-    setRName(''); setREmoji('🐴');
+    const handle = (rHandle.trim() || suggestedHandle(name)).toLowerCase().replace(/^@/, '');
+    if (!name) { setAuthError('Enter your name'); return; }
+    if (!HANDLE_PATTERN.test(handle)) { setAuthError('Handles are 3–20 letters, numbers, dots or underscores'); return; }
+    try {
+      await api.saveProfile({ displayName: name, handle, avatar: { kind: 'emoji', emoji: rEmoji, colorIndex: 0 } });
+      setAuthError(''); setRName(''); setRHandle(''); setREmoji('🐴');
+      await enter();
+    } catch (error) {
+      setAuthError(error.code === 'handleTaken' ? `@${handle} is taken. Pick another handle.` : (error.message || 'Could not save your profile'));
+    }
   }
 
-  function logout() {
-    setUser(null);
-    localStorage.removeItem('kedro_user');
-    setLStep('username'); setLUsername('');
-    navigate('login', 'back');
-  }
-
-  function switchPlayer() {
-    setUser(null);
-    localStorage.removeItem('kedro_user');
-    setLStep('username'); setLUsername('');
+  async function logout() {
+    await signOut();
+    setUser(null); setAllGames([]); setAllPlayers([]);
     navigate('login', 'back');
   }
 
   async function handleEditProfile() {
     const name = editUsername.trim();
     if (!name) return;
-    if (allPlayers.find(p => p.id !== user.id && !p.deleted && p.username.toLowerCase() === name.toLowerCase())) return;
-    const updated = allPlayers.map(p => p.id === user.id ? { ...p, username: name, emoji: editEmoji } : p);
-    const newUser = { ...user, username: name, emoji: editEmoji };
-    setUser(newUser);
-    localStorage.setItem('kedro_user', JSON.stringify(newUser));
-    await savePlayers(updated);
-    if (session) {
-      const updatedSession = { ...session, players: session.players.map(p => p.id === user.id ? { ...p, username: name, emoji: editEmoji } : p) };
-      await saveSession(updatedSession);
+    try {
+      const avatar = user.avatar?.kind === 'emoji' ? { ...user.avatar, emoji: editEmoji } : { kind: 'emoji', emoji: editEmoji, colorIndex: 0 };
+      const player = await api.saveProfile({ displayName: name, handle: user.handle, avatar });
+      setUser({ ...webPlayer(player), createdAt: player.createdAt });
+      setProfileError('');
+      setEditingProfile(false);
+    } catch (error) {
+      setProfileError(error.message || 'Could not save your profile');
     }
-    setEditingProfile(false);
   }
 
-  async function handleDeletePlayer() {
-    if (session) return;
-    const updated = allPlayers.map(p => p.id === user.id ? { ...p, deleted: true } : p);
-    await savePlayers(updated);
-    setDeletePlayerConfirm(false);
-    logout();
-  }
-
-  async function deleteGame(gameId) {
-    const updated = allGames.filter(g => g.id !== gameId);
-    await saveGames(updated);
-    setHistoryGame(null);
-    setDeleteGameConfirm(null);
-  }
-
-  async function clearAllGames() {
-    await saveGames([]);
-    setHistoryGame(null);
-    setClearAllConfirm(false);
+  function handleClaim(code) {
+    return redeemClaim(code, user);
   }
 
   // ── Game logic ───────────────────────────────────────────────────────────────
+  function resetRoundState() {
+    setRoundInputs({}); setKnockedBy(null); setRoundError(''); setInherentKnock(null);
+  }
+
   async function startGame(players, firstPlayerIndex = 0) {
-    const newSession = {
-      id: uid(), startedAt: Date.now(), status: 'active',
-      players: players.map(p => ({ id: p.id, username: p.username, emoji: p.emoji, total: 0 })),
-      rounds: [],
-      currentTurnIndex: firstPlayerIndex,
-    };
-    await saveSession(newSession);
-    setNgSelected([]); setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
+    const gameId = await createGame(log, user, players, firstPlayerIndex);
+    refreshGames();
+    setNgSelected([]); resetRoundState(); setNeighCounts({});
     navigate('game', 'forward');
+    return gameId;
   }
 
   async function addRound() {
     if (!session) return;
     if (isSavingRoundRef.current) return;
-    const missing = session.players.some(p => {
-      if (p.id === knockedBy && knockResult === 'correct') return false;
-      return roundInputs[p.id] === undefined || roundInputs[p.id] === '';
-    });
-    if (missing) { setRoundError('Enter a score for every player'); return; }
-    if (knockedBy && !knockResult) { setRoundError('Mark the knock as correct, tied, or incorrect'); return; }
+    const missing = session.players.some(p => roundInputs[p.id] === undefined || roundInputs[p.id] === '' || Number.isNaN(parseInt(roundInputs[p.id])));
+    if (missing) { setRoundError('Enter a hand for every player'); return; }
+    if (!knockedBy) { setRoundError('Who knocked?'); return; }
+    const knocker = session.players.find(p => p.id === knockedBy);
+    const hands = Object.fromEntries(session.players.map(p => [p.seatId, parseInt(roundInputs[p.id])]));
+    const ik = inherentKnock === knockedBy;
+    if (ik && hands[knocker.seatId] !== 0) { setRoundError('An inherent knock means a hand of 0'); return; }
 
     isSavingRoundRef.current = true;
     setIsSavingRound(true);
     try {
-      const roundScores = session.players.map(p => {
-        let score;
-        if (p.id === knockedBy) {
-          if (knockResult === 'correct')      score = -10;
-          else if (knockResult === 'tied')    score = parseInt(roundInputs[p.id]) || 0;
-          else                                score = (parseInt(roundInputs[p.id]) || 0) + 10;
-        } else {
-          score = parseInt(roundInputs[p.id]) || 0;
-        }
-        return { playerId: p.id, score };
-      });
-
-      const knockerWon = knockedBy ? knockResult === 'correct' : false;
-      const round = { id: uid(), timestamp: Date.now(), scores: roundScores, knockedBy, knockerWon, knockResult, inherentKnock };
-      const nextTurnIndex = typeof session.currentTurnIndex === 'number'
-        ? (session.currentTurnIndex + 1) % session.players.length
-        : 0;
-      const updated = {
-        ...session,
-        rounds: [...session.rounds, round],
-        players: session.players.map(p => {
-          const rs = roundScores.find(r => r.playerId === p.id);
-          return { ...p, total: p.total + rs.score };
-        }),
-        currentTurnIndex: nextTurnIndex,
-      };
-      await saveSession(updated);
-      setLastRoundDeltas(roundScores);
-      setTimeout(() => setLastRoundDeltas(null), 2500);
-      setRoundInputs({}); setKnockedBy(null); setKnockResult(null); setRoundError(''); setInherentKnock(null);
+      const round = roundOf(session.rounds.length + 1, hands, knocker.seatId, ik);
+      await recordRound(log, user, session.id, round);
+      const games = refreshGames();
+      const saved = games.find(g => g.id === session.id)?.rounds.at(-1);
+      if (saved) { setLastRoundDeltas(saved.scores); setTimeout(() => setLastRoundDeltas(null), 2500); }
+      resetRoundState();
       setShowScoreSheet(false);
     } finally {
       isSavingRoundRef.current = false;
@@ -499,32 +513,12 @@ export default function KedroApp() {
 
   async function editRound(roundIndex) {
     if (!session) return;
-    const updatedRounds = session.rounds.map((r, i) => {
-      if (i !== roundIndex) return r;
-      const newScores = session.players.map(p => ({
-        playerId: p.id,
-        score: parseInt(editInputs[p.id]) || 0,
-      }));
-      let knockerWon = false;
-      if (r.knockedBy) {
-        const knockerScore = newScores.find(s => s.playerId === r.knockedBy)?.score;
-        const minScore = Math.min(...newScores.map(s => s.score));
-        const playersAtMin = newScores.filter(s => s.score === minScore).length;
-        knockerWon = knockerScore !== undefined && knockerScore === minScore && playersAtMin === 1;
-      }
-      return { ...r, scores: newScores, knockerWon };
-    });
-
-    const totals = {};
-    session.players.forEach(p => { totals[p.id] = 0; });
-    updatedRounds.forEach(r => r.scores.forEach(s => { totals[s.playerId] = (totals[s.playerId] || 0) + s.score; }));
-
-    const updated = {
-      ...session,
-      rounds: updatedRounds,
-      players: session.players.map(p => ({ ...p, total: totals[p.id] || 0 })),
-    };
-    await saveSession(updated);
+    const r = session.rounds[roundIndex];
+    const hands = Object.fromEntries(session.players.map(p => [p.seatId, parseInt(editInputs[p.id]) || 0]));
+    const ik = !!r.inherentKnock;
+    if (ik && hands[r.knockerSeat] !== 0) return;
+    await writeRoundEdit(log, user, session.id, roundOf(r.number, hands, r.knockerSeat, ik));
+    refreshGames();
     setEditingRound(null); setEditInputs({});
   }
 
@@ -533,14 +527,9 @@ export default function KedroApp() {
     if (isEndingGameRef.current) return;
     isEndingGameRef.current = true;
     try {
-      const sorted  = [...session.players].sort((a, b) => a.total - b.total);
-      const winner  = sorted[0];
-      const completed = { ...session, status: 'complete', endedAt: Date.now(), winnerId: winner.id, neighCounts };
-      const updatedGames = [completed, ...allGames];
-      await saveGames(updatedGames);
-      await db.del('kedro_session');
-      setSession(null); setAllGames(updatedGames);
-      setPostGameData(completed);
+      await finishGame(log, user, session.folded);
+      const games = refreshGames();
+      setPostGameData({ ...(games.find(g => g.id === session.id) ?? session), neighCounts });
       setEndConfirm(false);
       navigate('postgame', 'forward');
     } finally {
@@ -553,11 +542,9 @@ export default function KedroApp() {
     if (isAbandoningGameRef.current) return;
     isAbandoningGameRef.current = true;
     try {
-      const abandoned = { ...session, status: 'abandoned', endedAt: Date.now() };
-      const updatedGames = [abandoned, ...allGames];
-      await saveGames(updatedGames);
-      await db.del('kedro_session');
-      setSession(null); setAllGames(updatedGames);
+      await writeAbandon(log, user, session.id);
+      refreshGames();
+      setEndConfirm(false);
       navigate('home', 'back');
     } finally {
       isAbandoningGameRef.current = false;
@@ -566,24 +553,21 @@ export default function KedroApp() {
 
   async function setCurrentTurn(index) {
     if (!session) return;
-    if (index < 0 || index >= session.players.length) return;
-    await saveSession({ ...session, currentTurnIndex: index });
+    const seat = session.players[index];
+    if (!seat) return;
+    await setDealer(log, user, session.id, session.rounds.length + 1, seat.seatId);
+    refreshGames();
   }
 
   async function rematch(players) {
-    const newSession = {
-      id: uid(), startedAt: Date.now(), status: 'active',
-      players: players.map(p => ({ id: p.id, username: p.username, emoji: p.emoji, total: 0 })),
-      rounds: [],
-      currentTurnIndex: 0,
-    };
-    await saveSession(newSession);
-    setRoundInputs({}); setKnockedBy(null); setNeighCounts({}); setInherentKnock(null);
+    const people = players.map(p => p.id === user.id ? user : ({ ref: parseSeatId(p.seatId ?? p.id), username: p.username, emoji: p.emoji, ...(allPlayers.find(x => x.id === p.id) ?? {}) }));
+    resetRoundState(); setNeighCounts({});
     setPostGameData(null);
-    navigate('game', 'forward');
+    await startGame(people, 0);
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────────
+  // From the games this player was in (every finished game, once their web history is claimed).
   function getStats(playerId, opts = {}) {
     const { minRounds = 0 } = opts;
     const pg = allGames.filter(g =>
@@ -619,9 +603,8 @@ export default function KedroApp() {
       nemesisCounts[g.winnerId] = (nemesisCounts[g.winnerId] || 0) + 1;
     });
     const nemesisId = Object.entries(nemesisCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const nemesis   = nemesisId ? allPlayers.find(p => p.id === nemesisId) : null;
+    const nemesis   = nemesisId ? (allPlayers.find(p => p.id === nemesisId) ?? pg.flatMap(g => g.players).find(p => p.id === nemesisId)) : null;
 
-    const totalNeighs = pg.reduce((sum, g) => sum + (g.neighCounts?.[playerId] || 0), 0);
     const totalInherentKnocks = allRounds.filter(r => r.inherentKnock === playerId).length;
 
     return {
@@ -636,8 +619,6 @@ export default function KedroApp() {
       knockRate:    allRounds.length  ? Math.round(myKnocks.length / allRounds.length * 100) : 0,
       kedroWinPct:  myKnocks.length   ? Math.round(kedroWins / myKnocks.length * 100) : '—',
       nemesis,
-      totalNeighs,
-      neighsPerGame: pg.length ? (totalNeighs / pg.length).toFixed(1) : '—',
       totalInherentKnocks,
     };
   }
@@ -699,22 +680,20 @@ export default function KedroApp() {
 
           {view === 'login' && (
             <LoginScreen
-              step={lStep} username={lUsername} error={lError} found={lFoundPlayer}
-              rName={rName} rEmoji={rEmoji}
-              allPlayers={allPlayers.filter(p => !p.deleted)}
-              dropdownOpen={lDropdownOpen} onDropdownChange={setLDropdownOpen}
-              onUsernameChange={setLUsername}
-              onUsernameNext={handleUsernameNext}
-              onLogin={handleLogin}
-              onRegister={handleRegister}
-              onStepChange={setLStep}
-              onErrorChange={setLError}
-              onRNameChange={setRName}
-              onREmojiChange={setREmoji}
+              error={authError} devAccounts={devAccounts}
+              onApple={() => handleSignIn(signInWithApple)} onGoogle={() => handleSignIn(signInWithGoogle)} onDevAccount={handleDevAccount}
             />
           )}
 
-          {view !== 'splash' && view !== 'login' && user && (
+          {view === 'onboarding' && (
+            <OnboardingScreen
+              error={authError} rName={rName} rHandle={rHandle} rEmoji={rEmoji}
+              onRNameChange={setRName} onRHandleChange={setRHandle} onREmojiChange={setREmoji}
+              onRegister={handleRegister} onSignOut={logout}
+            />
+          )}
+
+          {view !== 'splash' && view !== 'login' && view !== 'onboarding' && user && (
             <>
               {view === 'home' && (
                 <HomeScreen
@@ -738,7 +717,12 @@ export default function KedroApp() {
                     prev.find(x => x.id === p.id) ? prev.filter(x => x.id !== p.id) : [...prev, p]
                   )}
                   onStart={(orderedPlayers, firstPlayerIndex) => {
-                    if (orderedPlayers.length >= 2) startGame(orderedPlayers, firstPlayerIndex);
+                    if (orderedPlayers.length >= SEAT_LIMITS.min && orderedPlayers.length <= SEAT_LIMITS.max) startGame(orderedPlayers, firstPlayerIndex);
+                  }}
+                  onAddGuest={name => {
+                    const guest = webGuest(crypto.randomUUID(), name);
+                    setAllPlayers(prev => [...prev, guest]);
+                    setNgSelected(prev => [...prev, guest]);
                   }}
                   onBack={() => navigate('home', 'back')}
                 />
@@ -747,14 +731,13 @@ export default function KedroApp() {
               {view === 'game' && session && (
                 <GameScreen
                   session={session} user={user}
-                  roundInputs={roundInputs} knockedBy={knockedBy} knockResult={knockResult}
+                  roundInputs={roundInputs} knockedBy={knockedBy}
                   roundError={roundError} lastRoundDeltas={lastRoundDeltas}
                   isSavingRound={isSavingRound}
                   showScoreSheet={showScoreSheet} endConfirm={endConfirm}
                   editingRound={editingRound} editInputs={editInputs}
                   onInput={(id, val) => setRoundInputs(prev => ({ ...prev, [id]: val }))}
-                  onKnockedBy={id => { setKnockedBy(prev => prev === id ? null : id); setKnockResult(null); }}
-                  onKnockResult={setKnockResult}
+                  onKnockedBy={id => { setKnockedBy(prev => prev === id ? null : id); setInherentKnock(null); }}
                   onAddRound={addRound}
                   onEndGame={endGame}
                   onEndConfirm={() => setEndConfirm(true)}
@@ -766,7 +749,7 @@ export default function KedroApp() {
                   onEditRound={idx => {
                     const r = session.rounds[idx];
                     const inputs = {};
-                    r.scores.forEach(s => { inputs[s.playerId] = String(s.score); });
+                    session.players.forEach(p => { inputs[p.id] = String(r.hands[p.seatId] ?? ''); });
                     setEditInputs(inputs); setEditingRound(idx);
                   }}
                   onEditInput={(id, val) => setEditInputs(prev => ({ ...prev, [id]: val }))}
@@ -775,7 +758,11 @@ export default function KedroApp() {
                   neighCounts={neighCounts}
                   onNeigh={id => { playNeigh(); setNeighCounts(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 })); }}
                   inherentKnock={inherentKnock}
-                  onInherentKnock={id => setInherentKnock(prev => prev === id ? null : id)}
+                  onInherentKnock={id => {
+                    setInherentKnock(prev => prev === id ? null : id);
+                    setKnockedBy(id);
+                    setRoundInputs(prev => ({ ...prev, [id]: '0' }));
+                  }}
                   onSetTurn={setCurrentTurn}
                 />
               )}
@@ -792,10 +779,6 @@ export default function KedroApp() {
                 <HistoryScreen
                   games={allGames} user={user} selected={historyGame}
                   onSelect={setHistoryGame} onBack={() => navigate('home', 'back')}
-                  deleteGameConfirm={deleteGameConfirm} onDeleteGameConfirm={setDeleteGameConfirm}
-                  onDeleteGame={deleteGame}
-                  clearAllConfirm={clearAllConfirm} onClearAllConfirm={setClearAllConfirm}
-                  onClearAll={clearAllGames}
                 />
               )}
 
@@ -804,23 +787,21 @@ export default function KedroApp() {
                   user={user} stats={getStats(user.id)} games={allGames}
                   allPlayers={allPlayers} session={session}
                   onBack={() => navigate('home', 'back')}
-                  onSwitchPlayer={switchPlayer}
                   onLogout={logout}
                   editingProfile={editingProfile}
                   onStartEdit={() => { setEditUsername(user.username); setEditEmoji(user.emoji); setEditingProfile(true); }}
-                  onCancelEdit={() => setEditingProfile(false)}
+                  onCancelEdit={() => { setEditingProfile(false); setProfileError(''); }}
                   editUsername={editUsername} onEditUsername={setEditUsername}
                   editEmoji={editEmoji} onEditEmoji={setEditEmoji}
-                  onSaveEdit={handleEditProfile}
-                  deleteConfirm={deletePlayerConfirm} onDeleteConfirm={setDeletePlayerConfirm}
-                  onDeletePlayer={handleDeletePlayer}
+                  onSaveEdit={handleEditProfile} profileError={profileError}
+                  claimMessage={claimMessage} onClaim={handleClaim}
                 />
               )}
 
               {view === 'dashboard' && (
                 <DashboardScreen
-                  allPlayers={allPlayers.filter(p => !p.deleted)} allGames={allGames}
-                  user={user} getStats={getStats}
+                  allGames={allGames}
+                  user={user}
                   viewMode={dashboardView} onToggleView={setDashboardView}
                   onBack={() => navigate('home', 'back')}
                 />
@@ -851,11 +832,7 @@ function SplashScreen() {
   );
 }
 
-function LoginScreen({ step, username, error, found, rName, rEmoji, allPlayers, dropdownOpen, onDropdownChange, onUsernameChange, onUsernameNext, onLogin, onRegister, onStepChange, onErrorChange, onRNameChange, onREmojiChange }) {
-  const enter = (e, fn) => { if (e.key === 'Enter') fn(); };
-  const filtered = (allPlayers || []).filter(p => !username || p.username.toLowerCase().includes(username.toLowerCase()));
-  const greet = useMemo(() => found ? TRASH.loginGreet(found.username) : '', [found]);
-  const sub = useMemo(() => TRASH.loginSub(), [found]);
+function LoginScreen({ error, devAccounts, onApple, onGoogle, onDevAccount }) {
   return (
     <div className="screen" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -864,83 +841,71 @@ function LoginScreen({ step, username, error, found, rName, rEmoji, allPlayers, 
         <div className="red-line" style={{ margin: '10px auto 0' }} />
       </div>
       <div style={s.card({ padding: 28 })}>
-        {step === 'username' && (
-          <>
-            <div style={{ ...s.h2, fontSize: 26, marginBottom: 20 }}>Who's talking shit?</div>
-            <label style={s.label}>Username</label>
-            <div style={{ position: 'relative' }}>
-              <input style={s.input()} placeholder="Type or select your name..." value={username}
-                onChange={e => { onUsernameChange(e.target.value); onDropdownChange(true); }}
-                onFocus={() => onDropdownChange(true)}
-                onBlur={() => setTimeout(() => onDropdownChange(false), 180)}
-                onKeyDown={e => enter(e, onUsernameNext)} autoFocus />
-              {dropdownOpen && filtered.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: '0 0 6px 6px', maxHeight: 200, overflowY: 'auto' }}>
-                  {filtered.map(p => (
-                    <div key={p.id} onMouseDown={() => { onUsernameChange(p.username); onDropdownChange(false); setTimeout(onUsernameNext, 50); }}
-                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.border}`, transition: 'background .1s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = C.surface3}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <span style={{ fontSize: 20 }}>{p.emoji}</span>
-                      <span style={{ color: C.cream, fontSize: 14 }}>{p.username}</span>
-                    </div>
-                  ))}
+        <div style={{ ...s.h2, fontSize: 26, marginBottom: 8 }}>Who's talking shit?</div>
+        <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 20 }}>Sign in to keep score. Same account, same scoreboard as the Kedro iPhone app.</div>
+        <button className="btn-press" onClick={onApple} style={{ ...s.btn('ghost'), width: '100%', padding: 14, fontSize: 15, background: '#fff', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+          Continue with Apple
+        </button>
+        <button className="btn-red btn-press" onClick={onGoogle} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15, marginTop: 10 }}>Continue with Google</button>
+        <div style={{ color: C.creamDim, fontSize: 12, marginTop: 12, textAlign: 'center' }}>On an iPhone? Use Apple, the same as in the app, so it's one account.</div>
+        {inAppBrowser && <div style={{ color: C.cream, fontSize: 13, marginTop: 14, textAlign: 'center' }}>Google won't sign you in inside this app's browser. Open this page in Chrome or Safari (the ⋯ menu → Open in browser).</div>}
+        {error && <div style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{error}</div>}
+        {devAccounts.length > 0 && (
+          <div style={{ marginTop: 22 }}>
+            <label style={s.label}>Test accounts (local API)</label>
+            <div style={{ maxHeight: 220, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+              {devAccounts.map(account => (
+                <div key={account.id} onClick={() => onDevAccount(account)}
+                  style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ color: C.cream, fontSize: 14 }}>{account.displayName}</span>
+                  <span style={{ color: C.creamDim, fontSize: 12 }}>@{account.handle} · {account.gamesClaimed} games</span>
                 </div>
-              )}
+              ))}
             </div>
-            {error && <div style={{ color: C.red, fontSize: 13, marginTop: 8 }}>{error}</div>}
-            <button className="btn-red btn-press" onClick={onUsernameNext} style={{ ...s.btn('red'), width: '100%', marginTop: 16 }}>Continue →</button>
-            <div style={{ textAlign: 'center', marginTop: 14 }}>
-              <button onClick={() => { onStepChange('register'); onErrorChange(''); }} style={s.btn('ghost', { fontSize: 12 })}>New? Create a profile</button>
-            </div>
-          </>
+          </div>
         )}
-        {step === 'confirm' && found && (
-          <>
-            <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} />
-            <div style={{ textAlign: 'center', margin: '20px 0 28px' }}>
-              <div style={{ fontSize: 60 }}>{found.emoji}</div>
-              <div style={{ ...s.h2, fontSize: 24, marginTop: 10, lineHeight: 1.2 }}>{greet}</div>
-              <div style={{ color: C.creamDim, fontSize: 14, marginTop: 6 }}>{sub}</div>
-            </div>
-            <button className="btn-red btn-press" onClick={() => onLogin(found)} style={{ ...s.btn('red'), width: '100%', fontSize: 15, padding: 14 }}>Let's Go 🐴</button>
-          </>
-        )}
-        {step === 'notfound' && (
-          <>
-            <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} />
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <div style={{ fontSize: 40 }}>🤔</div>
-              <div style={{ ...s.h2, fontSize: 22, marginTop: 12 }}>Who the hell is that?</div>
-              <div style={{ color: C.creamDim, fontSize: 14, marginTop: 8 }}>"{username}" doesn't exist yet.</div>
-            </div>
-            <button className="btn-red btn-press" onClick={() => { onStepChange('register'); onRNameChange(username); onErrorChange(''); }}
-              style={{ ...s.btn('red'), width: '100%' }}>Create Profile →</button>
-          </>
-        )}
-        {step === 'register' && (
-          <>
-            <BackBtn onBack={() => { onStepChange('username'); onErrorChange(''); }} label="Back to login" />
-            <div style={{ ...s.h2, fontSize: 24, margin: '16px 0 20px' }}>Fresh Meat</div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={s.label}>Choose your avatar</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {EMOJIS.map(e => (
-                  <button key={e} className="emoji-btn" onClick={() => onREmojiChange(e)}
-                    style={{ fontSize: 22, background: rEmoji === e ? C.surface3 : 'transparent', border: `2px solid ${rEmoji === e ? C.red : C.border}`, borderRadius: 8, padding: '5px 7px', cursor: 'pointer', transition: 'all .15s' }}>
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={s.label}>Username</label>
-              <input style={s.input()} placeholder="Choose a username..." value={rName} onChange={e => onRNameChange(e.target.value)} autoFocus />
-            </div>
-            {error && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{error}</div>}
-            <button className="btn-red btn-press" onClick={onRegister} style={{ ...s.btn('red'), width: '100%' }}>Let's Go 🐴</button>
-          </>
-        )}
+      </div>
+      <a href="/privacy.html" style={{ color: C.creamDim, fontSize: 12, textAlign: 'center', marginTop: 18 }}>Privacy Policy</a>
+    </div>
+  );
+}
+
+function OnboardingScreen({ error, rName, rHandle, rEmoji, onRNameChange, onRHandleChange, onREmojiChange, onRegister, onSignOut }) {
+  const placeholder = rName.trim() ? suggestedHandle(rName.trim()) : 'yourname';
+  return (
+    <div className="screen" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 0' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <KedroLogo height={90} />
+      </div>
+      <div style={s.card({ padding: 28 })}>
+        <div style={{ ...s.h2, fontSize: 24, marginBottom: 6 }}>Fresh Meat</div>
+        <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 18 }}>Played on the old web app? Set up your profile, then enter your claim code under Profile to bring your games over.</div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={s.label}>Choose your avatar</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {EMOJIS.map(e => (
+              <button key={e} className="emoji-btn" onClick={() => onREmojiChange(e)}
+                style={{ fontSize: 22, background: rEmoji === e ? C.surface3 : 'transparent', border: `2px solid ${rEmoji === e ? C.red : C.border}`, borderRadius: 8, padding: '5px 7px', cursor: 'pointer', transition: 'all .15s' }}>
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={s.label}>Name</label>
+          <input style={s.input()} placeholder="What the table calls you" value={rName} onChange={e => onRNameChange(e.target.value)} autoFocus />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={s.label}>Handle</label>
+          <input style={s.input()} placeholder={`@${placeholder}`} value={rHandle} onChange={e => onRHandleChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onRegister(); }} autoCapitalize="none" autoCorrect="off" />
+        </div>
+        {error && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        <button className="btn-red btn-press" onClick={onRegister} style={{ ...s.btn('red'), width: '100%' }}>Let's Go 🐴</button>
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <button onClick={onSignOut} style={s.btn('ghost', { fontSize: 12 })}>Use a different account</button>
+        </div>
       </div>
     </div>
   );
@@ -1030,9 +995,12 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
   );
 }
 
-function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }) {
+function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onAddGuest, onBack }) {
+  const [filter, setFilter] = useState('');
   const others = allPlayers.filter(p => p.id !== user.id);
+  const shown = others.filter(p => !filter.trim() || p.username.toLowerCase().includes(filter.trim().toLowerCase()) || p.handle?.includes(filter.trim().toLowerCase().replace(/^@/, '')) || selected.find(x => x.id === p.id));
   const count = selected.length + 1;
+  const ready = count >= SEAT_LIMITS.min && count <= SEAT_LIMITS.max;
 
   // Seating order state — user is always included, kept in sync with `selected`.
   const [order, setOrder] = useState([user]);
@@ -1082,18 +1050,27 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
         <div style={{ marginLeft: 'auto', color: C.red, fontSize: 16 }}>✓</div>
       </div>
 
-      {others.length === 0 ? (
-        <div style={{ ...s.card({ padding: 24, textAlign: 'center' }), color: C.creamDim }}>No other players registered yet.</div>
+      <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Add Players</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input style={s.input({ flex: 1 })} placeholder="Find a player, or type a guest's name" value={filter} onChange={e => setFilter(e.target.value)} />
+        <button className="btn-press" disabled={!filter.trim()}
+          onClick={() => { onAddGuest(filter.trim().slice(0, 40)); setFilter(''); }}
+          style={s.btn('outline', { whiteSpace: 'nowrap', opacity: filter.trim() ? 1 : 0.4 })}>+ Guest</button>
+      </div>
+      {shown.length === 0 ? (
+        <div style={{ ...s.card({ padding: 24, textAlign: 'center' }), color: C.creamDim }}>{others.length === 0 ? 'No one else here yet. Add a guest above.' : 'No one by that name. Add them as a guest.'}</div>
       ) : (
         <>
-          <div style={{ color: C.silverDim, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Add Players</div>
-          {others.map(p => {
+          {shown.map(p => {
             const sel = !!selected.find(x => x.id === p.id);
             return (
               <div key={p.id} className="player-tile" onClick={() => onToggle(p)}
                 style={{ ...s.card({ padding: '12px 16px', marginBottom: 8, cursor: 'pointer', border: `1px solid ${sel ? C.red : C.border}`, background: sel ? 'rgba(212,43,43,.07)' : C.surface2, transition: 'all .15s' }), display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ fontSize: 26 }}>{p.emoji}</div>
-                <div style={{ flex: 1, color: C.cream, fontSize: 15 }}>{p.username}</div>
+                <div style={{ flex: 1, color: C.cream, fontSize: 15 }}>
+                  {p.username}
+                  <div style={{ color: C.creamDim, fontSize: 11 }}>{p.isGuest ? 'Guest' : `@${p.handle}`}</div>
+                </div>
                 <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${sel ? C.red : C.borderLight}`, background: sel ? C.red : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, transition: 'all .15s' }}>
                   {sel ? '✓' : ''}
                 </div>
@@ -1131,10 +1108,10 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
       )}
 
       <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, background: C.surface, color: C.creamDim, fontSize: 13, textAlign: 'center' }}>
-        {count} player{count !== 1 ? 's' : ''} selected {count < 2 ? '— need at least 2' : '— ready!'}
+        {count} player{count !== 1 ? 's' : ''} selected {count < SEAT_LIMITS.min ? `— need at least ${SEAT_LIMITS.min}` : count > SEAT_LIMITS.max ? `— ${SEAT_LIMITS.max} max` : '— ready!'}
       </div>
-      <button className="btn-red btn-press" onClick={handleStart} disabled={count < 2}
-        style={{ ...s.btn('red', { width: '100%', marginTop: 12, padding: 14, fontSize: 15, opacity: count < 2 ? 0.5 : 1 }) }}>
+      <button className="btn-red btn-press" onClick={handleStart} disabled={!ready}
+        style={{ ...s.btn('red', { width: '100%', marginTop: 12, padding: 14, fontSize: 15, opacity: ready ? 1 : 0.5 }) }}>
         Shuffle Up & Deal 🐴
       </button>
     </div>
@@ -1142,10 +1119,10 @@ function NewGameScreen({ user, allPlayers, selected, onToggle, onStart, onBack }
 }
 
 function GameScreen({
-  session, user, roundInputs, knockedBy, knockResult, roundError, lastRoundDeltas,
+  session, user, roundInputs, knockedBy, roundError, lastRoundDeltas,
   isSavingRound,
   showScoreSheet, endConfirm, editingRound, editInputs,
-  onInput, onKnockedBy, onKnockResult, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
+  onInput, onKnockedBy, onAddRound, onEndGame, onEndConfirm, onCancelEnd,
   onShowSheet, onHideSheet, onAbandon, onHome,
   onEditRound, onEditInput, onSaveEdit, onCancelEdit,
   neighCounts = {}, onNeigh,
@@ -1413,12 +1390,11 @@ function GameScreen({
               </div>
             </div>
             <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 16, fontStyle: 'italic' }}>
-              Enter your card score... we will do the math.... ya bisssssh
+              Enter everyone's cards and who knocked... we will do the math.... ya bisssssh
             </div>
             {session.players.map(p => {
               const isKnocker = knockedBy === p.id;
-              const isIK = inherentKnock === p.id;
-              const inputDisabled = isKnocker && knockResult === 'correct';
+              const inputDisabled = inherentKnock === p.id;
               return (
                 <div key={p.id}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: isKnocker ? 8 : 14 }}>
@@ -1440,7 +1416,7 @@ function GameScreen({
                       }}>±</button>
                     <input type="number" min={-100} max={100} inputMode="numeric"
                       style={s.input({ width: 74, textAlign: 'center', padding: '10px 6px', fontSize: 18, opacity: inputDisabled ? 0.5 : 1 })}
-                      placeholder="0" value={inputDisabled ? '-10' : (roundInputs[p.id] ?? '')}
+                      placeholder="0" value={inputDisabled ? '0' : (roundInputs[p.id] ?? '')}
                       disabled={inputDisabled}
                       onChange={e => onInput(p.id, e.target.value)} />
                     <button onClick={() => onKnockedBy(p.id)} style={{
@@ -1464,40 +1440,7 @@ function GameScreen({
                       {inherentKnock === p.id ? '⚡ IK' : 'IK?'}
                     </button>
                   </div>
-                  {isKnocker && (
-                    <div style={{ display: 'flex', gap: 6, marginLeft: 38, marginBottom: 14 }}>
-                      <button onClick={() => onKnockResult(knockResult === 'correct' ? null : 'correct')} style={{
-                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
-                        border: `1px solid ${knockResult === 'correct' ? C.green : C.border}`,
-                        background: knockResult === 'correct' ? 'rgba(61,186,106,.2)' : 'transparent',
-                        color: knockResult === 'correct' ? C.green : C.creamDim,
-                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
-                        letterSpacing: '.04em', textTransform: 'uppercase',
-                      }}>
-                        ✓ Won (−10)
-                      </button>
-                      <button onClick={() => onKnockResult(knockResult === 'tied' ? null : 'tied')} style={{
-                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
-                        border: `1px solid ${knockResult === 'tied' ? C.gold : C.border}`,
-                        background: knockResult === 'tied' ? 'rgba(245,200,66,.2)' : 'transparent',
-                        color: knockResult === 'tied' ? C.gold : C.creamDim,
-                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
-                        letterSpacing: '.04em', textTransform: 'uppercase',
-                      }}>
-                        = Tied (±0)
-                      </button>
-                      <button onClick={() => onKnockResult(knockResult === 'incorrect' ? null : 'incorrect')} style={{
-                        flex: 1, padding: '6px 4px', borderRadius: 6, cursor: 'pointer',
-                        border: `1px solid ${knockResult === 'incorrect' ? C.red : C.border}`,
-                        background: knockResult === 'incorrect' ? 'rgba(212,43,43,.2)' : 'transparent',
-                        color: knockResult === 'incorrect' ? C.red : C.creamDim,
-                        fontSize: 10, fontFamily: 'Barlow, sans-serif', fontWeight: 600,
-                        letterSpacing: '.04em', textTransform: 'uppercase',
-                      }}>
-                        ✗ Lost (+10)
-                      </button>
-                    </div>
-                  )}
+                  {isKnocker && <KnockPreview session={session} roundInputs={roundInputs} knockedBy={knockedBy} inherent={inherentKnock === p.id} />}
                 </div>
               );
             })}
@@ -1572,6 +1515,24 @@ function GameScreen({
       )}
     </div>
   );
+}
+
+const OUTCOME_LINES = {
+  landed:    { text: 'Knock landed: −10', color: C.green },
+  tied:      { text: 'Tied for lowest: knocker keeps their hand', color: C.gold },
+  failed:    { text: 'Someone was lower: knocker takes +10', color: C.red },
+  noPenalty: { text: 'Inherent knock beaten: no +10', color: C.gold },
+};
+
+/** What the knock comes to with the hands entered so far (the server scores it the same way). */
+function KnockPreview({ session, roundInputs, knockedBy, inherent }) {
+  const knocker = session.players.find(p => p.id === knockedBy);
+  const complete = session.players.every(p => roundInputs[p.id] !== undefined && roundInputs[p.id] !== '' && !Number.isNaN(parseInt(roundInputs[p.id])));
+  if (!knocker || !complete) return <div style={{ marginLeft: 38, marginBottom: 14, color: C.creamDim, fontSize: 11 }}>Enter every hand to see how the knock went.</div>;
+  const hands = Object.fromEntries(session.players.map(p => [p.seatId, parseInt(roundInputs[p.id])]));
+  const outcome = knockOutcome(hands, knocker.seatId, inherent);
+  const line = OUTCOME_LINES[outcome];
+  return line ? <div style={{ marginLeft: 38, marginBottom: 14, color: line.color, fontSize: 12, fontWeight: 600 }}>{line.text}</div> : null;
 }
 
 function PostGameScreen({ game, user, getStats, onRematch, onHome }) {
@@ -1728,14 +1689,14 @@ function PostGameScreen({ game, user, getStats, onRematch, onHome }) {
   );
 }
 
-function HistoryScreen({ games, user, selected, onSelect, onBack, deleteGameConfirm, onDeleteGameConfirm, onDeleteGame, clearAllConfirm, onClearAllConfirm, onClearAll }) {
+function HistoryScreen({ games, user, selected, onSelect, onBack }) {
   const displayGames = games.filter(g => g.status === 'complete' || g.status === 'abandoned');
   if (selected) {
     const w = selected.players.find(p => p.id === selected.winnerId);
     const winner = displayPlayer(w);
     return (
       <div className="screen" style={{ paddingTop: 28, paddingBottom: 40 }}>
-        <BackBtn onBack={() => { onSelect(null); onDeleteGameConfirm(null); }} label="Back to history" />
+        <BackBtn onBack={() => onSelect(null)} label="Back to history" />
         <div style={{ margin: '14px 0 6px' }}><KedroLogo height={32} /></div>
         <div style={{ ...s.h1, fontSize: 32 }}>Game Detail</div>
         <div className="red-line" />
@@ -1809,20 +1770,6 @@ function HistoryScreen({ games, user, selected, onSelect, onBack, deleteGameConf
           </div>
         )}
 
-        {/* Delete game */}
-        {deleteGameConfirm === selected.id ? (
-          <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)', marginBottom: 10 })}>
-            <div style={{ color: C.cream, fontSize: 14, marginBottom: 14, textAlign: 'center' }}>
-              Delete this game?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Gone from everyone's stats. No backsies.</span>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-press" onClick={() => onDeleteGameConfirm(null)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
-              <button className="btn-press" onClick={() => onDeleteGame(selected.id)} style={s.btn('danger', { flex: 1 })}>Delete Forever</button>
-            </div>
-          </div>
-        ) : (
-          <button className="btn-press" onClick={() => onDeleteGameConfirm(selected.id)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Delete This Game</button>
-        )}
       </div>
     );
   }
@@ -1859,28 +1806,15 @@ function HistoryScreen({ games, user, selected, onSelect, onBack, deleteGameConf
           </div>
         );
       })}
-      {displayGames.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          {clearAllConfirm ? (
-            <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)' })}>
-              <div style={{ color: C.cream, fontSize: 14, marginBottom: 14, textAlign: 'center' }}>
-                Nuke all history?<br /><span style={{ color: C.creamDim, fontSize: 12 }}>Every game wiped from existence. Everyone's stats reset.</span>
-              </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-press" onClick={() => onClearAllConfirm(false)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
-                <button className="btn-press" onClick={onClearAll} style={s.btn('danger', { flex: 1 })}>Burn It All</button>
-              </div>
-            </div>
-          ) : (
-            <button className="btn-press" onClick={() => onClearAllConfirm(true)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Clear All History</button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
-function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwitchPlayer, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, deleteConfirm, onDeleteConfirm, onDeletePlayer }) {
+function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, profileError, claimMessage, onClaim }) {
+  const [claimCode, setClaimCode] = useState('');
+  const claimMessageRef = useRef(null);
+  // A claim link lands here with the outcome at the bottom of the page: bring it into view.
+  useEffect(() => { if (claimMessage) claimMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, [claimMessage]);
   const userGames = games.filter(g => g.status === 'complete' && g.players.find(p => p.id === user.id));
   return (
     <div className="screen" style={{ paddingTop: 28, paddingBottom: 60 }}>
@@ -1901,9 +1835,10 @@ function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwit
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={s.label}>Username</label>
+            <label style={s.label}>Name</label>
             <input style={s.input()} value={editUsername} onChange={e => onEditUsername(e.target.value)} autoFocus />
           </div>
+          {profileError && <div style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{profileError}</div>}
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-press" onClick={onCancelEdit} style={s.btn('outline', { flex: 1 })}>Cancel</button>
             <button className="btn-red btn-press" onClick={onSaveEdit} style={s.btn('red', { flex: 1 })}>Save</button>
@@ -1915,7 +1850,7 @@ function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwit
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: C.cream, marginTop: 8 }}>{user.username}</div>
           <div className="red-line" style={{ margin: '8px auto 0' }} />
           <div style={{ color: C.creamDim, fontSize: 12, marginTop: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-            Since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            @{user.handle}{user.createdAt ? ` · Since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}` : ''}
           </div>
           <button className="btn-press" onClick={onStartEdit} style={s.btn('ghost', { fontSize: 12, marginTop: 8 })}>✏️ Edit Profile</button>
         </div>
@@ -2017,29 +1952,17 @@ function ProfileScreen({ user, stats, games, allPlayers, session, onBack, onSwit
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button className="btn-press" onClick={onSwitchPlayer} style={{ ...s.btn('outline', { flex: 1 }) }}>Switch Player</button>
-        <button className="btn-press" onClick={onLogout} style={{ ...s.btn('ghost', { flex: 1 }) }}>Sign Out</button>
+      <div style={s.card({ marginBottom: 20 })}>
+        <div style={{ color: C.silverDim, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Got a claim code?</div>
+        <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 10 }}>Enter the code you were sent to add your old web games to this account.</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input style={s.input({ flex: 1 })} placeholder="kedro-legacy-…" value={claimCode} onChange={e => setClaimCode(e.target.value)} autoCapitalize="none" autoCorrect="off" />
+          <button className="btn-red btn-press" disabled={!claimCode.trim()} onClick={() => onClaim(claimCode)} style={s.btn('red', { opacity: claimCode.trim() ? 1 : 0.5 })}>Claim</button>
+        </div>
+        {claimMessage && <div ref={claimMessageRef} style={{ color: C.cream, fontSize: 13, marginTop: 10 }}>{claimMessage}</div>}
       </div>
 
-      {/* Delete account */}
-      <div style={{ marginTop: 24 }}>
-        {deleteConfirm ? (
-          <div style={s.card({ border: `1px solid ${C.red}`, background: 'rgba(212,43,43,.06)' })}>
-            <div style={{ color: C.cream, fontSize: 14, marginBottom: 6, textAlign: 'center' }}>Delete your profile?</div>
-            <div style={{ color: C.creamDim, fontSize: 12, marginBottom: 14, textAlign: 'center' }}>
-              This can't be undone. Past games stay on the record, but your profile is gone forever.
-              {session ? <><br /><span style={{ color: C.red }}>Finish your active game first.</span></> : null}
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-press" onClick={() => onDeleteConfirm(false)} style={s.btn('outline', { flex: 1 })}>Cancel</button>
-              <button className="btn-press" onClick={onDeletePlayer} disabled={!!session} style={s.btn('danger', { flex: 1, opacity: session ? 0.4 : 1 })}>Delete Forever</button>
-            </div>
-          </div>
-        ) : (
-          <button className="btn-press" onClick={() => onDeleteConfirm(true)} style={s.btn('ghost', { width: '100%', color: C.red, fontSize: 12 })}>🗑 Delete Account</button>
-        )}
-      </div>
+      <button className="btn-press" onClick={onLogout} style={{ ...s.btn('ghost', { width: '100%' }) }}>Sign Out</button>
     </div>
   );
 }
@@ -2097,7 +2020,7 @@ function ScoreChart({ allGames, allPlayers }) {
   return (
     <div>
       <div style={{ color: C.creamDim, fontSize: 11, textAlign: 'center', marginBottom: 8 }}>
-        Cumulative win % over time (games with 3+ rounds)
+        Cumulative win % over time (your games with 3+ rounds)
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
         {[0, 25, 50, 75, 100].map(pct => {
@@ -2133,8 +2056,8 @@ function ScoreChart({ allGames, allPlayers }) {
   );
 }
 
-// The leaderboard uses the Kedro app's rules (packages/shared legacyLeaderboard): the same rating,
-// sorts, minimums and Not Yet Ranked as GET /v1/leaderboard, computed from this history.
+// The leaderboard is GET /v1/leaderboard: the same board, rating, sorts and minimums as the Kedro
+// iPhone app, over every finished game from either app.
 const LEADERBOARD_SORT_OPTIONS = [
   { key: 'rating',       label: 'Rating' },
   { key: 'wins',         label: 'Wins' },
@@ -2149,25 +2072,39 @@ function needsLine(needs) {
   return '';
 }
 
-function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onToggleView, onBack }) {
+function DashboardScreen({ allGames, user, viewMode, onToggleView, onBack }) {
   const [sortKey, setSortKey] = useState('rating');
   const [showRatingInfo, setShowRatingInfo] = useState(false);
+  const [board, setBoard] = useState(null);
+  const [boardError, setBoardError] = useState('');
 
-  const board = useMemo(() => legacyLeaderboard({ players: allPlayers, games: allGames }, sortKey), [allPlayers, allGames, sortKey]);
+  useEffect(() => {
+    let cancelled = false;
+    api.leaderboard(sortKey)
+      .then(response => { if (!cancelled) { setBoard(response); setBoardError(''); } })
+      .catch(error => { if (!cancelled) setBoardError(error.message || 'Could not load the leaderboard'); });
+    return () => { cancelled = true; };
+  }, [sortKey]);
+
   const { ranked, notYetRanked } = useMemo(() => {
-    const byId = new Map(allPlayers.map(p => [p.id, p]));
+    if (!board) return { ranked: [], notYetRanked: [] };
     const rankCounts = {};
-    board.rows.forEach(e => { if (e.rank !== null) rankCounts[e.rank] = (rankCounts[e.rank] || 0) + 1; });
-    const ranked = board.rows.flatMap(entry => {
-      const p = byId.get(entry.subject.slice(2));
-      return p ? [{ ...p, entry, isShared: entry.rank !== null && rankCounts[entry.rank] > 1, stats: getStats(p.id, { minRounds: 3 }) }] : [];
-    });
-    const notYetRanked = board.notYetRanked.flatMap(entry => {
-      const p = byId.get(entry.subject.slice(2));
-      return p ? [{ ...p, entry }] : [];
-    });
+    board.rows.forEach(row => { if (row.rank !== null) rankCounts[row.rank] = (rankCounts[row.rank] || 0) + 1; });
+    const ranked = board.rows.map(row => ({
+      ...webPlayer(row.player),
+      isShared: row.rank !== null && rankCounts[row.rank] > 1,
+      entry: { rank: row.rank, rating: row.rating, needs: row.needs, stats: { wins: row.wins, winRate: row.winRate, avgScore: row.avgScore, knockSuccess: row.knockSuccess, gamesPlayed: row.gamesPlayed } },
+    }));
+    const notYetRanked = board.notYetRanked.map(row => ({ ...webPlayer(row.player), entry: { gamesPlayed: row.gamesPlayed } }));
     return { ranked, notYetRanked };
-  }, [board, allPlayers, allGames]);
+  }, [board]);
+
+  // The chart covers the games this player was in.
+  const chartPlayers = useMemo(() => {
+    const byId = new Map();
+    allGames.forEach(g => g.players.forEach(p => { if (!byId.has(p.id)) byId.set(p.id, p); }));
+    return [...byId.values()];
+  }, [allGames]);
 
   const th = (extra = {}) => ({ color: C.creamDim, padding: '8px 5px', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.04em', textAlign: 'center', whiteSpace: 'nowrap', ...extra });
   const sortTh = (key, label, extra) => (
@@ -2208,7 +2145,9 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
       </div>
 
       {viewMode === 'table' ? (
-        ranked.length === 0 && notYetRanked.length === 0 ? (
+        !board ? (
+          <div style={{ ...s.card({ textAlign: 'center', padding: 40 }), color: boardError ? C.red : C.creamDim }}>{boardError || 'Loading…'}</div>
+        ) : ranked.length === 0 && notYetRanked.length === 0 ? (
           <div style={{ ...s.card({ textAlign: 'center', padding: 40 }), color: C.creamDim }}>No stats yet. Play some games first.</div>
         ) : (
           <>
@@ -2242,12 +2181,12 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
                       {sortTh('winRate', 'W%')}
                       {sortTh('avgScore', 'Avg')}
                       {sortTh('knockSuccess', 'K%')}
-                      {['GP', 'Avg/R', 'Strk', 'KR%', 'IK', '🐴/G', '🐴'].map(h => <th key={h} style={th()}>{h}</th>)}
+                      <th style={th()}>GP</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ranked.map(p => {
-                      const { entry, stats } = p;
+                      const { entry } = p;
                       const below = entry.rank === null;
                       const dim = (key) => below && sortKey === key ? C.creamFaint : undefined;
                       return (
@@ -2264,12 +2203,6 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{decimal(entry.stats.avgScore)}</td>
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: dim('knockSuccess') ?? C.cream }}>{percent(entry.stats.knockSuccess)}</td>
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{entry.stats.gamesPlayed}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{stats.avgRound}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.green }}>{stats.currentStreak || 0}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.blue }}>{stats.knockRate}%</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.gold }}>{stats.totalInherentKnocks}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{stats.neighsPerGame}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 4px', color: C.red }}>{stats.totalNeighs}</td>
                         </tr>
                       );
                     })}
@@ -2297,7 +2230,7 @@ function DashboardScreen({ allPlayers, allGames, user, getStats, viewMode, onTog
         )
       ) : (
         <div style={s.card({ padding: 16 })}>
-          <ScoreChart allGames={allGames} allPlayers={allPlayers} />
+          <ScoreChart allGames={allGames} allPlayers={chartPlayers} />
         </div>
       )}
 

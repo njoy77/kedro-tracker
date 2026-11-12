@@ -1,6 +1,7 @@
 // Server entry (`bun run dev` / `bun run start`, and the Vercel function: vercel.json). Configuration: see config.ts.
 
 import { waitUntil } from '@vercel/functions'
+import { cors } from 'hono/cors'
 import { createApp } from './app.ts'
 import { DevTokenVerifier, SupabaseTokenVerifier, type TokenVerifier } from './auth.ts'
 import { deploymentProblems, loadConfig } from './config.ts'
@@ -51,6 +52,8 @@ const { app, services } = createApp({
 // Local test data (see dev/seed.ts). Only with dev auth and the in-memory store.
 if (config.devSeed && config.devAuth && !config.supabase) {
   let accounts: DevAccount[] = []
+  // The web app's dev server (another origin) lists these too.
+  app.use('/dev/*', cors({ origin: '*' }))
   app.get('/dev/accounts', (c) => c.json({ accounts }))
   if (!config.legacySource) {
     log('KEDRO_DEV_SEED: no SUPABASE_URL / SUPABASE_ANON_KEY to read the web data from (run bun run env:pull)')
