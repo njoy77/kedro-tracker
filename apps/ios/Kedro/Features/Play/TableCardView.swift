@@ -42,7 +42,7 @@ nonisolated struct TableCardContent: Hashable, Sendable, Identifiable {
         let others = (state?.seats ?? []).filter { $0.player != me }
         seated = others.compactMap { seat in
             guard case .player(let id) = seat.player, let handle = seat.handle else { return nil }
-            return PlayerSummary(id: id, displayName: seat.displayName, handle: handle, avatar: seat.avatar ?? .curated(.spade), titleID: seat.titleID, gamesPlayed: seat.gamesPlayed)
+            return PlayerSummary(id: id, displayName: seat.displayName, handle: handle, avatar: seat.avatar ?? .unknown, titleID: seat.titleID, gamesPlayed: seat.gamesPlayed)
         }
         guestCount = others.filter(\.isGuest).count
         let saved = me.map { state?.seat(for: $0) != nil } ?? false

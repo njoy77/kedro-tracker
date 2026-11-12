@@ -7,11 +7,23 @@ import Foundation
 /// - `{"kind":"photo","url":"https://…/avatars/<id>.jpg"}` (a reference, never image bytes; a
 ///   `file://` URL is allowed locally before upload)
 /// - `{"kind":"emoji","emoji":"🦊","colorIndex":3}` (`colorIndex` into `AvatarPalette`, 0–11)
-/// - `{"kind":"curated","id":"horse"}`
+/// - `{"kind":"curated","id":"horse"}`: legacy. The illustrated avatars are gone from the
+///   pickers, but the server and the web still carry the kind, so it decodes, re-encodes
+///   unchanged and draws as the initial on a color (`AvatarView`).
 nonisolated enum Avatar: Hashable, Sendable, Codable {
     case photo(URL)
     case emoji(String, colorIndex: Int)
-    case curated(CuratedAvatarID)
+    /// A legacy illustrated avatar, by id (`CURATED_AVATAR_IDS` in packages/shared).
+    case curated(String)
+
+    /// The face for a player whose avatar this phone doesn't know (a nearby seat, a local
+    /// summary). Draws as the initial; "spade" keeps it valid for the shared schema.
+    static let unknown = Avatar.curated("spade")
+
+    /// A stable palette color for a legacy curated avatar, so its initial sits on a color.
+    static func colorIndex(forCurated id: String) -> Int {
+        id.unicodeScalars.reduce(0) { $0 &+ Int($1.value) } % emojiColorCount
+    }
 
     /// Emoji offered as the default for new accounts (a random one on a random color).
     static let starterEmoji = ["🦊", "🦂", "🐍", "🦉", "🐺", "🦈", "🐗", "🦅", "🐙", "🦇", "🐆", "🦏"]
@@ -42,7 +54,7 @@ nonisolated enum Avatar: Hashable, Sendable, Codable {
             let index = try container.decode(Int.self, forKey: .colorIndex)
             self = .emoji(try container.decode(String.self, forKey: .emoji), colorIndex: index)
         case "curated":
-            self = .curated(try container.decode(CuratedAvatarID.self, forKey: .id))
+            self = .curated(try container.decode(String.self, forKey: .id))
         default:
             throw DecodingError.dataCorruptedError(forKey: .kind, in: container, debugDescription: "Unknown avatar kind \(kind)")
         }
@@ -61,57 +73,6 @@ nonisolated enum Avatar: Hashable, Sendable, Codable {
         case .curated(let id):
             try container.encode("curated", forKey: .kind)
             try container.encode(id, forKey: .id)
-        }
-    }
-}
-
-/// The 24 curated launch avatars (design §3.5). Artwork: `CuratedAvatarArt` in Core/Design.
-nonisolated enum CuratedAvatarID: String, Hashable, Sendable, Codable, CaseIterable, Identifiable {
-    case horse, joker, skull, crown, dice, glass, ghost, crow
-    case bull, eye, flame, spade, wolf, shark, hustler, ace
-    case redKing, lastCall, ashtray, hourglass, cardsFan, horseshoe, dagger, moon
-
-    var id: String { rawValue }
-
-    /// Secret avatars unlock with secret badges (design §12.6).
-    var isSecret: Bool { unlockingBadge != nil }
-
-    /// The badge that unlocks a secret avatar: Exorcism → the Ghost, Nothing to See Here → the Hustler.
-    var unlockingBadge: String? {
-        switch self {
-        case .ghost: "Exorcism"
-        case .hustler: "Nothing to See Here"
-        default: nil
-        }
-    }
-
-    /// Literal name, used for accessibility labels.
-    var displayName: String {
-        switch self {
-        case .horse: "The Horse"
-        case .joker: "The Joker"
-        case .skull: "The Skull"
-        case .crown: "The Crown"
-        case .dice: "The Dice"
-        case .glass: "The Glass"
-        case .ghost: "The Ghost"
-        case .crow: "The Crow"
-        case .bull: "The Bull"
-        case .eye: "The Eye"
-        case .flame: "The Flame"
-        case .spade: "The Spade"
-        case .wolf: "The Wolf"
-        case .shark: "The Shark"
-        case .hustler: "The Hustler"
-        case .ace: "The Ace"
-        case .redKing: "The Red King"
-        case .lastCall: "Last Call"
-        case .ashtray: "The Ashtray"
-        case .hourglass: "The Hourglass"
-        case .cardsFan: "The Hand"
-        case .horseshoe: "The Horseshoe"
-        case .dagger: "The Dagger"
-        case .moon: "The Moon"
         }
     }
 }

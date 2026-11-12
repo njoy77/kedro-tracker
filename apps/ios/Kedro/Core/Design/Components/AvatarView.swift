@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A player's face (design §3.5): photo, emoji on a color, curated art, or a guest's initial in a
-/// dashed ring. Optional decorations: the leader's gold K badge on the top edge, the dealer's
+/// A player's face (design §3.5): photo, emoji on a color, the initial (no avatar yet, or a legacy
+/// curated one, which sits on a color), or a guest's initial in a dashed ring. Optional decorations: the leader's gold K badge on the top edge, the dealer's
 /// D chip, and a focus (red) or winner (gold) ring.
 ///
 /// VoiceOver reads it as one element: "Noah, leading, dealer".
@@ -102,13 +102,14 @@ struct AvatarView: View {
                         Text(emoji).font(.system(size: diameter * 0.52))
                     }
             case .curated(let id):
+                // The illustrated avatars are retired: their owners keep a color of their own. The
+                // palette is dark in both modes, so the letter is a fixed light ink.
                 Circle()
-                    .fill(CuratedTile.background)
-                    .overlay { Circle().strokeBorder(CuratedTile.edge, lineWidth: 1) }
+                    .fill(AvatarPalette.color(Avatar.colorIndex(forCurated: id)))
                     .overlay {
-                        CuratedAvatarArt(id: id)
-                            .foregroundStyle(CuratedTile.ink)
-                            .frame(width: diameter * 0.64, height: diameter * 0.64)
+                        Text(initial)
+                            .font(.system(size: diameter * 0.39, weight: .semibold))
+                            .foregroundStyle(Color(white: 0.9))
                     }
             case nil:
                 initialFace
@@ -175,14 +176,14 @@ struct LeaderMark: View {
 #Preview("Avatars") {
     VStack(spacing: 28) {
         HStack(spacing: 20) {
-            AvatarView(avatar: .curated(.crow), name: "Noah", isLeader: true, isDealer: true, ring: .winner)
+            AvatarView(avatar: .emoji("🐦‍⬛", colorIndex: 10), name: "Noah", isLeader: true, isDealer: true, ring: .winner)
             AvatarView(avatar: .emoji("🦊", colorIndex: 0), name: "Ana")
-            AvatarView(avatar: .curated(.bull), name: "Ben")
+            AvatarView(avatar: .curated("bull"), name: "Ben")
             AvatarView(avatar: nil, name: "Sam", isGuest: true)
         }
         HStack(alignment: .bottom, spacing: 16) {
             ForEach(AvatarView.Size.allCases, id: \.self) { size in
-                AvatarView(avatar: .curated(.horse), name: "Horse", size: size)
+                AvatarView(avatar: .emoji("🐎", colorIndex: 3), name: "Horse", size: size)
             }
         }
         AvatarView(avatar: .emoji("🦂", colorIndex: 1), name: "Priya", size: .medium, ring: .focus)

@@ -93,11 +93,12 @@ All Bebas styles are registered with `Font.custom(_:size:relativeTo:)` so they s
 
 ### 3.5 Avatars
 
-A player's avatar is one of:
+A player's avatar is one of (photo first; the emoji is the fallback for people who don't want a photo):
 
-1. **Photo**: picked with `PhotosPicker` or the camera, cropped to a circle. Moderated by the same report/block flow as custom taunts.
-2. **Emoji on a color**: any emoji (system emoji keyboard), on one of 12 background colors from the palette family (no pastels). Default for new accounts: a random emoji from a short starter set on a random color.
-3. **Curated**: a launch set of **24 illustrated avatars** in the logo's gritty, silver, hand-inked style, on near-black. Themes: card faces (the Jack, the red King, the Joker), bar objects (the last call glass, the dice, the ashtray), animals in the logo's style (the horse, the wolf, the crow, the bull), and table characters (the shark, the ghost, the hustler). Two are secret, unlocked by badges.
+1. **Photo**: picked with `PhotosPicker` or the camera, then **Move and Scale** (drag to reposition, pinch to zoom under a round mask); what's inside the circle is what's saved and uploaded (a square up to 1024 px). Tapping a photo on a profile opens it full screen. Moderated by the same report/block flow as custom taunts.
+2. **Emoji on a color**: one from a fixed grid of emoji, on one of 12 background colors from the palette family (no pastels). Default for new accounts: a random emoji from a short starter set on a random color.
+
+The 24 illustrated ("curated") avatars and their two badge unlocks were dropped after the first TestFlight round. The `curated` kind still decodes (the server and the web carry it) and draws as the player's initial on a color.
 
 Guests: their initial on `surfaceRaised` with a **dashed silver ring** and the word "guest". Unclaimed guests can't pick an avatar.
 
@@ -566,7 +567,7 @@ Badges are shown as dark coins with the small mark struck in the center, rimmed 
 | 33 | Trash Talker | Social | Silver | Send 50 taunts |
 | — | Did the Reading | Learning | — | Finish Learn and the Score a Round drill |
 
-Anti-farming: social and rivalry badges count only accounts and claimed guests, and only completed, non-abandoned games. Bad Influence counts once per guest, and that guest needs a completed game with someone other than you. Trash Talker counts at most 3 taunts per game. Two curated avatars unlock with secret badges (Exorcism → the Ghost; Nothing to See Here → the Hustler).
+Anti-farming: social and rivalry badges count only accounts and claimed guests, and only completed, non-abandoned games. Bad Influence counts once per guest, and that guest needs a completed game with someone other than you. Trash Talker counts at most 3 taunts per game.
 
 ### 12.7 Titles
 
@@ -717,7 +718,7 @@ Not notified: rounds recorded, edits, taunts (they're in-game only), "you were p
 | Nearby alert | CoreBluetooth (peripheral advertising in foreground, central background scanning with service UUID) | No |
 | Local data | SwiftData operation log; `@Observable` game model folded from it | No |
 | Voice | String Catalogs (Clean, Spicy, Unhinged tables with identical keys); `Voice` resolver; FNV-1a variant hash; DeclaredAgeRange | No |
-| Avatars | `PhotosPicker`; emoji text field with `.keyboardType` emoji hint; curated avatars as asset-catalog images | No |
+| Avatars | `PhotosPicker` and the camera, then a SwiftUI crop editor; a fixed emoji grid | No |
 | Taunts and toasts | `.safeAreaInset(edge: .top)` toast queue; `TimelineView` for timeouts; sheet with `Picker` tabs | No |
 | Custom taunt filter | On-device word list + server check (`apps/api`), report/block endpoints | No |
 | Display mode | `@Environment(\.verticalSizeClass)` and orientation-driven layout; forced dark with `.preferredColorScheme(.dark)` | No |
@@ -779,7 +780,7 @@ After R3, Noah was 4th (33), so Noah wins from behind: **Comeback Kid**. Noah's 
 ## 18. Open items
 
 1. **Small mark:** pick A, B or C (§3.2), then commission the vector and the app icon.
-2. **Curated avatars:** commission the 24 illustrations in the logo's style.
+2. ~~**Curated avatars:**~~ dropped (photo first, emoji as the fallback).
 3. **Bebas Neue licensing:** it's under the SIL Open Font License, so bundling is fine; confirm the exact weight files.
 4. **Nearby alert (background Bluetooth):** App Review risk. Ship behind a remote flag.
 5. **Custom taunts:** the filter word list and the report-review process need an owner before launch.

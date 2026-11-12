@@ -83,7 +83,7 @@ struct IntegrationTests {
         let http = MockHTTP { request in
             switch (request.method, request.path) {
             case ("PUT", "/v1/players/me"):
-                return (200, MockHTTP.json(Player(id: PreviewData.noah.id, displayName: "Noah", handle: Handle(constant: "noah"), avatar: .curated(.crow))))
+                return (200, MockHTTP.json(Player(id: PreviewData.noah.id, displayName: "Noah", handle: Handle(constant: "noah"), avatar: .curated("crow"))))
             case ("POST", "/v1/claims"):
                 return (200, MockHTTP.json(ClaimResult(guestId: GuestID(), gamesClaimed: 2)))
             default:

@@ -83,8 +83,7 @@ extension StatsSnapshot {
     private static func liveAvatar(_ avatar: Avatar?, name: String, isGuest: Bool) -> LiveAvatar {
         switch avatar {
         case .emoji(let emoji, let colorIndex): .emoji(emoji: emoji, colorIndex: colorIndex)
-        case .curated(let id): .curated(id: id.rawValue)
-        case .photo, nil: .initial(letter: name.first.map { String($0).uppercased() } ?? "?", isGuest: isGuest)
+        case .photo, .curated, nil: .initial(letter: name.first.map { String($0).uppercased() } ?? "?", isGuest: isGuest)
         }
     }
 }

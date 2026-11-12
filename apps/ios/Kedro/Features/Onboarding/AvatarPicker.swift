@@ -1,37 +1,52 @@
 import PhotosUI
 import SwiftUI
 
-/// Pick a face (design §3.5, mockup frame 3): a photo (library or camera), any emoji on one of 12
-/// colors, or one of the 24 curated avatars. Used by onboarding and by Settings → Profile.
+/// Pick a face (design §3.5, mockup frame 3): a photo first (library or camera, then Move and
+/// Scale), or, for anyone who'd rather not, an emoji on one of 12 colors. Used by onboarding and
+/// by Settings → Profile.
 struct AvatarPicker: View {
     enum Source: String, CaseIterable, Identifiable {
         case photo = "Photo"
         case emoji = "Emoji"
-        case curated = "Kedro"
 
         var id: String { rawValue }
+    }
+
+    /// The full-screen photo flow: the camera, then the crop editor (one cover, so Retake can go
+    /// back to the camera without stacking presentations).
+    enum PhotoStep {
+        case camera
+        case crop(CGImage, fromCamera: Bool)
     }
 
     @Binding var avatar: Avatar?
     /// Shown under the preview (real casing; displayed uppercase).
     var name: String
-    /// Secret avatars this player has unlocked with badges.
-    var unlocked: Set<CuratedAvatarID> = []
 
-    @State private var source: Source = .curated
+    @State private var source: Source = .photo
     @State private var photoItem: PhotosPickerItem?
-    @State private var isCapturing = false
+    @State private var photoStep: PhotoStep?
+    @State private var isLoadingPhoto = false
     @State private var photoError: String?
-    @State private var emojiText = ""
     @State private var emoji = Avatar.starterEmoji[0]
     @State private var colorIndex = 0
+    /// A current emoji that isn't one of the choices (picked on an older build or the web).
+    @State private var extraEmoji: String?
 
-    static let quickEmoji = Avatar.starterEmoji + ["🃏", "🎲", "🍸", "🔥", "👑", "💀", "🐎", "🦄", "🐸", "🦁", "🐻", "🦖"]
+    /// A fixed set to tap: no typing, so nothing to get stuck on.
+    static let emojiChoices = Avatar.starterEmoji + [
+        "🐸", "🦁", "🐻", "🦖", "🐎", "🦄", "🐯", "🐼", "🐵", "🦝", "🐢", "🦩",
+        "🃏", "🎲", "🍸", "🔥", "👑", "💀", "🎩", "🌙", "⚡️", "💎", "🍀", "🎯",
+        "👻", "🤠", "😈", "🤡", "👽", "🤖", "😎", "🥶",
+    ]
 
     var body: some View {
         VStack(spacing: 18) {
             VStack(spacing: 10) {
                 AvatarView(avatar: avatar, name: name, size: .profile)
+                    .overlay {
+                        if isLoadingPhoto { ProgressView().tint(.cream) }
+                    }
                 Text(name).kedroFont(.headline).foregroundStyle(.cream)
             }
             .accessibilityElement(children: .combine)
@@ -41,25 +56,25 @@ struct AvatarPicker: View {
                 ForEach(Source.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 280)
+            .frame(maxWidth: 240)
 
             switch source {
             case .photo: photoPane
             case .emoji: emojiPane
-            case .curated: curatedPane
             }
         }
         .onAppear(perform: syncFromAvatar)
+        // The owner may load the avatar after this appears (Settings fills it in its own
+        // onAppear): follow it, so a current emoji is always in the grid and selected.
+        .onChange(of: avatar) { old, new in
+            if old == nil { syncFromAvatar() } else { syncEmoji() }
+        }
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task { await loadPhoto(item) }
         }
-        .fullScreenCover(isPresented: $isCapturing) {
-            CameraCapture { data in
-                isCapturing = false
-                if let data { savePhoto(data) }
-            }
-            .ignoresSafeArea()
+        .fullScreenCover(isPresented: isShowingPhotoStep) {
+            photoStepView
         }
     }
 
@@ -72,13 +87,13 @@ struct AvatarPicker: View {
             }
             .buttonStyle(.kedroGlassWide)
             if CameraCapture.isAvailable {
-                Button("Take a Photo", systemImage: "camera") { isCapturing = true }
+                Button("Take a Photo", systemImage: "camera") { photoStep = .camera }
                     .buttonStyle(.kedroGlassWide)
             }
             if let photoError {
                 Text(photoError).font(.footnote).foregroundStyle(.silver)
             } else {
-                Text("Cropped to a circle. Anyone can report a photo, so keep it to your face.")
+                Text("You'll move and zoom it next. Anyone can report a photo, so keep it to your face.")
                     .font(.footnote)
                     .foregroundStyle(.silverDim)
                     .multilineTextAlignment(.center)
@@ -87,22 +102,61 @@ struct AvatarPicker: View {
         .padding(.horizontal, 26)
     }
 
-    private func loadPhoto(_ item: PhotosPickerItem) async {
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                photoError = AvatarPhotoStore.PhotoError.unreadableImage.localizedDescription
-                return
-            }
-            savePhoto(data)
-        } catch {
-            photoError = AvatarPhotoStore.PhotoError.unreadableImage.localizedDescription
-        }
-        photoItem = nil
+    private var isShowingPhotoStep: Binding<Bool> {
+        Binding(get: { photoStep != nil }, set: { if !$0 { photoStep = nil } })
     }
 
-    private func savePhoto(_ data: Data) {
+    @ViewBuilder
+    private var photoStepView: some View {
+        switch photoStep {
+        case .camera:
+            CameraCapture { data in
+                guard let data else {
+                    photoStep = nil
+                    return
+                }
+                if let image = AvatarPhotoStore.editableImage(from: data) {
+                    photoStep = .crop(image, fromCamera: true)
+                } else {
+                    photoStep = nil
+                    photoError = AvatarPhotoStore.PhotoError.unreadableImage.localizedDescription
+                }
+            }
+            .ignoresSafeArea()
+        case .crop(let image, let fromCamera):
+            AvatarCropView(
+                image: image,
+                onCancel: { photoStep = nil },
+                onRetake: fromCamera ? { photoStep = .camera } : nil,
+                onChoose: { crop in
+                    savePhoto(image, crop: crop)
+                    photoStep = nil
+                }
+            )
+        case nil:
+            Color.black.ignoresSafeArea()
+        }
+    }
+
+    private func loadPhoto(_ item: PhotosPickerItem) async {
+        isLoadingPhoto = true
+        defer {
+            isLoadingPhoto = false
+            photoItem = nil
+        }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = AvatarPhotoStore.editableImage(from: data)
+        else {
+            photoError = AvatarPhotoStore.PhotoError.unreadableImage.localizedDescription
+            return
+        }
+        photoError = nil
+        photoStep = .crop(image, fromCamera: false)
+    }
+
+    private func savePhoto(_ image: CGImage, crop: AvatarCrop) {
         do {
-            let url = try AvatarPhotoStore.save(data)
+            let url = try AvatarPhotoStore.save(image, crop: crop.cropRect)
             AvatarPhotoStore.removeIfLocal(avatar)
             avatar = .photo(url)
             photoError = nil
@@ -113,24 +167,19 @@ struct AvatarPicker: View {
 
     // MARK: Emoji
 
+    /// The choices, with `extraEmoji` kept up front so it stays selectable.
+    private var emojiGrid: [String] {
+        extraEmoji.map { [$0] + Self.emojiChoices } ?? Self.emojiChoices
+    }
+
     private var emojiPane: some View {
         VStack(spacing: 14) {
-            TextField("Type any emoji", text: $emojiText)
-                .multilineTextAlignment(.center)
-                .font(.title2)
-                .padding(.vertical, 10)
-                .background(.surface, in: .rect(cornerRadius: 12))
-                .onChange(of: emojiText) { _, text in
-                    if let picked = EmojiInput.lastEmoji(in: text) {
-                        emoji = picked
-                        applyEmoji()
-                    }
-                    if !text.isEmpty { emojiText = "" }
-                }
-                .accessibilityHint("Opens the keyboard. Switch to the emoji keyboard and pick one.")
+            Text("No photo? Pick an emoji and a color.")
+                .font(.footnote)
+                .foregroundStyle(.silverDim)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 8), spacing: 8) {
-                ForEach(Self.quickEmoji, id: \.self) { item in
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 6) {
+                ForEach(emojiGrid, id: \.self) { item in
                     Button {
                         emoji = item
                         applyEmoji()
@@ -138,10 +187,13 @@ struct AvatarPicker: View {
                         Text(item)
                             .font(.title3)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(item == emoji ? Color.surfaceRaised : .clear, in: .rect(cornerRadius: 10))
+                            .background(isSelected(item) ? Color.surfaceRaised : .clear, in: .rect(cornerRadius: 10))
                     }
+                    // Its own hit target: in Settings the picker is one Form row, where default-style
+                    // buttons all fire on any tap in the row.
+                    .buttonStyle(.plain)
                     .accessibilityLabel(item)
-                    .accessibilityAddTraits(item == emoji ? .isSelected : [])
+                    .accessibilityAddTraits(isSelected(item) ? .isSelected : [])
                 }
             }
 
@@ -161,6 +213,7 @@ struct AvatarPicker: View {
                             }
                             .frame(minWidth: 44, minHeight: 44)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Color \(index + 1)")
                     .accessibilityAddTraits(index == colorIndex ? .isSelected : [])
                 }
@@ -169,55 +222,47 @@ struct AvatarPicker: View {
         .padding(.horizontal, 22)
     }
 
+    private func isSelected(_ item: String) -> Bool {
+        if case .emoji(let current, _) = avatar { return current == item }
+        return false
+    }
+
     private func applyEmoji() {
         AvatarPhotoStore.removeIfLocal(avatar)
         avatar = .emoji(emoji, colorIndex: colorIndex)
     }
 
-    // MARK: Curated
-
-    private var curatedPane: some View {
-        VStack(spacing: 12) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 4), spacing: 14) {
-                ForEach(CuratedAvatarID.allCases) { id in
-                    let locked = id.isSecret && !unlocked.contains(id)
-                    Button {
-                        AvatarPhotoStore.removeIfLocal(avatar)
-                        avatar = .curated(id)
-                    } label: {
-                        AvatarView(avatar: .curated(id), name: id.displayName, size: .medium, ring: avatar == .curated(id) ? .focus : .none)
-                            .opacity(locked ? 0.35 : 1)
-                            .frame(minWidth: 56, minHeight: 56)
-                    }
-                    .disabled(locked)
-                    .accessibilityLabel(id.displayName)
-                    .accessibilityValue(locked ? "Locked. Unlocks with \(id.unlockingBadge ?? "a secret badge")." : "")
-                    .accessibilityAddTraits(avatar == .curated(id) ? .isSelected : [])
-                }
-            }
-            Text("Faded ones unlock with secret badges.")
-                .font(.footnote)
-                .foregroundStyle(.silverDim)
-        }
-        .padding(.horizontal, 26)
-    }
-
     private func syncFromAvatar() {
         switch avatar {
-        case .photo: source = .photo
-        case let .emoji(value, index):
-            source = .emoji
-            emoji = value
-            colorIndex = index
-        case .curated, nil: source = .curated
+        case .emoji: source = .emoji
+        case .photo, .curated, nil: source = .photo
         }
+        syncEmoji()
+    }
+
+    private func syncEmoji() {
+        guard case let .emoji(value, index) = avatar else { return }
+        emoji = value
+        colorIndex = index
+        if !Self.emojiChoices.contains(value) { extraEmoji = value }
     }
 }
 
-#Preview {
-    @Previewable @State var avatar: Avatar? = .curated(.crow)
+#Preview("Photo first") {
+    @Previewable @State var avatar: Avatar?
     ScrollView {
         AvatarPicker(avatar: $avatar, name: "Noah")
+            .padding(.vertical)
+    }
+    .background(.night)
+    .previewEnvironment()
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Emoji") {
+    @Previewable @State var avatar: Avatar? = .emoji("🦊", colorIndex: 3)
+    ScrollView {
+        AvatarPicker(avatar: $avatar, name: "Ana")
             .padding(.vertical)
     }
     .background(.night)

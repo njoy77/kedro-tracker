@@ -41,15 +41,11 @@ struct BadgeTests {
         #expect(ghost?.tableWord == "Cold Deck")
     }
 
-    @Test("Noah knocked on 0 and landed it: the secret Nothing to See Here, and the Hustler unlocks")
+    @Test("Noah knocked on 0 and landed it: the secret Nothing to See Here")
     func secretKnockOnZero() throws {
         let snapshot = StatsSnapshot.build([PreviewData.sampleState(throughRound: 8, finished: true)])
         let record = try #require(snapshot.record(PreviewData.noah.ref))
         #expect(record.badges[.nothingToSeeHere] != nil)
-        let avatars = snapshot.availableAvatars(for: PreviewData.noah.ref)
-        #expect(avatars.contains(.hustler))
-        #expect(!avatars.contains(.ghost))
-        #expect(AvatarUnlocks.available(earned: []).count == CuratedAvatarID.allCases.count - 2)
     }
 
     @Test("Knocking badges: Hat Trick, Bold Choice, Steady Hand across games")
@@ -126,7 +122,7 @@ struct BadgeTests {
         #expect(earned(history.snapshot(), a, in: upset).contains(.darkHorse))
     }
 
-    @Test("Rivalry: Nemesis Tamed and the secret Exorcism (the Ghost unlocks)")
+    @Test("Rivalry: Nemesis Tamed and the secret Exorcism")
     func rivalry() {
         var history = StatsHistory()
         history.ordered([b, a, c])
@@ -137,7 +133,6 @@ struct BadgeTests {
         let snapshot = history.snapshot()
         #expect(earned(snapshot, a, in: tamed).contains(.nemesisTamed))
         #expect(earned(snapshot, a, in: exorcism).contains(.exorcism))
-        #expect(snapshot.availableAvatars(for: a.ref).contains(.ghost))
         #expect(snapshot.earnedTitles(of: a.ref).contains(.exorcist))
     }
 

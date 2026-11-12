@@ -153,7 +153,8 @@ nonisolated enum LiveKnockOutcome: String, Codable, Hashable, Sendable {
 /// `{"initial":{"letter":"S","isGuest":true}}`.
 nonisolated enum LiveAvatar: Codable, Hashable, Sendable {
     case emoji(emoji: String, colorIndex: Int)
-    /// A `CuratedAvatarID` raw value.
+    /// Legacy: a retired illustrated avatar's id. The app no longer writes it (a curated
+    /// avatar travels as its initial); kept so older snapshots still decode.
     case curated(id: String)
     case initial(letter: String, isGuest: Bool)
 }

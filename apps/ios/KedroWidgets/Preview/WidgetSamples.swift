@@ -22,10 +22,10 @@ nonisolated enum WidgetSamples {
 
     /// After Round 5: Noah 26, Ana 29, Ben 44, Cleo 45, Sam 47. Noah deals Round 6.
     static let afterRound5Rows: [LiveStandingRow] = [
-        row("p:noah", "Noah", rank: 1, ordinal: "1st", score: "26", delta: "\u{2212}10", outcome: .landed, isMe: true, isLeader: true, isDealer: true, avatar: .curated(id: "crow")),
+        row("p:noah", "Noah", rank: 1, ordinal: "1st", score: "26", delta: "\u{2212}10", outcome: .landed, isMe: true, isLeader: true, isDealer: true, avatar: .emoji(emoji: "🐦‍⬛", colorIndex: 10)),
         row("p:ana", "Ana", rank: 2, ordinal: "2nd", score: "29", delta: "+9", avatar: .emoji(emoji: "🦊", colorIndex: 0)),
-        row("p:ben", "Ben", rank: 3, ordinal: "3rd", score: "44", delta: "+6", avatar: .curated(id: "bull")),
-        row("p:cleo", "Cleo", rank: 4, ordinal: "4th", score: "45", delta: "+11", avatar: .curated(id: "joker")),
+        row("p:ben", "Ben", rank: 3, ordinal: "3rd", score: "44", delta: "+6", avatar: .emoji(emoji: "🐂", colorIndex: 3)),
+        row("p:cleo", "Cleo", rank: 4, ordinal: "4th", score: "45", delta: "+11", avatar: .emoji(emoji: "🃏", colorIndex: 8)),
         row("g:sam", "Sam", rank: 5, ordinal: "5th", score: "47", delta: "+4", avatar: .initial(letter: "S", isGuest: true)),
     ]
 
@@ -58,8 +58,8 @@ nonisolated enum WidgetSamples {
         }
         rows[0].isDealer = false
         rows += [
-            row("p:jo", "Jo", rank: 6, ordinal: "6th", score: "51", delta: "+12", avatar: .curated(id: "wolf")),
-            row("p:max", "Max", rank: 7, ordinal: "7th", score: "58", delta: "2 + 10", outcome: .failed, isMe: true, avatar: .curated(id: "shark")),
+            row("p:jo", "Jo", rank: 6, ordinal: "6th", score: "51", delta: "+12", avatar: .emoji(emoji: "🐺", colorIndex: 7)),
+            row("p:max", "Max", rank: 7, ordinal: "7th", score: "58", delta: "2 + 10", outcome: .failed, isMe: true, avatar: .emoji(emoji: "🦈", colorIndex: 9)),
             row("p:maya", "Maya", rank: 8, ordinal: "8th", score: "63", delta: "+15", isDealer: true, avatar: .emoji(emoji: "🐍", colorIndex: 2)),
         ]
         state.rows = rows
@@ -81,7 +81,7 @@ nonisolated enum WidgetSamples {
             rivalID: "p:00000000-0000-4000-8000-000000000002",
             rivalName: "Ana",
             rivalAvatar: .emoji(emoji: "🦊", colorIndex: 0),
-            myAvatar: .curated(id: "crow"),
+            myAvatar: .emoji(emoji: "🐦‍⬛", colorIndex: 10),
             myWins: 5,
             theirWins: 12,
             line: "Ana 12, you 5. Ana's living in your head rent-free."

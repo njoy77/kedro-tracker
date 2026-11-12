@@ -51,13 +51,6 @@ enum AvatarPalette {
     }
 }
 
-/// Fixed colors for curated avatar tiles: they stay dark in light mode (mockup frame 7).
-enum CuratedTile {
-    static let background = Color(red: 0x0C / 255, green: 0x0C / 255, blue: 0x10 / 255)
-    static let ink = Color(red: 0xD8 / 255, green: 0xD8 / 255, blue: 0xD8 / 255)
-    static let edge = Color(red: 0x2A / 255, green: 0x2A / 255, blue: 0x33 / 255)
-}
-
 #Preview("Tokens") {
     let tokens: [(String, Color)] = [
         ("night", .night), ("surface", .surface), ("surfaceRaised", .surfaceRaised), ("rule", .rule),

@@ -112,7 +112,7 @@ struct ServicesTests {
 
     @Test("Search asks the server, and falls back to the cache offline")
     func directorySearch() async throws {
-        let maya = PlayerSummary(id: PlayerID(), displayName: "Maya", handle: Handle(constant: "maya"), avatar: .curated(.spade))
+        let maya = PlayerSummary(id: PlayerID(), displayName: "Maya", handle: Handle(constant: "maya"), avatar: .curated("spade"))
         let http = MockHTTP { request in
             #expect(request.path == "/v1/players/search")
             #expect(request.query["q"] == "@may")
@@ -131,7 +131,7 @@ struct ServicesTests {
 
     @Test("Played With asks the server, which knows who claimed which guest history")
     func directoryPlayedWithServer() async throws {
-        let chrissy = PlayerSummary(id: PlayerID(), displayName: "Chrissy", handle: Handle(constant: "chrissy"), avatar: .curated(.spade))
+        let chrissy = PlayerSummary(id: PlayerID(), displayName: "Chrissy", handle: Handle(constant: "chrissy"), avatar: .curated("spade"))
         let http = MockHTTP { request in
             #expect(request.path == "/v1/players/me/played-with")
             return (200, MockHTTP.json(PlayedWithResult(players: [.init(player: chrissy, gamesTogether: 13, lastPlayedAt: nil)])))

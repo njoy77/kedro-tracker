@@ -2,8 +2,7 @@ import SwiftUI
 import WidgetKit
 
 /// A small avatar for widgets and the Live Activity (design §3.5: 20 pt in the Live Activity).
-/// Emoji on their palette color, curated line art on its dark tile, guests as an initial with a
-/// dashed silver ring. Photos arrive as initials (the extension has no network).
+/// Emoji on their palette color, guests as an initial with a dashed silver ring. Photos arrive as initials (the extension has no network).
 struct LiveAvatarView: View {
     let avatar: LiveAvatar
     var size: CGFloat = 20
@@ -25,16 +24,15 @@ struct LiveAvatarView: View {
                     Text(emoji).font(.system(size: size * 0.58))
                 }
         case .curated(let id):
+            // Legacy (snapshots written before the illustrated avatars were retired): a plain
+            // face on the avatar's color until the app writes the next snapshot.
             Circle()
-                .fill(CuratedTile.background)
+                .fill(AvatarPalette.color(Avatar.colorIndex(forCurated: id)))
                 .overlay {
-                    if let curated = CuratedAvatarID(rawValue: id) {
-                        CuratedAvatarArt(id: curated)
-                            .foregroundStyle(CuratedTile.ink)
-                            .padding(size * 0.12)
-                    }
+                    Image(systemName: "person.fill")
+                        .font(.system(size: size * 0.46))
+                        .foregroundStyle(Color(white: 0.9))
                 }
-                .overlay(Circle().strokeBorder(CuratedTile.edge, lineWidth: 1))
         case .initial(let letter, let isGuest):
             Circle()
                 .fill(Color.surfaceRaised)
@@ -92,7 +90,7 @@ struct LiveDeltaText: View {
     VStack(spacing: 12) {
         HStack {
             LiveAvatarView(avatar: .emoji(emoji: "🦊", colorIndex: 0), size: 32)
-            LiveAvatarView(avatar: .curated(id: "bull"), size: 32)
+            LiveAvatarView(avatar: .initial(letter: "B", isGuest: false), size: 32)
             LiveAvatarView(avatar: .initial(letter: "S", isGuest: true), size: 32)
         }
         HStack {
