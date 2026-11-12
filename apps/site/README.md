@@ -12,5 +12,5 @@ A static site, no build step. It makes the links the iOS app creates (`KedroLink
 
 - Run it locally with `bun run dev:site` (http://localhost:3001). `dev.ts` applies `vercel.json`'s rewrites and headers.
 - Deployed by the Vercel project `kedro-site` (root directory `apps/site`, output `public`), which owns `playkedro.com`; `www.playkedro.com` redirects to it. The API is on `api.playkedro.com` (project `kedro-api`).
-- **Get Kedro** links: set `INSTALL_URL` in `public/assets/site.js` to the TestFlight public link or the App Store page. Until then the pages say Kedro is in a private beta.
+- **Get Kedro** links: `INSTALL_URL` in `public/assets/site.js`, the TestFlight public link for the external group "Friends" (later the App Store page). Set it to null and the pages say Kedro is in a private beta instead.
 - Changing the app's link paths, team ID or bundle IDs means changing the AASA too. Apple's CDN caches it: check `https://app-site-association.cdn-apple.com/a/v1/playkedro.com` after deploying.
