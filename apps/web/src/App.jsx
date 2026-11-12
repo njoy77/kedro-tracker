@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
-import { HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
+import { COUNTED_MIN_ROUNDS, HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
 import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
 import { devSignInAvailable, inAppBrowser, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
 import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
+
+// A finished game counts for stats only with 3+ rounds, and a player counts in it only after 3+
+// rounds (a late joiner may not): the same rule the server's stats, ratings and leaderboard use.
+// Shorter games stay in history, marked.
+const countsForStats = (g) => g.status === 'complete' && (g.rounds?.length || 0) >= COUNTED_MIN_ROUNDS;
+const roundsPlayedBy = (g, playerId) => (g.rounds || []).filter(r => r.scores.some(sc => sc.playerId === playerId)).length;
+const shortGameNote = (g) => (g.status === 'complete' && !countsForStats(g) ? ` · Under ${COUNTED_MIN_ROUNDS} rounds, didn't count` : '');
 
 const C = {
   bg: '#0a0a0e',
@@ -567,13 +574,13 @@ export default function KedroApp() {
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────────
-  // From the games this player was in (every finished game, once their web history is claimed).
-  function getStats(playerId, opts = {}) {
-    const { minRounds = 0 } = opts;
+  // From the counted games this player was in (finished, 3+ rounds, 3+ of them played by this player;
+  // every such game once their web history is claimed), so the numbers match the leaderboard.
+  function getStats(playerId) {
     const pg = allGames.filter(g =>
-      g.status === 'complete' &&
+      countsForStats(g) &&
       g.players.find(p => p.id === playerId) &&
-      (g.rounds?.length || 0) >= minRounds
+      roundsPlayedBy(g, playerId) >= COUNTED_MIN_ROUNDS
     );
     const wins = pg.filter(g => g.winnerId === playerId).length;
     const finalScores = pg.map(g => g.players.find(p => p.id === playerId)?.total).filter(x => x !== undefined);
@@ -973,7 +980,7 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
               <div key={g.id} style={{ ...s.card({ padding: '12px 16px', marginBottom: 8 }), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 13, color: C.cream }}>{g.players.map(p => `${p.emoji}${p.username}`).join(' · ')}</div>
-                  <div style={{ fontSize: 11, color: C.creamDim, marginTop: 3 }}>{date} · {g.rounds.length}R</div>
+                  <div style={{ fontSize: 11, color: C.creamDim, marginTop: 3 }}>{date} · {g.rounds.length}R{shortGameNote(g)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, color: C.red, textTransform: 'uppercase', letterSpacing: '.06em' }}>Winner</div>
@@ -1794,7 +1801,7 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
             <div style={{ fontSize: 28 }}>{abandoned ? '⚠️' : winner?.emoji}</div>
             <div style={{ flex: 1 }}>
               <div style={{ color: C.cream, fontSize: 14 }}>{g.players.map(p => displayPlayer(p).username).join(' · ')}</div>
-              <div style={{ color: C.creamDim, fontSize: 11, marginTop: 3 }}>{date} · {g.rounds.length}R{abandoned ? ' · Abandoned' : ''}</div>
+              <div style={{ color: C.creamDim, fontSize: 11, marginTop: 3 }}>{date} · {g.rounds.length}R{abandoned ? ' · Abandoned' : shortGameNote(g)}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               {!abandoned && (isUserWin
@@ -1940,7 +1947,7 @@ function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, o
               <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: `1px solid ${C.border}` }}>
                 <div>
                   <div style={{ color: C.cream, fontSize: 13 }}>{g.players.filter(p => p.id !== user.id).map(p => p.username).join(', ') || 'Solo'}</div>
-                  <div style={{ color: C.creamDim, fontSize: 11 }}>{date} · {g.rounds.length}R</div>
+                  <div style={{ color: C.creamDim, fontSize: 11 }}>{date} · {g.rounds.length}R{shortGameNote(g)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ color: won ? C.green : C.red, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>{won ? '🏆 Win' : 'Loss'}</div>
@@ -1971,7 +1978,7 @@ function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, o
 
 function ScoreChart({ allGames, allPlayers }) {
   // Chronological, completed, and at least 3 rounds — matches leaderboard table filter.
-  const completed = [...allGames].filter(g => g.status === 'complete' && (g.rounds?.length || 0) >= 3).reverse();
+  const completed = [...allGames].filter(countsForStats).reverse();
   if (completed.length === 0) return <div style={{ color: C.creamDim, textAlign: 'center', padding: 30 }}>No qualifying games yet (need 3+ rounds).</div>;
 
   // 12 maximally distinct hues, ordered so adjacent colors in rotation contrast strongly.
