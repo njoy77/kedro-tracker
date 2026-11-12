@@ -9,6 +9,10 @@ const DEV_ACCOUNT_KEY = 'kedro_dev_account';
 
 export const devSignInAvailable = import.meta.env.DEV;
 
+/** Apps' built-in browsers (Instagram, Facebook, Messenger, Snapchat, TikTok, LinkedIn, Line), where
+ *  Google refuses to sign anyone in. The sign-in screen asks to open the page in a real browser. */
+export const inAppBrowser = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Snapchat|musical_ly|BytedanceWebview|LinkedInApp|\bLine\//i.test(navigator.userAgent);
+
 function devAccountId() {
   if (!devSignInAvailable) return null;
   try { return localStorage.getItem(DEV_ACCOUNT_KEY); } catch { return null; }

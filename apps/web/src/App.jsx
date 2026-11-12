@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
 import { HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
 import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
-import { devSignInAvailable, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
+import { devSignInAvailable, inAppBrowser, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
 import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
@@ -849,6 +849,7 @@ function LoginScreen({ error, devAccounts, onApple, onGoogle, onDevAccount }) {
         </button>
         <button className="btn-red btn-press" onClick={onGoogle} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15, marginTop: 10 }}>Continue with Google</button>
         <div style={{ color: C.creamDim, fontSize: 12, marginTop: 12, textAlign: 'center' }}>On an iPhone? Use Apple, the same as in the app, so it's one account.</div>
+        {inAppBrowser && <div style={{ color: C.cream, fontSize: 13, marginTop: 14, textAlign: 'center' }}>Google won't sign you in inside this app's browser. Open this page in Chrome or Safari (the ⋯ menu → Open in browser).</div>}
         {error && <div style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{error}</div>}
         {devAccounts.length > 0 && (
           <div style={{ marginTop: 22 }}>
