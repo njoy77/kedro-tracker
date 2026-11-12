@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The Play tab (design §12.1, mockup frame 4). Top to bottom: the Table card if one's nearby
 /// (it rises over everything, §5.3); Since you last looked; Tonight's stakes; New Table with Join
-/// with Code beside it; the Wrapped card in December; Learn Cambio (first 3 games); Nearby rows
-/// for dismissed tables; Recent games with Run It Back.
+/// with Code beside it; How to Play (first 3 games); the Wrapped card in December; Nearby rows
+/// for dismissed tables (or turning on Find Tables Nearby, or why Local Network is off); Recent
+/// games with Run It Back.
 ///
 /// Root of the Play tab's stack; doesn't create a NavigationStack.
 struct PlayView: View {
@@ -31,6 +32,8 @@ private struct PlayScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(NetworkServices.self) private var network: NetworkServices?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @State private var lobby: LobbyStart?
     @State private var isJoiningWithCode = false
     @State private var isShowingOtherTables = false
@@ -49,9 +52,9 @@ private struct PlayScreen: View {
             digestSection
             stakesSection
             startSection
+            learnSection
             wrappedSection
             nearbySection
-            learnSection
             recentSection
             #if DEBUG
             debugSection
@@ -94,7 +97,12 @@ private struct PlayScreen: View {
             }
         }
         .task { await model.followStore() }
-        .task { await model.followNearbyTables() }
+        .task(id: app.preferences.nearbyDiscoveryEnabled) { await model.followNearbyTables() }
+        // Again on coming back from Settings, where Local Network may have been turned on.
+        .task(id: LocalNetworkCheck(enabled: app.preferences.nearbyDiscoveryEnabled, isActive: scenePhase == .active)) {
+            guard scenePhase == .active else { return }
+            await model.checkLocalNetwork()
+        }
         .onChange(of: app.liveGame?.state.seats.map(\.id)) { model.checkAskAnswered() }
         .onOpenURL { url in
             Task {
@@ -120,6 +128,11 @@ private struct PlayScreen: View {
         // Stats reload off the main actor; refresh the digest, stakes and Wrapped when they land.
         .onChange(of: StatsKey(stats: StatsModel.shared(for: app.store))) { model.refreshInsights() }
         .onDisappear { model.markLooked() }
+    }
+
+    private struct LocalNetworkCheck: Equatable {
+        var enabled: Bool
+        var isActive: Bool
     }
 
     private struct StatsKey: Equatable {
@@ -374,6 +387,41 @@ private struct PlayScreen: View {
 
     @ViewBuilder
     private var nearbySection: some View {
+        if !app.preferences.nearbyDiscoveryEnabled {
+            // Skipped in onboarding: the explicit tap that starts discovery (and the iOS prompt).
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "antenna.radiowaves.left.and.right").foregroundStyle(.kedroRed)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Find Tables Nearby").foregroundStyle(.cream)
+                        Text("Phones at your table find each other. No code needed.")
+                            .font(.footnote)
+                            .foregroundStyle(.silver)
+                    }
+                    Spacer()
+                    Button("Turn On") { app.preferences.nearbyDiscoveryEnabled = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.kedroRed)
+                }
+                .frame(minHeight: 44)
+            }
+        } else if model.isLocalNetworkDenied {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Local Network Is Off", systemImage: "antenna.radiowaves.left.and.right.slash")
+                        .foregroundStyle(.cream)
+                    Text(app.voice.line("E-02"))
+                        .font(.footnote)
+                        .foregroundStyle(.silver)
+                    Button("Open Settings") {
+                        if let url = URL(string: "app-settings:") { openURL(url) }
+                    }
+                    .font(.subheadline)
+                    .tint(.kedroRed)
+                }
+                .padding(.vertical, 4)
+            }
+        }
         if !model.nearbyRows.isEmpty {
             Section("Nearby") {
                 ForEach(model.nearbyRows) { table in
@@ -400,22 +448,39 @@ private struct PlayScreen: View {
 
     // MARK: Learn
 
+    /// Right under New Table for a player's first 3 games: the 2-minute walkthrough itself, plus
+    /// the rest of How to Play (drill, rules, Knock Calculator). Settings keeps How to Play after.
     @ViewBuilder
     private var learnSection: some View {
         if model.myGamesPlayed < 3 {
-            Section {
+            Section("How to Play") {
+                NavigationLink(value: AppRoute.learnCards) {
+                    learnRow(
+                        "Learn the Game in 2 Minutes",
+                        "Setup, card values, powers and the knock, with real cards. Then a quiz.",
+                        systemImage: "rectangle.stack"
+                    )
+                }
                 NavigationLink(value: AppRoute.learn) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "graduationcap").foregroundStyle(.kedroRed)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Learn Cambio").foregroundStyle(.cream)
-                            Text("Two minutes, then a knock quiz.").font(.footnote).foregroundStyle(.silver)
-                        }
-                    }
-                    .frame(minHeight: 44)
+                    learnRow(
+                        "Practice and Rules",
+                        "Score a practice round, look up any rule, or check a knock.",
+                        systemImage: "book"
+                    )
                 }
             }
         }
+    }
+
+    private func learnRow(_ title: String, _ detail: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage).foregroundStyle(.kedroRed).frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).foregroundStyle(.cream)
+                Text(detail).font(.footnote).foregroundStyle(.silver)
+            }
+        }
+        .frame(minHeight: 44)
     }
 
     // MARK: Recent

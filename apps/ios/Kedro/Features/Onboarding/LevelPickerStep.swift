@@ -2,7 +2,7 @@ import SwiftUI
 
 /// "How filthy do you want it?" (design §5.1, mockup frame 2): three cards, each with its live
 /// sample line (O-07…O-09, shown verbatim at every level). Unhinged is preselected for adults;
-/// under 18 it's locked to Clean (O-10).
+/// under 18 it's locked to Clean (O-10). The age range is asked on the step before (`AgeStep`).
 struct LevelPickerStep: View {
     @Binding var level: LanguageLevel
     var onContinue: () -> Void
@@ -55,7 +55,6 @@ struct LevelPickerStep: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
         }
-        .checksAgeRange()
         .onChange(of: prefs.isUnder18, initial: true) { _, under18 in
             if under18 { level = .clean }
         }

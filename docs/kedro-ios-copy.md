@@ -42,16 +42,16 @@ Variables: `{name}`, `{knocker}`, `{hand}`, `{score}`, `{n}`, `{gap}`, `{round}`
 | ID | Moment | Clean | Spicy | Unhinged |
 |---|---|---|---|---|
 | O-01 | Welcome headline | Keep score. Talk trash. | Keep score. Talk shit. | = |
-| O-02 | Welcome subhead | Kedro does the math, so nobody has to trust whoever's three drinks deep. | = | = |
+| O-02 | Welcome subhead | Beat your friends, climb the leaderboard and keep the receipts. Kedro does the math, so nobody has to trust whoever's three drinks deep. | = | = |
 | O-03 | Guest path footnote | Just your first name. Sign in later and it's all still yours. | = | = |
-| O-04 | Learn link | New to Cambio? Learn it in 2 minutes, not 20 minutes of someone's rambling explanation. | …someone's half-assed explanation. | = |
-| O-05 | Local Network primer | Kedro finds the phones at your table so nobody has to type a code. iOS is about to ask. | = | Kedro finds the phones at your table so nobody has to type a fucking code. iOS is about to ask. |
+| O-04 | How to Play header | New here? Learn the game in 2 minutes, not 20 minutes of someone's rambling explanation. | …someone's half-assed explanation. | = |
+| O-05 | Local Network primer | Kedro finds the phones at your table so nobody has to type a code. Tap below and iOS will ask. | = | Kedro finds the phones at your table so nobody has to type a fucking code. Tap below and iOS will ask. |
 | O-06 | Level picker title | How filthy do you want it? | = | = |
 | O-07 | Sample line under Clean | "Bold. Wrong, but bold." | | |
 | O-08 | Sample line under Spicy | | "Bold. Wrong as shit, but bold." | |
 | O-09 | Sample line under Unhinged | | | "Bold. Wrong as shit, but bold, you magnificent idiot." |
 | O-10 | Under-18 lock | Clean until you're 18. House rules, not ours. | = | = |
-| O-11 | Avatar step | Pick a face. Photo, emoji or one of ours. | = | Pick a face. Make it a good one, you'll be staring at it while you lose. |
+| O-11 | Avatar step | Pick a face. A photo, or an emoji if you'd rather not. | = | Pick a face. Make it a good one, you'll be staring at it while you lose. |
 | S-01 | Settings: level footer | (Level descriptions, §3) | | |
 | S-02 | Settings: custom taunts | Taunts from people at your table. You can mute or block anyone. | = | = |
 
@@ -206,9 +206,9 @@ All N- strings ≤ 60 characters.
 | F-04 | App Clip offline | This needs internet. Ask {host} to report your hand for now. | = | = |
 | F-05 | Offline explainer | No internet? No problem. Phones at a table talk to each other directly. | No internet? Who gives a shit. Phones at a table talk… | = |
 | E-01 | Server error | Our servers fell over. Your game's safe on this phone. | Our servers shat the bed. Your game's safe on this phone. | = |
-| E-02 | Nearby permission denied | Kedro can't see the table without Local Network. Turn it on in Settings, or use the QR code. | = | = |
+| E-02 | Nearby permission denied | Without Local Network, tables nearby won't show up. Join with Code and QR codes still work, or turn it on in Settings. | = | = |
 | E-03 | Couldn't join | Couldn't reach {host}'s phone. Move closer or scan their QR code. | = | = |
-| E-04 | Under 3 seats | Cambio needs 3. Two people is just a staring contest. | = | = |
+| E-04 | Under 3 seats | This game needs 3. Two people is just a staring contest. | = | = |
 | T-01 | Talk sheet title | Talk your trash | Talk your shit | = |
 | T-02 | Custom field placeholder | Say it. 80 characters. | = | Say it. 80 characters. Make them count. |
 | T-10 | Rate limit | Save some for the next round. | = | Save some for the next round, motormouth. |

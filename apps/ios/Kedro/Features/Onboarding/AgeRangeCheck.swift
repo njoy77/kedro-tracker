@@ -2,43 +2,104 @@
 import OSLog
 import SwiftUI
 
-/// Asks Declared Age Range whether the player is under 18 (design §4.1, §8.3) and records it in
-/// `AppPreferences.isUnder18`, which locks Clean and turns custom taunts off.
-///
-/// Uses SwiftUI's `requestAgeRange` action, which needs a view to present from, so it runs from
-/// the level picker (first launch) and Settings rather than from `AppModel.start()`. If the person
-/// declines, or the capability isn't available (no entitlement, simulator), nothing changes.
-struct AgeRangeCheck: ViewModifier {
-    @Environment(\.requestAgeRange) private var requestAgeRange
-    @Environment(AppPreferences.self) private var prefs
+/// What a Declared Age Range request came back with (design §4.1, §8.3).
+nonisolated enum AgeRangeOutcome: Sendable, Equatable {
+    /// Shared, and under 18: Clean is locked and custom taunts are off.
+    case under18
+    /// Shared, and 18 or over.
+    case adult
+    /// Declined, cancelled, or shared a range that doesn't say which side of 18.
+    case notShared
+    /// The capability isn't available (no entitlement, the Simulator, an unsupported region).
+    case unavailable
 
-    private static let log = Logger(subsystem: "com.njoy77.kedro", category: "AgeRange")
+    /// The outcome for a shared range (Apple's bounds, either of which may be open).
+    init(lowerBound: Int?, upperBound: Int?) {
+        if let upperBound, upperBound < 18 {
+            self = .under18
+        } else if let lowerBound, lowerBound >= 18 {
+            self = .adult
+        } else {
+            self = .notShared
+        }
+    }
 
-    func body(content: Content) -> some View {
-        content.task {
-            do {
-                switch try await requestAgeRange(ageGates: 18) {
-                case .sharing(let range):
-                    if let upper = range.upperBound, upper < 18 {
-                        prefs.isUnder18 = true
-                    } else if let lower = range.lowerBound, lower >= 18 {
-                        prefs.isUnder18 = false
-                    }
-                case .declinedSharing:
-                    break
-                @unknown default:
-                    break
-                }
-            } catch {
-                Self.log.info("Age range unavailable: \(error.localizedDescription, privacy: .public)")
-            }
+    /// Records a shared answer in `AppPreferences.isUnder18`. Not sharing changes nothing, so an
+    /// earlier answer (and its Clean lock) stands.
+    @MainActor func apply(to prefs: AppPreferences) {
+        switch self {
+        case .under18: prefs.isUnder18 = true
+        case .adult: prefs.isUnder18 = false
+        case .notShared, .unavailable: break
         }
     }
 }
 
-extension View {
-    /// Checks Declared Age Range once when the view appears.
-    func checksAgeRange() -> some View {
-        modifier(AgeRangeCheck())
+/// The only place Kedro asks for an age range: a button, so the system sheet never shows up
+/// unexplained (onboarding's age step and Settings → Language). Uses SwiftUI's `requestAgeRange`
+/// action, which needs a view to present from. Records the answer, then reports it.
+struct AgeRangeButton: View {
+    var title: LocalizedStringKey = "Share My Age Range"
+    /// The kedroPrimary capsule (onboarding) or a plain row (Settings).
+    var isProminent = true
+    var onResult: (AgeRangeOutcome) -> Void = { _ in }
+
+    @Environment(\.requestAgeRange) private var requestAgeRange
+    @Environment(AppPreferences.self) private var prefs
+    @State private var isAsking = false
+
+    private static let log = Logger(subsystem: "com.njoy77.kedro", category: "AgeRange")
+
+    var body: some View {
+        let button = Button {
+            Task { await ask() }
+        } label: {
+            if isAsking {
+                ProgressView()
+            } else {
+                Text(title)
+            }
+        }
+        .disabled(isAsking)
+
+        if isProminent {
+            button.buttonStyle(.kedroPrimary)
+                #if DEBUG
+                .task { if DebugLaunch.tapsPrimary { await ask() } }
+                #endif
+        } else {
+            button
+        }
     }
+
+    private func ask() async {
+        isAsking = true
+        defer { isAsking = false }
+        let outcome: AgeRangeOutcome
+        do {
+            switch try await requestAgeRange(ageGates: 18) {
+            case .sharing(let range):
+                outcome = AgeRangeOutcome(lowerBound: range.lowerBound, upperBound: range.upperBound)
+            case .declinedSharing:
+                outcome = .notShared
+            @unknown default:
+                outcome = .notShared
+            }
+        } catch {
+            Self.log.info("Age range unavailable: \(error.localizedDescription, privacy: .public)")
+            outcome = .unavailable
+        }
+        outcome.apply(to: prefs)
+        onResult(outcome)
+    }
+}
+
+#Preview {
+    VStack(spacing: 16) {
+        AgeRangeButton()
+        AgeRangeButton(title: "Check Age Range", isProminent: false)
+    }
+    .padding()
+    .background(.night)
+    .previewEnvironment()
 }

@@ -12,6 +12,14 @@ import Foundation
 /// `-KedroScreen` then opens one of: `play` (default), `table` (the sample table after Round 5,
 /// live), `gameEnd` (the finished sample game), `board`, `profile`, `settings`. From the Table,
 /// `kedro://table/<gameID>?action=recordRound` opens the Round sheet.
+///
+/// `-KedroLocalNetworkDenied` makes `LocalNetworkAccess` answer "denied", since the Simulator
+/// never shows the Local Network prompt. `-KedroNearbyOff` starts the demo with Find Tables
+/// Nearby off (as after Not Now).
+///
+/// Onboarding, on a phone that hasn't finished it: `-KedroOnboardingStep <tour|age|level|nearby>`
+/// opens that step (guest path), and `-KedroTapPrimary` taps the age or nearby step's request
+/// button once it appears, so the real request code runs without driving the screen.
 enum DebugLaunch {
     enum Screen: String {
         case play, table, gameEnd, board, profile, settings
@@ -33,6 +41,19 @@ enum DebugLaunch {
         return arguments[index + 1]
     }
 
+    static var onboardingStep: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-KedroOnboardingStep"), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
+    static var tapsPrimary: Bool { ProcessInfo.processInfo.arguments.contains("-KedroTapPrimary") }
+
+    /// Demo players are existing players: Find Tables Nearby on, unless `-KedroNearbyOff`.
+    private static func setNearbyDiscovery(_ preferences: AppPreferences) {
+        preferences.nearbyDiscoveryEnabled = !ProcessInfo.processInfo.arguments.contains("-KedroNearbyOff")
+    }
+
     static func run(app: AppModel, auth: AuthStore) async {
         if let handle = account {
             await signIn(handle: handle, app: app, auth: auth)
@@ -48,6 +69,7 @@ enum DebugLaunch {
         if app.profile == nil { app.profiles.save(PreviewData.noahProfile) }
         app.didSignIn(userID: AuthStore.testUserID, displayName: "Noah")
         app.preferences.hasCompletedOnboarding = true
+        setNearbyDiscovery(app.preferences)
         let screen = screen
         do {
             // The sample table uses the sample game's ID, so the finished copy stays out of it.
@@ -86,6 +108,7 @@ enum DebugLaunch {
             DevAccountSession.save(id: account.id, name: account.displayName)
             try await DevAccountPicker.adoptProfile(app: app)
             app.preferences.hasCompletedOnboarding = true
+            setNearbyDiscovery(app.preferences)
             auth.signInAsDevAccount(id: account.id, name: account.displayName)
             switch screen {
             case .board: app.selectedTab = .board

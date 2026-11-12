@@ -19,6 +19,8 @@ final class PlayModel {
     /// The card's table after Ask to Sit, until the host answers.
     var askedTable: GameID?
     var isJoining = false
+    /// Discovery is on but Local Network is off: Play explains it (E-02).
+    private(set) var isLocalNetworkDenied = false
 
     // MARK: Between games
 
@@ -188,11 +190,26 @@ final class PlayModel {
 
     // MARK: Loading
 
-    /// Follows nearby tables until cancelled.
+    /// Follows nearby tables until cancelled, once the player turned discovery on (onboarding's
+    /// Find Tables Nearby, Play's row, Settings). Browsing is what makes iOS ask for Local Network,
+    /// so it never starts before that tap.
     func followNearbyTables() async {
+        guard app.preferences.nearbyDiscoveryEnabled else {
+            nearby = []
+            return
+        }
         for await tables in app.discovery.nearbyTables() {
             nearby = tables
         }
+    }
+
+    /// Checks Local Network while discovery is on (asks only if the player never answered).
+    func checkLocalNetwork() async {
+        guard app.preferences.nearbyDiscoveryEnabled, !(app.discovery is NoNearbyTables) else {
+            isLocalNetworkDenied = false
+            return
+        }
+        isLocalNetworkDenied = await LocalNetworkAccess.request() == .denied
     }
 
     /// Reloads everything derived from the store; then again whenever a game changes.

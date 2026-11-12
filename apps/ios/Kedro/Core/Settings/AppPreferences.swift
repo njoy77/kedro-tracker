@@ -16,6 +16,7 @@ final class AppPreferences {
         static let lastScoringMode = "kedro.lastScoringMode"
         static let hasCompletedOnboarding = "kedro.hasCompletedOnboarding"
         static let nearbyAlertsEnabled = "kedro.nearbyAlertsEnabled"
+        static let nearbyDiscoveryEnabled = "kedro.nearbyDiscoveryEnabled"
         static let lastLookedAt = "kedro.lastLookedAt"
         static let outboundImagesClean = "kedro.outboundImagesClean"
     }
@@ -71,6 +72,14 @@ final class AppPreferences {
         didSet { defaults.set(nearbyAlertsEnabled, forKey: Key.nearbyAlertsEnabled) }
     }
 
+    /// Look for tables nearby over the local network (Bonjour), which is what makes iOS ask for
+    /// Local Network access. Off until the player taps Find Tables Nearby in onboarding, Play or
+    /// Settings, so nothing triggers the system prompt unexplained. Players who finished
+    /// onboarding before this switch existed keep discovery on (they've already been asked).
+    var nearbyDiscoveryEnabled: Bool {
+        didSet { defaults.set(nearbyDiscoveryEnabled, forKey: Key.nearbyDiscoveryEnabled) }
+    }
+
     /// When the player last saw Play's "Since you last looked".
     var lastLookedAt: Date? {
         didSet { defaults.set(lastLookedAt, forKey: Key.lastLookedAt) }
@@ -97,6 +106,8 @@ final class AppPreferences {
         lastScoringMode = defaults.string(forKey: Key.lastScoringMode).flatMap(ScoringMode.init(rawValue:)) ?? .scorekeeper
         hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         nearbyAlertsEnabled = defaults.bool(forKey: Key.nearbyAlertsEnabled)
+        nearbyDiscoveryEnabled = defaults.object(forKey: Key.nearbyDiscoveryEnabled) as? Bool
+            ?? defaults.bool(forKey: Key.hasCompletedOnboarding)
         lastLookedAt = defaults.object(forKey: Key.lastLookedAt) as? Date
         outboundImagesClean = defaults.object(forKey: Key.outboundImagesClean) as? Bool ?? true
         sounds = SoundSettings(defaults: defaults)

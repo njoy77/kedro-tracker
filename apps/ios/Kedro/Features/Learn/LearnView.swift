@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Learning Cambio (design §13.1): the 2-minute cards ending in the knock-gamble quiz, the Score a
+/// How to Play (design §13.1): the 2-minute cards ending in the knock-gamble quiz, the Score a
 /// Round drill, the Rules reference and the Knock Calculator.
 ///
 /// A route destination (`AppRoute.learn`), so it doesn't create a NavigationStack.
@@ -27,7 +27,7 @@ struct LearnView: View {
 
             Section {
                 NavigationLink(value: AppRoute.learnCards) {
-                    row("Learn Cambio in 2 Minutes", "Setup, card values, powers, sticking and the knock. Then a quiz.", systemImage: "rectangle.stack")
+                    row("Learn the Game in 2 Minutes", "Setup, card values, powers, sticking and the knock, with real cards. Then a quiz.", systemImage: "rectangle.stack")
                 }
                 NavigationLink(value: AppRoute.scoreRoundDrill) {
                     row("Score a Round", "Practice rounds with the cards face up: landed, tied, failed and going out.", systemImage: "number.square")
@@ -43,7 +43,7 @@ struct LearnView: View {
                 }
             }
         }
-        .navigationTitle("Learn Cambio")
+        .navigationTitle("How to Play")
     }
 
     private func row(_ title: String, _ detail: String, systemImage: String) -> some View {
