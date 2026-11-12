@@ -3,7 +3,8 @@ import UIKit
 
 // UIKit: SwiftUI has no camera capture view (PhotosPicker only reads the library), so taking a
 // new avatar photo wraps UIImagePickerController. Kept to the minimum: capture, hand back JPEG
-// data, dismiss.
+// data, dismiss. Its own crop screen (`allowsEditing`) is off: it looked adjustable but wouldn't
+// pan, so the shot goes to our `AvatarCropView`, the same editor the library path uses.
 
 /// Takes one photo with the camera and returns it as JPEG data (nil if cancelled).
 struct CameraCapture: UIViewControllerRepresentable {
@@ -20,7 +21,7 @@ struct CameraCapture: UIViewControllerRepresentable {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.cameraDevice = .front
-        picker.allowsEditing = true
+        picker.allowsEditing = false
         picker.delegate = context.coordinator
         return picker
     }
@@ -37,7 +38,7 @@ struct CameraCapture: UIViewControllerRepresentable {
         }
 
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage
+            let image = info[.originalImage] as? UIImage
             onFinish(image?.jpegData(compressionQuality: 0.9))
         }
 

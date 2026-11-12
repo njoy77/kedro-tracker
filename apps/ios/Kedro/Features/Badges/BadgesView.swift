@@ -153,11 +153,6 @@ struct BadgeDetailSheet: View {
                     if let caption = earnedCaption {
                         Text(caption).font(.footnote).foregroundStyle(.silverDim).multilineTextAlignment(.center)
                     }
-                    if !isHidden, let avatar = definition.unlocksAvatar {
-                        Label("Unlocks the curated avatar \(avatar.displayName).", systemImage: "person.crop.circle.badge.checkmark")
-                            .font(.footnote)
-                            .foregroundStyle(.silver)
-                    }
                     if !isHidden, let title = TitleID.unlocked(by: badge) {
                         Text("Unlocks the title \(voice.line(title.copyID)).")
                             .font(.footnote)
@@ -196,11 +191,6 @@ extension StatsSnapshot {
         let people = records.values.filter { !$0.isGuest }
         guard !people.isEmpty else { return nil }
         return Double(people.count { $0.badges[badge] != nil }) / Double(people.count)
-    }
-
-    /// Curated avatars this person may pick (the secret two need their badges; design §12.6).
-    func availableAvatars(for ref: PlayerRef) -> [CuratedAvatarID] {
-        AvatarUnlocks.available(earned: Set(record(ref)?.badges.keys.map { $0 } ?? []))
     }
 }
 

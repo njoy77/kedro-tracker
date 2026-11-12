@@ -114,7 +114,7 @@ final class LocalPlayerDirectory: PlayerDirectory {
                 guard case .player(let id) = seat.player, seat.player != me, let handle = seat.handle else { continue }
                 let summary = PlayerSummary(
                     id: id, displayName: seat.displayName, handle: handle,
-                    avatar: seat.avatar ?? .curated(.spade), titleID: seat.titleID, gamesPlayed: seat.gamesPlayed
+                    avatar: seat.avatar ?? .unknown, titleID: seat.titleID, gamesPlayed: seat.gamesPlayed
                 )
                 var entry = known[id] ?? Known(summary: summary, games: 0, lastPlayed: nil)
                 entry.games += 1

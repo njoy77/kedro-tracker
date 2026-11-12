@@ -11,6 +11,8 @@ struct ProfileView: View {
     @State private var playAgainFailed = false
     @State private var blockRequest: BlockRequest?
     @State private var server = ServerStats.shared
+    @State private var viewingPhoto: AvatarPhotoTarget?
+    @Namespace private var photoTransition
 
     private var stats: StatsModel { .shared(for: app.store) }
     private var voice: Voice { app.voice }
@@ -69,6 +71,10 @@ struct ProfileView: View {
             }
         }
         .blockConfirmation($blockRequest)
+        .fullScreenCover(item: $viewingPhoto) { target in
+            AvatarPhotoViewer(url: target.url, name: target.name)
+                .navigationTransition(.zoom(sourceID: target.url, in: photoTransition))
+        }
         .sheet(isPresented: $isPickingTitle) {
             TitlePickerSheet(player: player)
         }
@@ -134,7 +140,7 @@ struct ProfileView: View {
 
     private func header(identity: StatsParticipant, snapshot: StatsSnapshot, record: PlayerRecord?) -> some View {
         VStack(spacing: 8) {
-            StatsAvatar(identity: identity, ref: player, size: .profile)
+            headerAvatar(identity: identity)
             Text(identity.name)
                 .kedroFont(.display)
                 .foregroundStyle(.cream)
@@ -159,6 +165,25 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
+    }
+
+    /// The round face. A photo opens full screen on a tap; emoji, initials and other
+    /// placeholders aren't buttons, so the viewer never opens empty.
+    @ViewBuilder
+    private func headerAvatar(identity: StatsParticipant) -> some View {
+        if case .photo(let url) = identity.avatar {
+            Button {
+                viewingPhoto = AvatarPhotoTarget(url: url, name: identity.name)
+            } label: {
+                StatsAvatar(identity: identity, ref: player, size: .profile)
+                    .matchedTransitionSource(id: url, in: photoTransition)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(identity.name)'s photo")
+            .accessibilityHint("Opens it full screen.")
+        } else {
+            StatsAvatar(identity: identity, ref: player, size: .profile)
+        }
     }
 
     @ViewBuilder

@@ -93,7 +93,7 @@ struct OperationCodingTests {
     func smallTypes() throws {
         let encoder = KedroJSON.encoder()
         #expect(String(decoding: try encoder.encode(Avatar.emoji("🦊", colorIndex: 3)), as: UTF8.self) == #"{"colorIndex":3,"emoji":"🦊","kind":"emoji"}"#)
-        #expect(String(decoding: try encoder.encode(Avatar.curated(.redKing)), as: UTF8.self) == #"{"id":"redKing","kind":"curated"}"#)
+        #expect(String(decoding: try encoder.encode(Avatar.curated("redKing")), as: UTF8.self) == #"{"id":"redKing","kind":"curated"}"#)
         #expect(String(decoding: try encoder.encode(PreviewData.noah.ref), as: UTF8.self) == #"{"id":"\#(PreviewData.noah.id.uuidString)","kind":"player"}"#)
         #expect(String(decoding: try encoder.encode(Handle(constant: "noah.k")), as: UTF8.self) == #""noah.k""#)
         #expect(throws: DecodingError.self) { try KedroJSON.decoder().decode(Handle.self, from: Data(#""No""#.utf8)) }

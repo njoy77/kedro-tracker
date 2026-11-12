@@ -124,7 +124,7 @@ final class NearbyTableDiscovery: TableDiscovery {
                 seatedPlayers: ad.seated.map { seated in
                     playedWith[seated.id]?.player ?? PlayerSummary(
                         id: seated.id, displayName: seated.displayName,
-                        handle: seated.handle ?? Handle(constant: "player"), avatar: .curated(.spade)
+                        handle: seated.handle ?? Handle(constant: "player"), avatar: .unknown
                     )
                 },
                 guestCount: ad.guestCount,
@@ -167,7 +167,7 @@ final class NearbyTableDiscovery: TableDiscovery {
             id: ad.hostPlayer ?? PlayerID(ad.hub.rawValue),
             displayName: ad.hostName,
             handle: ad.hostHandle ?? Handle(constant: "guest"),
-            avatar: ad.hostAvatar ?? .curated(.spade)
+            avatar: ad.hostAvatar ?? .unknown
         )
     }
 

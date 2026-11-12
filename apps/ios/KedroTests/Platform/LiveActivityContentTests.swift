@@ -41,12 +41,15 @@ struct LiveActivityContentTests {
         #expect(content.updatedAt == 1_792_879_560)
     }
 
-    @Test("Avatars: curated and emoji pass through; guests become a dashed initial")
+    @Test("Avatars: emoji pass through; guests become a dashed initial; legacy curated become the initial")
     func avatars() throws {
         let rows = try content().rows
-        #expect(rows[0].avatar == .curated(id: "crow"))
+        #expect(rows[0].avatar == .emoji(emoji: "🐦‍⬛", colorIndex: 10))
         #expect(rows[1].avatar == .emoji(emoji: "🦊", colorIndex: 0))
         #expect(rows[4].avatar == .initial(letter: "S", isGuest: true))
+        var legacy = try #require(PreviewData.sampleSeats.first { $0.id == PreviewData.noahSeat })
+        legacy.avatar = .curated("crow")
+        #expect(LiveActivityContent.avatar(for: legacy) == .initial(letter: "N", isGuest: false))
     }
 
     @Test("Failed and tied knocks show their math")

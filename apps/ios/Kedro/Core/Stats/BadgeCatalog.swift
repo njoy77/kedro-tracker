@@ -159,11 +159,6 @@ nonisolated struct BadgeDefinition: Hashable, Sendable {
     ]
 
     static let catalog: [BadgeID: BadgeDefinition] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
-
-    /// The curated avatar a secret badge unlocks (design §12.6).
-    var unlocksAvatar: CuratedAvatarID? {
-        CuratedAvatarID.allCases.first { $0.unlockingBadge == name }
-    }
 }
 
 /// A badge someone has, and the game that earned it.
@@ -192,24 +187,4 @@ nonisolated struct BadgeProgress: Hashable, Sendable, Identifiable {
     var remaining: Int { max(0, target - value) }
     /// "1 of 3".
     var label: String { "\(min(value, target)) of \(target)" }
-}
-
-/// The curated avatars a person may pick: everything that isn't secret, plus the secrets their
-/// badges unlocked (Exorcism → the Ghost, Nothing to See Here → the Hustler).
-nonisolated enum AvatarUnlocks {
-    static func available(earned: Set<BadgeID>) -> [CuratedAvatarID] {
-        CuratedAvatarID.allCases.filter { avatar in
-            guard let badgeName = avatar.unlockingBadge else { return true }
-            return earned.contains { $0.definition.name == badgeName }
-        }
-    }
-}
-
-extension StatsSnapshot {
-    /// The secret curated avatars a person has unlocked (the Ghost with Exorcism, the Hustler
-    /// with Nothing to See Here), for the avatar picker.
-    func unlockedSecretAvatars(for ref: PlayerRef) -> Set<CuratedAvatarID> {
-        let earned = Set(record(ref)?.badges.keys.map { $0 } ?? [])
-        return Set(AvatarUnlocks.available(earned: earned).filter(\.isSecret))
-    }
 }

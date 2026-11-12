@@ -343,7 +343,7 @@ struct HandleStep: View {
 }
 
 #Preview("Face") {
-    @Previewable @State var avatar: Avatar? = .curated(.crow)
+    @Previewable @State var avatar: Avatar? = .emoji("🦊", colorIndex: 0)
     NavigationStack {
         FaceStep(avatar: $avatar, name: "Noah") {}
     }

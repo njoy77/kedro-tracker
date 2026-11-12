@@ -153,12 +153,12 @@ nonisolated enum LiveActivityContent {
         }
     }
 
-    /// Photos can't load in the extension (no network), so they fall back to the initial.
+    /// Photos can't load in the extension (no network), so they fall back to the initial, like
+    /// legacy curated avatars.
     static func avatar(for seat: Seat) -> LiveAvatar {
         switch seat.avatar {
         case .emoji(let emoji, let colorIndex): .emoji(emoji: emoji, colorIndex: colorIndex)
-        case .curated(let id): .curated(id: id.rawValue)
-        case .photo, nil: .initial(letter: seat.initial, isGuest: seat.isGuest)
+        case .photo, .curated, nil: .initial(letter: seat.initial, isGuest: seat.isGuest)
         }
     }
 }

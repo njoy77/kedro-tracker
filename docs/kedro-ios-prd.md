@@ -107,7 +107,7 @@ The app must apply these adjustments automatically from the hand values and the 
 
 ### 3.1 Accounts
 - Players sign in with **Sign in with Apple**. *Status: temporarily disabled until the Apple Developer account is approved. A debug-only test-user sign-in exists for development and must never ship in release builds.*
-- Each player has a public profile: a display name, a unique **@handle** (so players can find each other by search), and an avatar. An avatar can be a **photo**, **any emoji** on a chosen color, or one of a **curated set of on-brand illustrated avatars**.
+- Each player has a public profile: a display name, a unique **@handle** (so players can find each other by search), and an avatar. An avatar is a **photo** (the default ask), or an **emoji** on a chosen color for people who don't want a photo.
 - Once signed in, a player stays signed in on their device.
 
 ### 3.2 Guests

@@ -24,15 +24,15 @@ nonisolated enum PreviewData {
     }
 
     /// Noah is the demo "you" (the DEBUG test user signs in as Noah).
-    static let noah = player(1, "Noah", "noah", .curated(.crow), title: "TI-12", games: 40)
+    static let noah = player(1, "Noah", "noah", .emoji("🐦‍⬛", colorIndex: 10), title: "TI-12", games: 40)
     static let ana = player(2, "Ana", "ana.k", .emoji("🦊", colorIndex: 0), title: "TI-14", games: 30)
-    static let ben = player(3, "Ben", "ben", .curated(.bull), title: "TI-01", games: 9)
-    static let cleo = player(4, "Cleo", "cleo", .curated(.joker), title: "TI-13", games: 12)
+    static let ben = player(3, "Ben", "ben", .emoji("🐂", colorIndex: 3), title: "TI-01", games: 9)
+    static let cleo = player(4, "Cleo", "cleo", .emoji("🃏", colorIndex: 8), title: "TI-13", games: 12)
     static let priya = player(5, "Priya", "priya", .emoji("🦂", colorIndex: 1), games: 18)
-    static let jo = player(6, "Jo", "jo.b", .curated(.wolf), games: 8)
-    static let max = player(7, "Max", "max", .curated(.shark), games: 14)
+    static let jo = player(6, "Jo", "jo.b", .emoji("🐺", colorIndex: 7), games: 8)
+    static let max = player(7, "Max", "max", .emoji("🦈", colorIndex: 9), games: 14)
     static let maya = player(8, "Maya", "maya", .emoji("🐍", colorIndex: 2), games: 22)
-    static let theo = player(9, "Theo", "theo", .curated(.skull), games: 9)
+    static let theo = player(9, "Theo", "theo", .curated("skull"), games: 9)
     static let leo = player(10, "Leo", "leo.r", .emoji("🦉", colorIndex: 3), games: 6)
 
     /// Sam is a guest on their 3rd game.

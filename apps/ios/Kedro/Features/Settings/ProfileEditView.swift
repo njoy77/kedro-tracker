@@ -33,11 +33,7 @@ struct ProfileEditView: View {
                         .listRowInsets(EdgeInsets())
                 }
                 Section("Face") {
-                    AvatarPicker(
-                        avatar: $avatar,
-                        name: trimmedName.isEmpty ? "You" : trimmedName,
-                        unlocked: profile.map { StatsModel.shared(for: app.store).snapshot.unlockedSecretAvatars(for: $0.identity) } ?? []
-                    )
+                    AvatarPicker(avatar: $avatar, name: trimmedName.isEmpty ? "You" : trimmedName)
                     .padding(.vertical, 12)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
