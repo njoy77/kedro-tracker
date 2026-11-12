@@ -32,6 +32,7 @@ import {
   type GuestSuggestionsResponse,
   type HandleAvailabilityResponse,
   type HealthResponse,
+  type PushHealthResponse,
   type LeaderboardResponse,
   type RecordsResponse,
   type LinkAttestationResponse,
@@ -51,6 +52,7 @@ import {
 import { requireAuth, type AuthEnv, type TokenVerifier } from './auth.ts'
 import { HttpError, badRequest, errorBody, readJson, uuidParam } from './http.ts'
 import type { Apns } from './push/apns.ts'
+import { PushHealth } from './push/health.ts'
 import { ApnsLiveActivityBroadcaster, StubLiveActivityBroadcaster, type LiveActivityBroadcaster } from './push/liveActivity.ts'
 import { ApnsNotifier, StubNotifier, type Notifier } from './push/notifications.ts'
 import { ClipService, ClipTokens } from './services/clip.ts'
@@ -142,6 +144,13 @@ export function createApp(deps: AppDeps) {
   app.use('/v1/*', cors({ origin: '*', allowHeaders: ['authorization', 'content-type'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE'] }))
 
   app.get('/health', (c) => c.json<HealthResponse>({ status: 'ok', version: API_VERSION }))
+
+  // Public: whether pushes can reach Apple from here (push/health.ts; cached, sends nothing).
+  const pushHealth = new PushHealth(deps.apns, now)
+  app.get('/health/push', async (c) => {
+    const health = await pushHealth.check()
+    return c.json<PushHealthResponse>(health, health.apns === 'error' ? 503 : 200)
+  })
 
   // Public: the key hubs check table-link attestations with (they cache it for offline tables).
   app.get('/link/key', (c) => c.json<LinkKeyResponse>({ publicKey: link.publicKey }))

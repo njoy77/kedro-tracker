@@ -28,7 +28,7 @@ const config: ApnsConfig = {
   bundleId: 'com.njoy77.kedro',
   environment: 'sandbox',
 }
-const OK: ApnsResult = { ok: true, status: 200, headers: {} }
+const OK: ApnsResult = { ok: true, status: 200, headers: {}, body: '' }
 
 /** Answers requests from a script (the next answer, or 200) and records them. */
 class FakeTransport implements ApnsTransport {
@@ -44,6 +44,7 @@ class FakeTransport implements ApnsTransport {
 
 /** Records what the senders ask APNs for. */
 class FakeApns implements Apns {
+  readonly environment = 'sandbox' as const
   readonly device: { token: string; payload: any; options: DevicePushOptions }[] = []
   readonly broadcasts: { channelId: string; payload: BroadcastPayload; priority: number }[] = []
   readonly deleted: string[] = []
@@ -68,6 +69,13 @@ class FakeApns implements Apns {
   async broadcast(channelId: string, payload: unknown, options: { priority: 5 | 10 }): Promise<ApnsResult> {
     this.broadcasts.push({ channelId, payload: payload as BroadcastPayload, priority: options.priority })
     return this.broadcastResult
+  }
+  listed = 0
+  listResult: string[] | Error = []
+  async listChannels(): Promise<string[]> {
+    this.listed += 1
+    if (this.listResult instanceof Error) throw this.listResult
+    return this.listResult
   }
 }
 
@@ -132,6 +140,23 @@ describe('APNs client', () => {
     expect([remove.method, remove.headers['apns-channel-id'], remove.body]).toEqual(['DELETE', 'dHN0LXNyY2gtY2hubA==', undefined])
   })
 
+  test('listing channels reads the IDs from the management host', async () => {
+    const transport = new FakeTransport([
+      { status: 200, headers: {}, body: '{"channels":["YQ==","Yg=="]}' },
+      { status: 403, headers: {}, body: '{"reason":"InvalidProviderToken"}' },
+    ])
+    const client = new ApnsClient({ ...config, environment: 'production' }, transport)
+    expect(client.environment).toBe('production')
+    expect(await client.listChannels()).toEqual(['YQ==', 'Yg=='])
+    expect([transport.requests[0].origin, transport.requests[0].method, transport.requests[0].path, transport.requests[0].body]).toEqual([
+      'https://api-manage-broadcast.push.apple.com:2196',
+      'GET',
+      '/1/apps/com.njoy77.kedro/all-channels',
+      undefined,
+    ])
+    await expect(client.listChannels()).rejects.toThrow('403 InvalidProviderToken')
+  })
+
   test('a failed channel create throws with the reason', async () => {
     const client = new ApnsClient(config, new FakeTransport([{ status: 400, headers: {}, body: '{"reason":"BadRequestParams"}' }]))
     await expect(client.createChannel()).rejects.toThrow('400 BadRequestParams')
@@ -139,7 +164,7 @@ describe('APNs client', () => {
 
   test('errors come back with their reason', async () => {
     const client = new ApnsClient(config, new FakeTransport([{ status: 410, headers: {}, body: '{"reason":"Unregistered","timestamp":1}' }]))
-    expect(await client.sendToDevice('abcd', {}, { pushType: 'alert' })).toEqual({ ok: false, status: 410, reason: 'Unregistered', headers: {} })
+    expect(await client.sendToDevice('abcd', {}, { pushType: 'alert' })).toEqual({ ok: false, status: 410, reason: 'Unregistered', headers: {}, body: '{"reason":"Unregistered","timestamp":1}' })
   })
 
   test('an expired provider token is signed again and the request retried once', async () => {
@@ -334,7 +359,7 @@ describe('Live Activity broadcasts', () => {
 
   test('a channel APNs no longer knows is forgotten, and the failure logged', async () => {
     const { h, apns, settle } = await apnsHarness()
-    apns.broadcastResult = { ok: false, status: 400, reason: 'BadChannelId', headers: {} }
+    apns.broadcastResult = { ok: false, status: 400, reason: 'BadChannelId', headers: {}, body: '' }
     await h.upload(ids.noah, sampleWireOperations({ throughRound: 1, finished: false }))
     await settle()
     expect(h.logs.some((line) => line.includes('400 BadChannelId'))).toBe(true)
@@ -374,12 +399,38 @@ describe('alert pushes (N-01)', () => {
     const sandbox = 'dd'.repeat(32)
     await h.post('/v1/push/tokens', ids.ben, { token: gone, kind: 'apns' })
     await h.post('/v1/push/tokens', ids.ben, { token: sandbox, kind: 'apns' })
-    apns.deviceResults.set(gone, { ok: false, status: 410, reason: 'Unregistered', headers: {} })
-    apns.deviceResults.set(sandbox, { ok: false, status: 400, reason: 'BadDeviceToken', headers: {} })
+    apns.deviceResults.set(gone, { ok: false, status: 410, reason: 'Unregistered', headers: {}, body: '' })
+    apns.deviceResults.set(sandbox, { ok: false, status: 400, reason: 'BadDeviceToken', headers: {}, body: '' })
     await h.upload(ids.noah, sampleWireOperations({ throughRound: 0, finished: false }).filter((op) => op.type !== 'GameStarted'))
     await settle()
     expect((await h.store.pushTokens({ playerIds: [ids.ben], kind: 'apns' })).map((row) => row.token)).toEqual([sandbox])
     expect(h.logs.filter((line) => line.startsWith('N-01'))).toHaveLength(2)
+  })
+})
+
+describe('push health check', () => {
+  test('unconfigured without APNs', async () => {
+    const h = harness()
+    expect(await h.get('/health/push', null)).toEqual({ status: 200, body: { apns: 'unconfigured' } })
+  })
+
+  test('lists channels once per five minutes; a failure is a 503', async () => {
+    let now = NOW
+    const apns = new FakeApns()
+    apns.listResult = ['YQ==']
+    const h = harness({ apns, now: () => now })
+    const ok = { status: 200, body: { apns: 'ok', environment: 'sandbox', channels: 1, checkedAt: new Date(NOW).toISOString() } }
+    expect(await h.get('/health/push', null)).toEqual(ok)
+    now += 4 * 60 * 1000
+    expect(await h.get('/health/push', null)).toEqual(ok)
+    expect(apns.listed).toBe(1)
+
+    now += 2 * 60 * 1000
+    apns.listResult = new Error('APNs channel list failed: 403 InvalidProviderToken')
+    const failed = await h.get('/health/push', null)
+    expect(failed.status).toBe(503)
+    expect(failed.body).toMatchObject({ apns: 'error', error: 'APNs channel list failed: 403 InvalidProviderToken' })
+    expect(apns.listed).toBe(2)
   })
 })
 

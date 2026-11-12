@@ -162,7 +162,7 @@ export class ProviderToken {
 
 // MARK: Client
 
-export type ApnsResult = { ok: boolean; status: number; reason?: string; headers: Record<string, string> }
+export type ApnsResult = { ok: boolean; status: number; reason?: string; headers: Record<string, string>; body: string }
 
 export type DevicePushOptions = {
   pushType: 'alert' | 'background' | 'liveactivity'
@@ -176,6 +176,7 @@ export type DevicePushOptions = {
 
 /** What the senders use; `ApnsClient` is the real one, tests use fakes. */
 export interface Apns {
+  readonly environment: ApnsEnvironment
   /** POST /3/device/<token>. */
   sendToDevice(token: string, payload: unknown, options: DevicePushOptions): Promise<ApnsResult>
   /** Creates a Live Activity broadcast channel (no message storage) and returns its ID. */
@@ -183,6 +184,8 @@ export interface Apns {
   deleteChannel(channelId: string): Promise<ApnsResult>
   /** POST /4/broadcasts/apps/<bundleId> to every Live Activity subscribed to the channel. */
   broadcast(channelId: string, payload: unknown, options: { priority: 5 | 10 }): Promise<ApnsResult>
+  /** GET /1/apps/<bundleId>/all-channels: every open channel's ID (the health check uses it). */
+  listChannels(): Promise<string[]>
 }
 
 export class ApnsClient implements Apns {
@@ -194,6 +197,10 @@ export class ApnsClient implements Apns {
     now: () => number = Date.now,
   ) {
     this.token = new ProviderToken(config, now)
+  }
+
+  get environment(): ApnsEnvironment {
+    return this.config.environment
   }
 
   sendToDevice(token: string, payload: unknown, options: DevicePushOptions): Promise<ApnsResult> {
@@ -232,6 +239,13 @@ export class ApnsClient implements Apns {
     return this.request('push', 'POST', `/4/broadcasts/apps/${this.config.bundleId}`, headers, JSON.stringify(payload))
   }
 
+  async listChannels(): Promise<string[]> {
+    const result = await this.request('manage', 'GET', `/1/apps/${this.config.bundleId}/all-channels`, {})
+    if (!result.ok) throw new Error(`APNs channel list failed: ${describe(result)}`)
+    const channels = (parseJson(result.body) as { channels?: unknown } | undefined)?.channels
+    return Array.isArray(channels) ? channels.filter((id): id is string => typeof id === 'string') : []
+  }
+
   private get channelsPath(): string {
     return `/1/apps/${this.config.bundleId}/channels`
   }
@@ -255,7 +269,7 @@ export class ApnsClient implements Apns {
         this.token.reset()
         continue
       }
-      return { ok: response.status >= 200 && response.status < 300, status: response.status, reason, headers: response.headers }
+      return { ok: response.status >= 200 && response.status < 300, status: response.status, reason, headers: response.headers, body: response.body }
     }
   }
 }
@@ -266,10 +280,14 @@ export function describe(result: ApnsResult): string {
 }
 
 function errorReason(body: string): string | undefined {
+  const reason = (parseJson(body) as { reason?: unknown } | undefined)?.reason
+  return typeof reason === 'string' ? reason : undefined
+}
+
+function parseJson(body: string): unknown {
   if (!body) return undefined
   try {
-    const parsed = JSON.parse(body) as { reason?: unknown }
-    return typeof parsed.reason === 'string' ? parsed.reason : undefined
+    return JSON.parse(body)
   } catch {
     return undefined
   }

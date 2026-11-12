@@ -80,6 +80,20 @@ locally). Without the key the senders are stubs that log what they would send.
 - **Alerts** (`push/notifications.ts`): N-01 "saved you a seat" to each of the player's device
   tokens, sent after the response. A token APNs answers 410 for is deleted.
 
+To check that pushes can reach Apple from a deployment, open `/health/push`
+(`push/health.ts`). It lists the app's open broadcast channels on the channel management host,
+so it tests HTTP/2, the key and the provider token without a game or a phone, and sends nothing.
+It answers `{"apns":"ok","environment","channels",…}`, `{"apns":"unconfigured"}`, or a 503 with
+the error, and asks Apple at most once every 5 minutes per instance. The channel count should
+stay near the number of live games (Apple allows 10,000). Runtime logs on the hobby plan last
+about an hour, so a failed send (`live activity broadcast failed`, `N-01 … failed`) is easy to
+miss; this check is the lasting signal.
+
+A device token only works in its own environment: Debug builds register sandbox tokens and talk
+to the local API (sandbox by default), and TestFlight and App Store builds register production
+tokens and talk to `api.playkedro.com` (production). A Debug token sent to production gets
+`400 BadDeviceToken`, which is logged and the token kept.
+
 On Vercel production (or with `NODE_ENV=production` elsewhere) the server refuses to start
 without Supabase, `KEDRO_CLIP_SECRET`, `KEDRO_LINK_SIGNING_KEY` and `KEDRO_PUBLIC_URL`, and every
 deployment refuses `KEDRO_DEV_AUTH` / `KEDRO_DEV_SEED` (`deploymentProblems` in `src/config.ts`).
@@ -98,6 +112,7 @@ Every `/v1` route needs `Authorization: Bearer <Supabase access token>`. Errors 
 | Route | Body → response | Notes |
 |---|---|---|
 | `GET /health` | → `{status, version}` | public |
+| `GET /health/push` | → `PushHealthResponse` | public; 503 when APNs can't be reached; cached 5 min |
 | `POST /v1/ops` | `{ops:[Operation]}` → `{accepted, duplicates, rejected}` | ≤ 500 ops; idempotent by `opId`; needs a profile |
 | `GET /v1/games/:gameId/ops?after=&limit=` | → `{ops}` | fold order; seated players and the creator only |
 | `GET /v1/players/me` | → `Player` | 404 `profileRequired` before the first PUT |
