@@ -1,8 +1,8 @@
 // Shared by the link pages. Everything read from the URL goes into the page as text, never HTML.
 
-/** Where "Get Kedro" points: the TestFlight public link now, the App Store later. Until it's set,
+/** Where "Get Kedro" points: the TestFlight public link (group "Friends") now, the App Store later. When null,
  *  the pages say Kedro is in a private beta and to ask the host for an invite. */
-export const INSTALL_URL = null
+export const INSTALL_URL = 'https://testflight.apple.com/join/6ABaNVXy'
 
 /** The web app, for people without an iPhone (and anyone at a computer). */
 export const WEB_APP_URL = 'https://kedro-tracker.vercel.app'

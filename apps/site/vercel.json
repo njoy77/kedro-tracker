@@ -8,7 +8,8 @@
     { "source": "/t/:gameID", "destination": "/invite.html" },
     { "source": "/s/:gameID", "destination": "/seat.html" },
     { "source": "/claim", "destination": "/claim.html" },
-    { "source": "/claim/:code", "destination": "/claim.html" }
+    { "source": "/claim/:code", "destination": "/claim.html" },
+    { "source": "/privacy", "destination": "/privacy.html" }
   ],
   "headers": [
     {
@@ -20,7 +21,7 @@
     },
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
     }
   ]
 }

@@ -167,3 +167,41 @@ footer a {
 section {
   display: contents;
 }
+
+/* Long-form pages (the privacy policy): left-aligned reading text. */
+main.prose {
+  max-width: 640px;
+  align-items: stretch;
+  gap: 14px;
+  text-align: left;
+}
+
+main.prose .logo {
+  align-self: center;
+}
+
+main.prose h2 {
+  margin: 18px 0 0;
+  font: 400 26px/1.1 var(--display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+main.prose ul {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--silver);
+}
+
+main.prose li + li {
+  margin-top: 8px;
+}
+
+main.prose strong {
+  color: var(--cream);
+  font-weight: 600;
+}
+
+main.prose a {
+  color: var(--red);
+}

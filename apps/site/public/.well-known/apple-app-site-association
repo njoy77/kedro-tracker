@@ -5,7 +5,9 @@
         "appIDs": ["2RXNMCM34K.com.njoy77.kedro"],
         "components": [
           { "/": "/t/*", "comment": "Table invite: the rotating QR / AirDrop link" },
-          { "/": "/s/*", "comment": "Saved seat: the push's tap target" }
+          { "/": "/s/*", "comment": "Saved seat: the push's tap target" },
+          { "/": "/claim", "comment": "Guest claim code: /claim?code={code}" },
+          { "/": "/claim/*", "comment": "Guest claim code: /claim/{code}" }
         ]
       }
     ]
