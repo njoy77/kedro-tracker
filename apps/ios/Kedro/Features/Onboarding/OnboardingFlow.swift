@@ -1,17 +1,26 @@
 import SwiftUI
 
-/// First launch (design §5.1): welcome → (guest name) → how filthy → your face → your handle.
+/// First launch (design §5.1): welcome → (guest name) → what you're in for → age → how filthy →
+/// find your table → your face → your handle.
 ///
-/// - Guests: welcome → first name → level. Unclaimed guests don't pick a face or handle (§3.5);
-///   `AppModel.playAsGuest` stores a claim token so signing in later claims everything.
-/// - Signed in (the DEBUG test user until Sign in with Apple ships): welcome → level → face → handle.
+/// - Guests: welcome → first name → tour → age → level → nearby. Unclaimed guests don't pick a
+///   face or handle (§3.5); `AppModel.playAsGuest` stores a claim token so signing in later
+///   claims everything.
+/// - Signed in: welcome → tour → age → level → nearby → face → handle.
+///
+/// The two system prompts each get their own step and only appear from a button there: Declared
+/// Age Range (`AgeStep`) and Local Network (`NearbyStep`). Nothing asks before those taps.
+/// Players who already finished onboarding never see these steps.
 ///
 /// Ends by setting `AppPreferences.hasCompletedOnboarding = true` once the phone has a profile,
 /// which lets `RootView` show the tabs. Forced dark (design §3.3: the welcome is always on night).
 struct OnboardingFlow: View {
-    enum Step: Hashable {
+    enum Step: String, Hashable {
         case guestName
+        case tour
+        case age
         case level
+        case nearby
         case face
         case handle
     }
@@ -42,9 +51,19 @@ struct OnboardingFlow: View {
                 Group {
                     switch step {
                     case .guestName:
-                        GuestNameStep(name: $guestName) { path.append(.level) }
+                        GuestNameStep(name: $guestName) { path.append(.tour) }
+                    case .tour:
+                        TourStep { path.append(.age) }
+                    case .age:
+                        AgeStep { path.append(.level) }
                     case .level:
                         LevelPickerStep(level: $level) {
+                            // From here on, onboarding talks at the level just picked.
+                            prefs.languageLevel = level
+                            path.append(.nearby)
+                        }
+                    case .nearby:
+                        NearbyStep {
                             if isSignedIn { path.append(.face) } else { finishAsGuest() }
                         }
                     case .face:
@@ -66,6 +85,9 @@ struct OnboardingFlow: View {
         .onAppear {
             level = prefs.isUnder18 ? .clean : prefs.languageLevel
             if isSignedIn, path.isEmpty { startSignedInPath() }
+            #if DEBUG
+            if path.isEmpty, let step = DebugLaunch.onboardingStep.flatMap(Step.init(rawValue:)) { path = [step] }
+            #endif
         }
     }
 
@@ -81,7 +103,7 @@ struct OnboardingFlow: View {
         // Returning player signing back in: the gate in RootView opens on its own.
         guard !prefs.hasCompletedOnboarding else { return }
         avatar = app.profile?.avatar
-        path = [.level]
+        path = [.tour]
     }
 
     private func finishAsGuest() {
@@ -115,15 +137,14 @@ struct OnboardingFlow: View {
 
 // MARK: - Steps
 
-/// The welcome (mockup frame 1): logo, O-01, O-02, Play as a Guest, Sign in with Apple,
-/// the Learn link (O-04) and "Got a claim code?".
+/// The welcome (mockup frame 1): logo, O-01, O-02, Play as a Guest, Sign in with Apple and
+/// "Got a claim code?". How to Play lives on Play once you're in.
 struct WelcomeStep: View {
     var onPlayAsGuest: () -> Void
     var onSignedIn: () -> Void
 
     @Environment(AppModel.self) private var app
     @Environment(AuthStore.self) private var auth
-    @State private var isLearning = false
     @State private var isClaiming = false
     #if DEBUG
     @State private var isPickingTestAccount = false
@@ -170,11 +191,6 @@ struct WelcomeStep: View {
                     .frame(minHeight: 44)
                 #endif
 
-                Button(app.voice.line("O-04")) { isLearning = true }
-                    .font(.footnote)
-                    .foregroundStyle(.silverDim)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
                 Button("Got a claim code?") { isClaiming = true }
                     .font(.footnote)
                     .foregroundStyle(.kedroRed)
@@ -186,17 +202,6 @@ struct WelcomeStep: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onChange(of: auth.signedInUser != nil) { _, signedIn in
             if signedIn { onSignedIn() }
-        }
-        .sheet(isPresented: $isLearning) {
-            NavigationStack {
-                LearnView()
-                    .appRouteDestinations()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(Literal.text("button.done")) { isLearning = false }
-                        }
-                    }
-            }
         }
         .sheet(isPresented: $isClaiming) {
             ClaimCodeSheet()

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Settings (mockup frame 24): profile, account, language level, custom taunts, learner hints,
 /// sounds (master switch, per-moment toggles with previews, table speaker), outbound images,
-/// nearby alerts, and the rules.
+/// finding tables nearby, nearby alerts, and the rules.
 ///
 /// Pushed with `AppRoute.settings`; doesn't create a NavigationStack.
 struct SettingsView: View {
@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var isPickingTestAccount = false
     #endif
     @State private var isConfirmingSignOut = false
+    @State private var isLocalNetworkDenied = false
 
     var body: some View {
         @Bindable var prefs = prefs
@@ -35,6 +36,11 @@ struct SettingsView: View {
 
                 Toggle("Custom taunts", isOn: $prefs.customTauntsEnabled)
                     .disabled(prefs.isUnder18)
+
+                // Declared Age Range, only from this tap (onboarding's age step is the other place).
+                AgeRangeButton(title: "Share Age Range", isProminent: false) { outcome in
+                    if let message = Self.message(for: outcome) { app.toasts.show(message) }
+                }
             } header: {
                 Text("Language")
             } footer: {
@@ -67,6 +73,27 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Find Tables Nearby", isOn: $prefs.nearbyDiscoveryEnabled)
+            } header: {
+                Text("Nearby")
+            } footer: {
+                if prefs.nearbyDiscoveryEnabled, isLocalNetworkDenied {
+                    Text(app.voice.line("E-02"))
+                } else {
+                    Text("Phones at the same table find each other, so nobody types a code. Join with Code and QR codes work either way.")
+                }
+            }
+            // Turning it on is the explicit tap that may show the Local Network prompt (the first
+            // time); after that this only checks.
+            .task(id: prefs.nearbyDiscoveryEnabled) {
+                guard prefs.nearbyDiscoveryEnabled, !(app.discovery is NoNearbyTables) else {
+                    isLocalNetworkDenied = false
+                    return
+                }
+                isLocalNetworkDenied = await LocalNetworkAccess.request() == .denied
+            }
+
+            Section {
                 Toggle("Tables nearby", isOn: $prefs.nearbyAlertsEnabled)
                     .onChange(of: prefs.nearbyAlertsEnabled) { _, isOn in
                         guard isOn, let push = network?.push else { return }
@@ -83,7 +110,7 @@ struct SettingsView: View {
             }
 
             Section("Rules") {
-                NavigationLink(value: AppRoute.learn) { Label("Learn Cambio", systemImage: "graduationcap") }
+                NavigationLink(value: AppRoute.learn) { Label("How to Play", systemImage: "graduationcap") }
                 NavigationLink(value: AppRoute.rules) { Label("Rules", systemImage: "book") }
                 NavigationLink(value: AppRoute.knockCalculator(nil)) { Label("Knock Calculator", systemImage: "function") }
             }
@@ -104,7 +131,16 @@ struct SettingsView: View {
         } message: {
             Text("Your games stay on this phone and on your account.")
         }
-        .checksAgeRange()
+    }
+
+    /// A toast for a Share Age Range answer (under 18 shows in the Language footer, O-10).
+    private static func message(for outcome: AgeRangeOutcome) -> String? {
+        switch outcome {
+        case .under18: nil
+        case .adult: "18 or over. Every level's open."
+        case .notShared: "Not shared. Nothing changed."
+        case .unavailable: "Age range isn't available on this iPhone."
+        }
     }
 
     // MARK: Profile and account

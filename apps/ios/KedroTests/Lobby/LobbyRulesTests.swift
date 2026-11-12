@@ -28,7 +28,7 @@ struct LobbyRulesTests {
     func underThreeMessage() {
         for level in LanguageLevel.allCases {
             let voice = Voice(level: level)
-            #expect(LobbyIssue.tooFewSeats.message(voice, seats: []) == "Cambio needs 3. Two people is just a staring contest.")
+            #expect(LobbyIssue.tooFewSeats.message(voice, seats: []) == "This game needs 3. Two people is just a staring contest.")
         }
     }
 

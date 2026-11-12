@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Learn Cambio in 2 minutes" (design §13.1): five cards (setup, card values, powers, sticking,
+/// "Learn the Game in 2 Minutes" (design §13.1): five cards (setup, card values, powers, sticking,
 /// knocking and the knock gamble) with real card faces, ending in a knock-gamble quiz.
 /// Rule text is literal; only the closing line uses the voice.
 struct LearnCardsView: View {
@@ -333,7 +333,7 @@ struct KnockQuiz: View {
     }
 }
 
-#Preview("Learn Cambio") {
+#Preview("Learn the game") {
     NavigationStack { LearnCardsView() }
         .previewEnvironment()
         .preferredColorScheme(.dark)
