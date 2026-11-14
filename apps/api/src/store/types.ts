@@ -95,7 +95,9 @@ export class HandleTakenError extends Error {
 export interface Store {
   // Ops (append-only)
   /** Ops for a game in fold order, optionally only those with an HLC string after `after`. */
-  getOps(gameId: UUID, options?: { after?: string; limit?: number }): Promise<WireOperation[]>
+  /** A game's ops in fold order. `excludeTypes` leaves those types out before `limit` applies,
+   *  so a page stays full for clients that can't decode them (`OPS_FEATURES`). */
+  getOps(gameId: UUID, options?: { after?: string; limit?: number; excludeTypes?: readonly string[] }): Promise<WireOperation[]>
   /** Which of these op IDs are already stored. */
   existingOpIds(opIds: readonly UUID[]): Promise<Set<UUID>>
   /** Inserts ops, skipping any op ID already stored. Returns the op IDs actually inserted. */

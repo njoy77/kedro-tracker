@@ -4,6 +4,7 @@
 // - Longest streak: longest run of consecutive wins.
 // - Most landed knocks: knocks with the strictly lowest hand (−10). Inherent knocks don't count.
 // - Most games: finished games, including ended-early ones.
+// - Most neighs: 🐴 taps across counted games (just for fun).
 //
 // Ties share a rank (competition ranking) and are listed by whoever got there first. Players with
 // nothing toward a record (no wins, no landed knocks) aren't listed for it.
@@ -11,7 +12,7 @@
 import type { UUID } from './ids.ts'
 import type { PlayerStats, Subject } from './stats.ts'
 
-export const RECORD_KINDS = ['bestGame', 'longestStreak', 'mostLandedKnocks', 'mostGames'] as const
+export const RECORD_KINDS = ['bestGame', 'longestStreak', 'mostLandedKnocks', 'mostGames', 'mostNeighs'] as const
 export type RecordKind = (typeof RECORD_KINDS)[number]
 
 export const DEFAULT_RECORDS_LIMIT = 25
@@ -50,6 +51,9 @@ export function buildRecords(stats: Iterable<PlayerStats>, kind: RecordKind, lim
         break
       case 'mostGames':
         candidates.push({ subject: entry.subject, rank: 0, value: entry.gamesPlayed, reachedMs: lastMs })
+        break
+      case 'mostNeighs':
+        if (entry.neighs > 0) candidates.push({ subject: entry.subject, rank: 0, value: entry.neighs, reachedMs: lastMs })
         break
     }
   }

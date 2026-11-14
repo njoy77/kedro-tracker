@@ -58,7 +58,7 @@ export class SupabaseStore implements Store {
 
   // MARK: Ops
 
-  async getOps(gameId: UUID, options: { after?: string; limit?: number } = {}): Promise<WireOperation[]> {
+  async getOps(gameId: UUID, options: { after?: string; limit?: number; excludeTypes?: readonly string[] } = {}): Promise<WireOperation[]> {
     const rows: Row[] = []
     const wanted = options.limit ?? Number.POSITIVE_INFINITY
     for (let from = 0; rows.length < wanted; from += PAGE) {
@@ -70,6 +70,7 @@ export class SupabaseStore implements Store {
         .order('device_id')
         .order('op_id')
       if (options.after !== undefined) query = query.gt('hlc', options.after)
+      if (options.excludeTypes?.length) query = query.not('type', 'in', `(${options.excludeTypes.join(',')})`)
       const to = from + Math.min(PAGE, wanted - rows.length) - 1
       const page = must(await query.range(from, to))
       rows.push(...page)
@@ -251,6 +252,7 @@ export class SupabaseStore implements Store {
           knocks_failed: seat.knocksFailed,
           lowest_hand: seat.lowestHand,
           highest_hand: seat.highestHand,
+          neighs: seat.neighs,
         })),
       }),
     )
@@ -334,7 +336,7 @@ export class SupabaseStore implements Store {
   /** Seats of finished, non-abandoned games: all of them, or only those matching `filter`. */
   private async finishedSeats(filter?: { column: 'player_id' | 'game_id'; values: readonly UUID[] }): Promise<FinishedSeatDetail[]> {
     const select =
-      'game_id, seat_id, player_id, guest_id, display_name, seat_order, total, is_winner, rounds_played, knocks, knocks_landed, knocks_tied, knocks_failed, finished_games!inner(finished_at_ms, is_abandoned)'
+      'game_id, seat_id, player_id, guest_id, display_name, seat_order, total, is_winner, rounds_played, knocks, knocks_landed, knocks_tied, knocks_failed, neighs, finished_games!inner(finished_at_ms, is_abandoned)'
     const fetch = (values?: readonly UUID[]) =>
       this.paged((from, to) => {
         let query = this.db.from('finished_game_seats').select(select).eq('finished_games.is_abandoned', false)
@@ -637,6 +639,7 @@ function toFinishedSeat(row: Row): FinishedSeatDetail {
     knocksLanded: Number(row.knocks_landed),
     knocksTied: Number(row.knocks_tied),
     knocksFailed: Number(row.knocks_failed),
+    neighs: Number(row.neighs ?? 0),
   }
 }
 

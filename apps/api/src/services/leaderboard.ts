@@ -146,6 +146,8 @@ export class LeaderboardService {
         knocks: mine.knocks,
         knocksLanded: mine.knocksLanded,
         knockSuccess: mine.knockSuccess,
+        neighs: mine.neighs,
+        neighsPerGame: mine.neighsPerGame,
       }
     }
     return response
@@ -166,6 +168,8 @@ function leaderboardRow(entry: LeaderboardEntry, player: PlayerSummary, isMe: bo
     knocks: stats.knocks,
     knocksLanded: stats.knocksLanded,
     knockSuccess: stats.knockSuccess,
+    neighs: stats.neighs,
+    neighsPerGame: stats.neighsPerGame,
     isMe,
   }
   if (entry.needs) row.needs = entry.needs

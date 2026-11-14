@@ -98,6 +98,11 @@ export function convertLegacy(
     add('GameStarted', { seatOrder: order, firstDealer: order[0] })
     for (const [index, round] of rounds.entries()) add('RoundRecorded', { round }, timestamps[index])
     add('GameFinished', { reason: 'completed', finalRounds: rounds }, game.endedAt)
+    // The game's 🐴 counts, one Neighed per tap, after the finish. Appended last, so the ops above
+    // keep the IDs an earlier import gave them and a re-run only adds these.
+    game.players.forEach((player, index) => {
+      for (let tap = 0; tap < (game.neighCounts?.[player.id] ?? 0); tap++) add('Neighed', { seatId: order[index] })
+    })
     games.push({ legacyId: game.id, gameId, operations, guests: seats.map((seat) => seat.player.id) })
   }
   return { games, skipped, guests: [...guests.values()] }

@@ -58,9 +58,11 @@ export class MemoryStore implements Store {
 
   // MARK: Ops
 
-  async getOps(gameId: UUID, options: { after?: string; limit?: number } = {}): Promise<WireOperation[]> {
+  async getOps(gameId: UUID, options: { after?: string; limit?: number; excludeTypes?: readonly string[] } = {}): Promise<WireOperation[]> {
+    const excluded = new Set(options.excludeTypes ?? [])
     const rows = [...this.ops.values()]
       .filter((row) => row.operation.gameId === gameId && (options.after === undefined || row.hlc > options.after))
+      .filter((row) => !excluded.has(row.operation.type))
       .sort((a, b) =>
         compareStrings(a.hlc, b.hlc) ||
         compareStrings(a.operation.deviceId, b.operation.deviceId) ||
@@ -234,6 +236,7 @@ export class MemoryStore implements Store {
         knocksLanded: seat.knocksLanded,
         knocksTied: seat.knocksTied,
         knocksFailed: seat.knocksFailed,
+        neighs: seat.neighs,
       })),
     )
   }

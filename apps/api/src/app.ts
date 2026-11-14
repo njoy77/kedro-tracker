@@ -190,9 +190,11 @@ export function createApp(deps: AppDeps) {
     const after = c.req.query('after') || undefined
     if (after !== undefined && !HLC_STRING.test(after)) throw badRequest('after must be an HLC string')
     const limit = optionalInt(c.req.query('limit'), 'limit')
+    // What this client can decode (`?features=neighs`); op types it didn't list are left out.
+    const features = (c.req.query('features') ?? '').split(',').map((feature) => feature.trim()).filter(Boolean)
     const clipSession = c.get('clip')
-    if (clipSession) return c.json<GetOpsResponse>({ ops: await ops.operationsForClip(clipSession, gameId, { after, limit }) })
-    return c.json<GetOpsResponse>({ ops: await ops.operationsAfter(c.get('user').id, gameId, { after, limit }) })
+    if (clipSession) return c.json<GetOpsResponse>({ ops: await ops.operationsForClip(clipSession, gameId, { after, limit, features }) })
+    return c.json<GetOpsResponse>({ ops: await ops.operationsAfter(c.get('user').id, gameId, { after, limit, features }) })
   })
 
   v1.get('/games/:gameId/live-activity', async (c) => {

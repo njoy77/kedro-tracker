@@ -117,6 +117,27 @@ describe('foldGame: conflict rules', () => {
     expect(game.receipts).toHaveLength(1)
   })
 
+  test('neighs count per seat, after the finish too, and change no score; an abandoned game projects nothing', () => {
+    const ops = withExtra(sampleWireOperations(), (b) => {
+      b.add('Neighed', { seatId: seats.ana, roundNumber: 8 })
+      b.add('Neighed', { seatId: seats.ana })
+      b.add('Neighed', { seatId: seats.noah })
+    })
+    const game = foldGame(ops)
+    expect(game.late).toHaveLength(0)
+    expect(game.neighs).toEqual({ [seats.ana]: 2, [seats.noah]: 1 })
+    expect(gameTotals(game)[seats.ana]).toBe(34)
+    const projection = projectFinishedGame(game)
+    expect(projection?.seats.find((seat) => seat.seatId === seats.ana)?.neighs).toBe(2)
+    expect(projection?.seats.find((seat) => seat.seatId === seats.ben)?.neighs).toBe(0)
+    const abandoned = foldGame(withExtra(sampleWireOperations(), (b) => {
+      b.add('Neighed', { seatId: seats.ana })
+      b.add('GameAbandoned', {})
+    }))
+    expect(abandoned.status).toBe('abandoned')
+    expect(projectFinishedGame(abandoned)).toBeNull()
+  })
+
   test("the finisher's finalRounds are authoritative", () => {
     const wire = sampleWireOperations()
     const finished = wire[wire.length - 1]

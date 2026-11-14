@@ -27,6 +27,7 @@ const examples: Record<OperationType, unknown> = {
   ReactionAdded: { roundNumber: 5, seatId: seats.ana, reaction: 'fire' },
   ReceiptSent: { fromSeat: seats.noah, toSeat: seats.ana, receiptKey: 'RC-02' },
   TableSpeakerClaimed: { deviceId: ids.noahPhone },
+  Neighed: { seatId: seats.ana, roundNumber: 3 },
   GameFinished: { reason: 'completed', finalRounds: sampleRounds },
   GameAbandoned: {},
   GameRestored: {},
@@ -43,8 +44,8 @@ const envelope = (type: OperationType, payload: unknown) => ({
 })
 
 describe('operation wire contract', () => {
-  test('accepts all 23 types', () => {
-    expect(OPERATION_TYPES).toHaveLength(23)
+  test('accepts all 24 types', () => {
+    expect(OPERATION_TYPES).toHaveLength(24)
     for (const type of OPERATION_TYPES) {
       const result = parseOperation(envelope(type, examples[type]))
       if (!result.ok) throw new Error(`${type}: ${result.error}`)
@@ -74,6 +75,6 @@ describe('operation wire contract', () => {
 
   test('state-changing classification matches Swift', () => {
     const free = OPERATION_TYPES.filter((type) => !isStateChanging(type))
-    expect(free.sort()).toEqual(['ReactionAdded', 'ReceiptSent', 'TableSpeakerClaimed', 'TauntRetracted', 'TauntSent'])
+    expect(free.sort()).toEqual(['Neighed', 'ReactionAdded', 'ReceiptSent', 'TableSpeakerClaimed', 'TauntRetracted', 'TauntSent'])
   })
 })

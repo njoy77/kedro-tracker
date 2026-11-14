@@ -84,7 +84,7 @@ describe('Elo replay', () => {
 
 describe('stats and leaderboard', () => {
   const row = (subject: string, gameId: string, at: number, total: number, isWinner: boolean, knocks = 1, landed = 1): StatsRow => ({
-    gameId, finishedAtMs: at, subject, total, isWinner, roundsPlayed: 6, knocks, knocksLanded: landed, knocksTied: 0, knocksFailed: knocks - landed,
+    gameId, finishedAtMs: at, subject, total, isWinner, roundsPlayed: 6, knocks, knocksLanded: landed, knocksTied: 0, knocksFailed: knocks - landed, neighs: 0,
   })
 
   test('aggregates lifetime stats with streaks', () => {
@@ -139,7 +139,7 @@ describe('stats and leaderboard', () => {
 
 describe('records', () => {
   const row = (subject: string, gameId: string, at: number, total: number, isWinner: boolean, landed = 0): StatsRow => ({
-    gameId, finishedAtMs: at, subject, total, isWinner, roundsPlayed: 6, knocks: landed, knocksLanded: landed, knocksTied: 0, knocksFailed: 0,
+    gameId, finishedAtMs: at, subject, total, isWinner, roundsPlayed: 6, knocks: landed, knocksLanded: landed, knocksTied: 0, knocksFailed: 0, neighs: 0,
   })
   const stats = [
     ...aggregateStats([
