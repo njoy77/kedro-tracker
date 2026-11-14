@@ -125,6 +125,14 @@ nonisolated struct PlayerRecord: Hashable, Sendable, Identifiable {
     var knockRate: Double? { roundsPlayed > 0 ? Double(knocks) / Double(roundsPlayed) : nil }
     var knockSuccessRate: Double? { knocks > 0 ? Double(landed) / Double(knocks) : nil }
 
+    /// Every leaderboard sort's number, where this record has one (`LeaderboardRow.metrics`).
+    var metrics: [LeaderboardSort: Double] {
+        [
+            .rating: rating, .wins: Double(wins), .winRate: winRate,
+            .avgScore: averageFinalScore, .knockSuccess: knockSuccessRate,
+        ].compactMapValues { $0 }
+    }
+
     /// The displayed rating (a whole number).
     var displayRating: Int { Int(rating.rounded()) }
 

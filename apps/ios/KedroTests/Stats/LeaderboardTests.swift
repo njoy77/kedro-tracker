@@ -30,6 +30,35 @@ struct LeaderboardTests {
         #expect(board.ranked.first?.rank?.position == 1)
     }
 
+    @Test("Rows carry every sort's number; the stats line leaves out the sorted one")
+    func statsLine() throws {
+        let (history, _, _) = history()
+        let snapshot = history.snapshot()
+        let byRating = snapshot.leaderboard(scope: .global, sort: .rating, viewer: people[0].ref)
+        let top = try #require(byRating.ranked.first { $0.ref == people[0].ref })
+        #expect(top.metrics[.wins] == 4)
+        #expect(top.metrics[.winRate] == 4.0 / 13.0)
+        #expect(top.metrics[.rating] != nil)
+        #expect(top.metrics[.avgScore] != nil)
+
+        let ratingLine = LeaderboardRowView(row: top, sort: .rating, closeRace: nil, snapshot: snapshot, voice: Voice(level: .clean)).statsLine
+        let percent = LeaderboardSort.winRate.format(4.0 / 13.0)
+        #expect(ratingLine.hasPrefix("4 W · \(percent) · avg "))
+        #expect(ratingLine.hasSuffix(" · 13 GP"))
+        #expect(!ratingLine.contains("rating"))
+
+        let byWins = snapshot.leaderboard(scope: .global, sort: .wins, viewer: people[0].ref)
+        let winsRow = try #require(byWins.ranked.first { $0.ref == people[0].ref })
+        let winsLine = LeaderboardRowView(row: winsRow, sort: .wins, closeRace: nil, snapshot: snapshot, voice: Voice(level: .clean)).statsLine
+        #expect(winsLine.contains(" rating · \(percent) · avg "))
+        #expect(!winsLine.contains(" W "))
+    }
+
+    @Test("Every sort has a short chip label")
+    func chipLabels() {
+        #expect(LeaderboardSort.allCases.map(\.chipLabel) == ["Rating", "Win %", "Wins", "Avg", "Knocks"])
+    }
+
     @Test("Per-sort minimums: win rate needs 10 games, knock success 15 knocks")
     func minimums() {
         let (history, _, _) = history()

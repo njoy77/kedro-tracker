@@ -133,6 +133,10 @@ final class ServerStats {
                 valueText: sort.format(value),
                 gamesPlayed: row.gamesPlayed,
                 knocks: row.knocks,
+                metrics: [
+                    .rating: Double(row.rating), .wins: Double(row.wins), .winRate: row.winRate,
+                    .avgScore: row.avgScore, .knockSuccess: row.knockSuccess,
+                ].compactMapValues { $0 },
                 isViewer: row.isMe || row.player.ref == viewer,
                 isNew: false,
                 lastRatingDelta: nil

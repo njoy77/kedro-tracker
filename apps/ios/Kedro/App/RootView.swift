@@ -17,6 +17,11 @@ struct RootView: View {
         if case .signedIn = auth.state { true } else { false }
     }
 
+    private var needsName: Bool {
+        !showsSplash && isSignedIn && claimLink == nil
+            && !app.needsOnboarding(isSignedIn: isSignedIn) && app.needsDisplayName
+    }
+
     var body: some View {
         ZStack {
             if showsSplash {
@@ -41,6 +46,8 @@ struct RootView: View {
         .sheet(item: Binding(get: { showsSplash ? nil : claimLink }, set: { claimLink = $0 })) { link in
             ClaimCodeSheet(code: link.code)
         }
+        // Still "Player" from an Apple sign-in that shared no name: ask once, over the tabs.
+        .sheet(isPresented: .constant(needsName)) { NameFixSheet() }
         .task { await auth.observeAuthChanges() }
         .task { await app.start() }
         #if DEBUG

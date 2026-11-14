@@ -6,7 +6,8 @@ import SwiftUI
 /// - Guests: welcome → first name → tour → age → level → nearby. Unclaimed guests don't pick a
 ///   face or handle (§3.5); `AppModel.playAsGuest` stores a claim token so signing in later
 ///   claims everything.
-/// - Signed in: welcome → tour → age → level → nearby → face → handle.
+/// - Signed in: welcome → tour → age → level → nearby → name → face → handle. The name step is
+///   prefilled with the first name Apple shared, and required when Apple shared none.
 ///
 /// The two system prompts each get their own step and only appear from a button there: Declared
 /// Age Range (`AgeStep`) and Local Network (`NearbyStep`). Nothing asks before those taps.
@@ -21,6 +22,7 @@ struct OnboardingFlow: View {
         case age
         case level
         case nearby
+        case name
         case face
         case handle
     }
@@ -31,6 +33,7 @@ struct OnboardingFlow: View {
 
     @State private var path: [Step] = []
     @State private var guestName = ""
+    @State private var playerName = ""
     @State private var level = LanguageLevel.adultDefault
     @State private var avatar: Avatar?
     @State private var handleText = ""
@@ -64,7 +67,12 @@ struct OnboardingFlow: View {
                         }
                     case .nearby:
                         NearbyStep {
-                            if isSignedIn { path.append(.face) } else { finishAsGuest() }
+                            if isSignedIn { path.append(.name) } else { finishAsGuest() }
+                        }
+                    case .name:
+                        GuestNameStep(name: $playerName, footnote: Self.playerNameFootnote) {
+                            app.rename(to: playerName)
+                            path.append(.face)
                         }
                     case .face:
                         FaceStep(avatar: $avatar, name: app.profile?.displayName ?? "You") {
@@ -103,8 +111,12 @@ struct OnboardingFlow: View {
         // Returning player signing back in: the gate in RootView opens on its own.
         guard !prefs.hasCompletedOnboarding else { return }
         avatar = app.profile?.avatar
+        let name = app.profile?.displayName ?? ""
+        playerName = name == AppModel.placeholderName ? "" : name
         path = [.tour]
     }
+
+    static let playerNameFootnote = "It's how you show up at the table and on the Board. Change it any time in Settings."
 
     private func finishAsGuest() {
         prefs.languageLevel = level
@@ -212,9 +224,12 @@ struct WelcomeStep: View {
     }
 }
 
-/// Guest path: first name only (O-03).
+/// "What do people call you?": a guest's first name (O-03), or a signed-in player's name when
+/// Apple didn't share one (onboarding's name step, and `NameFixSheet` for older profiles).
 struct GuestNameStep: View {
     @Binding var name: String
+    /// Under the field; the guest line (O-03) when nil.
+    var footnote: String? = nil
     var onContinue: () -> Void
 
     @Environment(AppModel.self) private var app
@@ -238,7 +253,7 @@ struct GuestNameStep: View {
                 .frame(minHeight: 52)
                 .background(.surface, in: .rect(cornerRadius: 14))
                 .onSubmit { if !trimmed.isEmpty { onContinue() } }
-            Text(app.voice.line("O-03"))
+            Text(footnote ?? app.voice.line("O-03"))
                 .font(.footnote)
                 .foregroundStyle(.silver)
             Spacer()

@@ -87,6 +87,40 @@ struct OnboardingTests {
 
     // MARK: Onboarding gate and copy
 
+    /// A phone with no profile yet, as on first launch.
+    private func freshApp() -> AppModel {
+        let defaults = UserDefaults(suiteName: "kedro.tests.names") ?? .standard
+        defaults.removePersistentDomain(forName: "kedro.tests.names")
+        return AppModel(
+            store: InMemoryGameStore(operations: []),
+            preferences: AppPreferences(defaults: defaults),
+            profiles: ProfileStore(container: nil, profile: nil),
+            deviceID: PreviewData.noahPhone
+        )
+    }
+
+    @Test("A signed-in player Apple gave no name is asked for one, once")
+    func placeholderNameIsReplaced() {
+        let app = freshApp()
+        #expect(!app.needsDisplayName)
+        app.didSignIn(userID: UUID(), displayName: nil)
+        #expect(app.profile?.displayName == AppModel.placeholderName)
+        #expect(app.needsDisplayName)
+        app.rename(to: "   ")
+        #expect(app.needsDisplayName)
+        app.rename(to: " Chrissy ")
+        #expect(app.profile?.displayName == "Chrissy")
+        #expect(!app.needsDisplayName)
+    }
+
+    @Test("A name Apple shares becomes the first name, not the placeholder")
+    func appleNameIsUsed() {
+        let app = freshApp()
+        app.didSignIn(userID: UUID(), displayName: "Christina Lopez")
+        #expect(app.profile?.displayName == "Christina")
+        #expect(!app.needsDisplayName)
+    }
+
     @Test("Existing players aren't sent back through onboarding")
     func existingPlayersSkipOnboarding() {
         let app = AppModel.preview()
