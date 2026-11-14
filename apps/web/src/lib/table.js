@@ -73,22 +73,29 @@ export class GameLog {
     for (const op of this.pending) observe(op.hlc);
     /** opId → reason, for ops the server refused. */
     this.rejected = new Map();
+    /** Ops this tab wrote, so a pull can tell them from other phones' ops. */
+    this.mine = new Set();
   }
 
   gameIds() {
     return [...new Set([...this.server.keys(), ...this.pending.map((op) => op.gameId)])];
   }
 
-  /** Fetches a game's ops newer than the newest one already here. */
+  /** Fetches a game's ops newer than the newest one already here. Returns the ones that are new here. */
   async pull(gameId) {
     const known = this.server.get(gameId) ?? new Map();
+    const fresh = [];
     let after;
     for (const op of known.values()) if (!after || compareHlc(op.hlc, after) > 0) after = op.hlc;
     for (;;) {
       const { ops } = await api.ops(gameId, after ? hlcString(after) : undefined);
-      for (const op of ops) { known.set(op.opId, op); observe(op.hlc); }
+      for (const op of ops) {
+        if (!known.has(op.opId)) fresh.push(op);
+        known.set(op.opId, op);
+        observe(op.hlc);
+      }
       this.server.set(gameId, known);
-      if (ops.length < 2000) return;
+      if (ops.length < 2000) return fresh;
       after = ops[ops.length - 1].hlc;
     }
   }
@@ -106,6 +113,7 @@ export class GameLog {
   /** Writes ops for one game, then uploads everything pending. */
   async write(gameId, actorPlayerId, entries) {
     const ops = entries.map(([type, payload]) => ({ opId: crypto.randomUUID(), gameId, deviceId, hlc: tick(), actorPlayerId, type, payload }));
+    for (const op of ops) this.mine.add(op.opId);
     this.pending.push(...ops);
     savePending(this.pending);
     await this.flush();
@@ -192,6 +200,8 @@ export const recordRound = (log, me, gameId, round) => log.write(gameId, me.play
 export const editRound = (log, me, gameId, round) => log.write(gameId, me.playerId, [['RoundEdited', { round }]]);
 export const setDealer = (log, me, gameId, roundNumber, dealer) => log.write(gameId, me.playerId, [['DealerChanged', { roundNumber, dealer }]]);
 export const abandonGame = (log, me, gameId) => log.write(gameId, me.playerId, [['GameAbandoned', {}]]);
+/** A 🐴 tap on a seat: no effect on scores, counted toward that player's neighs. */
+export const neigh = (log, me, gameId, seatId, roundNumber) => log.write(gameId, me.playerId, [['Neighed', { seatId, roundNumber }]]);
 
 /** Finishes a game where it stands: the rounds played become the plan, so it reads as completed. */
 export function finishGame(log, me, game) {
@@ -242,7 +252,11 @@ export function toWebGame(game, alias = (seatId) => seatId) {
     }),
     winnerId: winner ? alias(seatIdOf(winner.seat.player)) : null,
     currentTurnIndex: Math.max(0, seatIds.indexOf(dealer)),
-    neighCounts: {},
+    neighCounts: Object.entries(game.neighs ?? {}).reduce((counts, [seatId, count]) => {
+      const key = alias(seatId);
+      counts[key] = (counts[key] ?? 0) + count;
+      return counts;
+    }, {}),
     folded: game,
   };
 }

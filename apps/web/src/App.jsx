@@ -3,7 +3,7 @@ import { LOGO_B64 } from './lib/logo';
 import { COUNTED_MIN_ROUNDS, HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
 import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
 import { devSignInAvailable, inAppBrowser, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
-import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
+import { GameLog, abandonGame as writeAbandon, createGame, editRound as writeRoundEdit, emojiOf, finishGame, neigh as writeNeigh, recordRound, roundOf, setDealer, toWebGame } from './lib/table';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap');`;
 
@@ -154,12 +154,16 @@ const TRASH = {
 
 const displayPlayer = (p) => p?.deleted ? { ...p, username: 'Deleted Player', emoji: '👻' } : p;
 
+// The 🐴: plays for everyone at the table (the tapper now, other phones when the op arrives),
+// whatever other sounds are doing.
 function playNeigh() {
   try {
-    const audio = new Audio('/neigh.mp4');
-    audio.play();
-  } catch (e) {}
+    new Audio('/neigh.mp4').play()?.catch(() => {});
+  } catch {}
 }
+
+/** A neigh older than this when it arrives is history catching up, not a tap at the table. */
+const LIVE_NEIGH_MS = 60_000;
 
 const GLASS_SHADOW = '0 10px 30px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.04) inset, 0 0 0 1px rgba(0,0,0,.4)';
 
@@ -307,8 +311,6 @@ export default function KedroApp() {
   const [profileError, setProfileError]       = useState('');
   const [claimMessage, setClaimMessage]       = useState('');
 
-  // Neigh tracker state (this phone only: the shared game log has no neighs)
-  const [neighCounts, setNeighCounts] = useState({});
   const [inherentKnock, setInherentKnock] = useState(null);
 
   // Dashboard state
@@ -423,7 +425,9 @@ export default function KedroApp() {
     if (!user) return;
     const timer = setInterval(async () => {
       try {
-        if (session) await log.pull(session.id);
+        const fresh = session ? await log.pull(session.id) : [];
+        // Another phone's 🐴 just now: play it here too (not ops from the first load or a catch-up).
+        if (fresh.some(op => op.type === 'Neighed' && !log.mine.has(op.opId) && Date.now() - op.hlc.wallMs < LIVE_NEIGH_MS)) playNeigh();
         await log.flush();
         refreshGames();
         setLive(true);
@@ -498,7 +502,7 @@ export default function KedroApp() {
   async function startGame(players, firstPlayerIndex = 0) {
     const gameId = await createGame(log, user, players, firstPlayerIndex);
     refreshGames();
-    setNgSelected([]); resetRoundState(); setNeighCounts({});
+    setNgSelected([]); resetRoundState();
     navigate('game', 'forward');
     return gameId;
   }
@@ -548,7 +552,7 @@ export default function KedroApp() {
     try {
       await finishGame(log, user, session.folded);
       const games = refreshGames();
-      setPostGameData({ ...(games.find(g => g.id === session.id) ?? session), neighCounts });
+      setPostGameData(games.find(g => g.id === session.id) ?? session);
       setEndConfirm(false);
       navigate('postgame', 'forward');
     } finally {
@@ -570,6 +574,16 @@ export default function KedroApp() {
     }
   }
 
+  /** A 🐴 tap: plays at once, shows at once, and goes out as an op so every phone neighs. */
+  async function neighAt(player) {
+    if (!session) return;
+    playNeigh();
+    const write = writeNeigh(log, user, session.id, player.seatId, session.rounds.length + 1);
+    refreshGames(); // the op is pending already: show the count before the upload finishes
+    await write;
+    refreshGames();
+  }
+
   async function setCurrentTurn(index) {
     if (!session) return;
     const seat = session.players[index];
@@ -580,7 +594,7 @@ export default function KedroApp() {
 
   async function rematch(players) {
     const people = players.map(p => p.id === user.id ? user : ({ ref: parseSeatId(p.seatId ?? p.id), username: p.username, emoji: p.emoji, ...(allPlayers.find(x => x.id === p.id) ?? {}) }));
-    resetRoundState(); setNeighCounts({});
+    resetRoundState();
     setPostGameData(null);
     await startGame(people, 0);
   }
@@ -625,6 +639,7 @@ export default function KedroApp() {
     const nemesis   = nemesisId ? (allPlayers.find(p => p.id === nemesisId) ?? pg.flatMap(g => g.players).find(p => p.id === nemesisId)) : null;
 
     const totalInherentKnocks = allRounds.filter(r => r.inherentKnock === playerId).length;
+    const neighs = pg.reduce((sum, g) => sum + (g.neighCounts[playerId] || 0), 0);
 
     return {
       played: pg.length, wins,
@@ -639,6 +654,7 @@ export default function KedroApp() {
       kedroWinPct:  myKnocks.length   ? Math.round(kedroWins / myKnocks.length * 100) : '—',
       nemesis,
       totalInherentKnocks,
+      neighs,
     };
   }
 
@@ -774,8 +790,8 @@ export default function KedroApp() {
                   onEditInput={(id, val) => setEditInputs(prev => ({ ...prev, [id]: val }))}
                   onSaveEdit={editRound}
                   onCancelEdit={() => { setEditingRound(null); setEditInputs({}); }}
-                  neighCounts={neighCounts}
-                  onNeigh={id => { playNeigh(); setNeighCounts(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 })); }}
+                  neighCounts={session.neighCounts}
+                  onNeigh={neighAt}
                   inherentKnock={inherentKnock}
                   onInherentKnock={id => {
                     setInherentKnock(prev => prev === id ? null : id);
@@ -788,7 +804,7 @@ export default function KedroApp() {
 
               {view === 'postgame' && postGameData && (
                 <PostGameScreen
-                  game={postGameData} user={user} getStats={getStats}
+                  game={allGames.find(g => g.id === postGameData.id) ?? postGameData} user={user} getStats={getStats}
                   onRematch={() => rematch(postGameData.players)}
                   onHome={() => { setPostGameData(null); navigate('home', 'back'); }}
                 />
@@ -1279,7 +1295,7 @@ function GameScreen({
               </div>
               <div style={{ textAlign: 'center' }}>
                 <button
-                  onClick={() => onNeigh(p.id)}
+                  onClick={() => onNeigh(p)}
                   style={{
                     background: neighCount > 0 ? 'rgba(212,43,43,.15)' : 'transparent',
                     border: `1px solid ${neighCount > 0 ? C.red : C.border}`,
@@ -1751,6 +1767,9 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
                 <div style={{ width: 24, textAlign: 'center' }}>{i < 3 ? RANK_BADGES[i] : <span style={{ color: C.creamDim }}>{i + 1}</span>}</div>
                 <div style={{ fontSize: 22 }}>{dp.emoji}</div>
                 <div style={{ flex: 1, color: C.cream }}>{dp.username}</div>
+                {selected.neighCounts[p.id] > 0 && (
+                  <span style={{ fontSize: 13 }}>🐴 <span style={{ color: C.red, fontWeight: 700 }}>{selected.neighCounts[p.id]}</span></span>
+                )}
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: i === 0 ? C.gold : C.cream }}>{p.total}</div>
               </div>
             );
@@ -1893,6 +1912,11 @@ function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, o
         <StatBox label="Worst Game" value={stats.worst}       accent={C.red} />
         <StatBox label="Avg / Round" value={stats.avgRound}  accent={C.silver} />
         <StatBox label="🔥 Streak"  value={stats.currentStreak || 0} accent={C.green} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <StatBox label="🐴 Neighs"     value={stats.neighs} accent={C.red} />
+        <StatBox label="Neighs / Game" value={stats.played ? (stats.neighs / stats.played).toFixed(1) : '—'} />
       </div>
 
       {stats.totalKnocks > 0 && (
@@ -2121,7 +2145,7 @@ function DashboardScreen({ allGames, user, viewMode, onToggleView, onBack }) {
     const ranked = board.rows.map(row => ({
       ...webPlayer(row.player),
       isShared: row.rank !== null && rankCounts[row.rank] > 1,
-      entry: { rank: row.rank, rating: row.rating, needs: row.needs, stats: { wins: row.wins, winRate: row.winRate, avgScore: row.avgScore, knockSuccess: row.knockSuccess, gamesPlayed: row.gamesPlayed } },
+      entry: { rank: row.rank, rating: row.rating, needs: row.needs, stats: { wins: row.wins, winRate: row.winRate, avgScore: row.avgScore, knockSuccess: row.knockSuccess, gamesPlayed: row.gamesPlayed, neighs: row.neighs ?? 0 } },
     }));
     const notYetRanked = board.notYetRanked.map(row => ({ ...webPlayer(row.player), entry: { gamesPlayed: row.gamesPlayed } }));
     return { ranked, notYetRanked };
@@ -2210,6 +2234,7 @@ function DashboardScreen({ allGames, user, viewMode, onToggleView, onBack }) {
                       {sortTh('avgScore', 'Avg')}
                       {sortTh('knockSuccess', 'K%')}
                       <th style={th()}>GP</th>
+                      <th style={th()} title="Neighs">🐴</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2231,6 +2256,7 @@ function DashboardScreen({ allGames, user, viewMode, onToggleView, onBack }) {
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: C.cream }}>{decimal(entry.stats.avgScore)}</td>
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: dim('knockSuccess') ?? C.cream }}>{percent(entry.stats.knockSuccess)}</td>
                           <td style={{ textAlign: 'center', padding: '10px 4px', color: C.creamDim }}>{entry.stats.gamesPlayed}</td>
+                          <td style={{ textAlign: 'center', padding: '10px 4px', color: entry.stats.neighs > 0 ? C.red : C.creamFaint }}>{entry.stats.neighs}</td>
                         </tr>
                       );
                     })}
