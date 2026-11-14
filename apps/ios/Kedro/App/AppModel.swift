@@ -95,6 +95,26 @@ final class AppModel {
 
     var profile: LocalProfile? { profiles.profile }
 
+    /// The stand-in name for an account whose Apple sign-in didn't share one. Onboarding asks for a
+    /// real name; `needsDisplayName` catches players who finished onboarding before it did.
+    static let placeholderName = "Player"
+
+    /// A signed-in player still called the placeholder: RootView asks once for a real name.
+    var needsDisplayName: Bool {
+        guard let profile, case .player = profile.identity else { return false }
+        return profile.displayName == Self.placeholderName
+    }
+
+    /// Renames this phone's player and sends the profile (onboarding's name step, the one-time
+    /// prompt). A blank name is ignored.
+    func rename(to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, var profile else { return }
+        profile.displayName = trimmed
+        profiles.save(profile)
+        if preferences.hasCompletedOnboarding { Task { _ = await syncProfile() } }
+    }
+
     /// Who this phone is acting as.
     var identity: LocalIdentity {
         LocalIdentity(deviceID: deviceID, player: profile?.identity, displayName: profile?.displayName ?? "Someone")
@@ -122,7 +142,7 @@ final class AppModel {
                 profiles.save(existing)
             }
         } else {
-            let name = displayName?.split(separator: " ").first.map(String.init) ?? "Player"
+            let name = displayName?.split(separator: " ").first.map(String.init) ?? Self.placeholderName
             profiles.save(LocalProfile(
                 identity: player,
                 displayName: name,
