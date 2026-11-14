@@ -11,6 +11,11 @@ struct StandingsView: View {
     /// A seat left out of the list because it's pinned elsewhere (your row at AX2+, design §6.2).
     var excluding: SeatID?
     var onDealerTap: (() -> Void)?
+    /// 🐴 on a seat (nil hides the buttons, e.g. for a watcher).
+    var onNeigh: ((SeatID) -> Void)?
+    /// Neighs per seat. Defaults to `state`'s; the Table passes the live counts, since `state`
+    /// may be the pre-reveal fold (design §7.4) and neighs are never hidden.
+    var neighCounts: [SeatID: Int]?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -28,7 +33,9 @@ struct StandingsView: View {
                     compact: compact,
                     hidesDelta: hidesDeltas,
                     showsLeader: !state.rounds.isEmpty,
-                    onDealerTap: onDealerTap
+                    onDealerTap: onDealerTap,
+                    neighs: (neighCounts ?? state.neighCounts)[standing.id, default: 0],
+                    onNeigh: onNeigh.map { neigh in { neigh(standing.id) } }
                 )
             }
         }
@@ -44,6 +51,10 @@ struct StandingRow: View {
     var hidesDelta = false
     var showsLeader = true
     var onDealerTap: (() -> Void)?
+    /// How many times this seat was neighed this game.
+    var neighs = 0
+    /// 🐴: neigh at this seat (nil hides the button).
+    var onNeigh: (() -> Void)?
 
     @Environment(AppModel.self) private var app
     @Environment(\.tableInsights) private var insights
@@ -64,11 +75,13 @@ struct StandingRow: View {
                         score
                         delta
                     }
+                    neighButton
                 }
                 Spacer(minLength: 0)
             } else {
                 nameBlock
                 Spacer(minLength: 8)
+                neighButton
                 if compact {
                     HStack(spacing: 8) {
                         delta
@@ -96,6 +109,16 @@ struct StandingRow: View {
             if let onDealerTap, standing.isDealer {
                 Button(TableText.text("button.changeDealer"), action: onDealerTap)
             }
+            if let onNeigh {
+                Button(NeighButton.actionName(for: standing.seat.displayName), action: onNeigh)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var neighButton: some View {
+        if let onNeigh {
+            NeighButton(count: neighs, compact: compact, action: onNeigh)
         }
     }
 
@@ -194,6 +217,7 @@ struct StandingRow: View {
         parts.append("\(ScoreFormat.spoken(standing.total)) points")
         if isLeading { parts.append("leading") }
         if standing.isDealer { parts.append("dealer") }
+        if neighs > 0 { parts.append(neighs == 1 ? "neighed once" : "neighed \(neighs) times") }
         if let last = standing.lastRound, !hidesDelta {
             if let outcome = last.outcome {
                 parts.append("knocked, \(outcome.word), \(Self.knockMath(outcome, hand: last.hand).replacingOccurrences(of: ScoreFormat.minus, with: "minus "))")
@@ -205,9 +229,55 @@ struct StandingRow: View {
     }
 }
 
+/// The 🐴 on a standings row: tap and the neigh plays on every phone at the table. Shows how many
+/// times the seat was neighed this game.
+struct NeighButton: View {
+    var count: Int
+    var compact = false
+    let action: () -> Void
+
+    @State private var taps = 0
+
+    var body: some View {
+        Button {
+            taps += 1
+            action()
+        } label: {
+            HStack(spacing: 3) {
+                Text(verbatim: "🐴")
+                    .font(compact ? .callout : .title3)
+                    .keyframeAnimator(initialValue: 1.0, trigger: taps) { content, scale in
+                        content.scaleEffect(scale)
+                    } keyframes: { _ in
+                        SpringKeyframe(1.4, duration: 0.12)
+                        SpringKeyframe(1.0, duration: 0.3)
+                    }
+                if count > 0 {
+                    Text(count, format: .number)
+                        .font(.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.silver)
+                        .contentTransition(.numericText(value: Double(count)))
+                }
+            }
+            .padding(.horizontal, compact ? 8 : 10)
+            // Wide enough for "🐴 9" so the first neigh doesn't shift the button under a finger.
+            .frame(minWidth: compact ? 56 : 64, minHeight: compact ? 34 : 40)
+            .background(Capsule().fill(Color.cream.opacity(0.07)))
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.impact(weight: .light), trigger: taps)
+        .animation(.snappy, value: count)
+    }
+
+    /// VoiceOver action on the row ("Neigh at Ana").
+    static func actionName(for name: String) -> String { "Neigh at \(name)" }
+}
+
 #Preview("5 players") {
     ScrollView {
-        StandingsView(state: PreviewData.sampleState(throughRound: 5), mySeat: PreviewData.noahSeat)
+        StandingsView(state: PreviewData.sampleState(throughRound: 5), mySeat: PreviewData.noahSeat, onNeigh: { _ in })
             .padding()
     }
     .background(.night)

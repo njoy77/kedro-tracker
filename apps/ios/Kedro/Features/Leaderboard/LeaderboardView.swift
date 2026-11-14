@@ -325,12 +325,22 @@ struct LeaderboardRowView: View {
     var statsLine: String { statsLine(spoken: false) }
 
     /// Up to `numbers` of the other sorts' numbers (rating, wins, win rate, average, in that
-    /// order of importance), then games played.
+    /// order of importance), then games played, then the 🐴 count when there is one (a stat to
+    /// look at, never a sort).
     func statsLine(spoken: Bool, numbers: Int = 3) -> String {
         let others = [LeaderboardSort.rating, .wins, .winRate, .avgScore].filter { $0 != sort }
         let parts = others.compactMap { other in row.metrics[other].map { other.statText($0, spoken: spoken) } }
         let games = spoken ? "\(row.gamesPlayed) games" : "\(row.gamesPlayed) GP"
-        return (parts.prefix(numbers) + [games]).joined(separator: spoken ? ", " : " · ")
+        var line = Array(parts.prefix(numbers)) + [games]
+        if let neighs = Self.neighsText(row.neighs, spoken: spoken) { line.append(neighs) }
+        return line.joined(separator: spoken ? ", " : " · ")
+    }
+
+    /// "🐴 12" ("12 neighs" spoken), nil for nobody's neighed them yet.
+    static func neighsText(_ neighs: Int, spoken: Bool) -> String? {
+        guard neighs > 0 else { return nil }
+        if spoken { return neighs == 1 ? "1 neigh" : "\(neighs) neighs" }
+        return "🐴 \(neighs)"
     }
 
     private var rankColor: Color {

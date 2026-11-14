@@ -90,6 +90,9 @@ nonisolated struct PlayerProfileResponse: Codable, Hashable, Sendable {
         var knocks: Int
         var knocksLanded: Int
         var knockSuccess: Double?
+        /// 🐴 taps across counted games, and per game. Optional: older servers don't send them.
+        var neighs: Int?
+        var neighsPerGame: Double?
     }
 
     var player: PlayerSummary
@@ -112,6 +115,10 @@ nonisolated struct LeaderboardResponse: Codable, Hashable, Sendable {
         var knocks: Int
         var knocksLanded: Int
         var knockSuccess: Double?
+        /// 🐴 taps across counted games, and per game (shown, not sortable). Optional: older
+        /// servers don't send them; read as 0.
+        var neighs: Int?
+        var neighsPerGame: Double?
         var isMe: Bool
     }
 
@@ -176,10 +183,8 @@ nonisolated struct LinkKeyResponse: Codable, Sendable {
     var publicKey: String
 }
 
-/// `GET /v1/games/:gameId/ops` response.
-nonisolated struct OpsPage: Codable, Sendable {
-    var ops: [GameOperation]
-}
+/// `GET /v1/games/:gameId/ops` response, decoded lossily (`OperationsPage`).
+typealias OpsPage = OperationsPage
 
 /// `PUT /v1/players/me` body.
 nonisolated struct PlayerUpdate: Codable, Hashable, Sendable {

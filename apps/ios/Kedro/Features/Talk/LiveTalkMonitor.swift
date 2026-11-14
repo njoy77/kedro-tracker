@@ -44,7 +44,11 @@ final class LiveTalkMonitor {
         // Everything new is "seen", including hidden ones, so unmuting later doesn't replay them.
         toastedTaunts.formUnion(new.taunts.map(\.tauntId))
 
-        let cues = SoundCues.cues(from: old, to: new, listener: listener(for: new, visible: visible))
+        let listener = listener(for: new, visible: visible)
+        if SoundCues.playsNeigh(from: old, to: new, listener: listener, now: .now) {
+            services.sound.neigh()
+        }
+        let cues = SoundCues.cues(from: old, to: new, listener: listener)
         guard !cues.isEmpty else { return }
         let sound = services.sound
         let settings = app.preferences.sounds

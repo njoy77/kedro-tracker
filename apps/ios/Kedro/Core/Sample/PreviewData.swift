@@ -105,7 +105,13 @@ nonisolated enum PreviewData {
         for round in rounds {
             builder.advance(minutes: 4)
             builder.add(.roundRecorded(.init(round: round)))
+            if round.number == 3 {
+                // 🐴 on Sam (twice) from Ana's phone, during Round 4.
+                builder.add(.neighed(.init(seatId: samSeat, roundNumber: 4)), device: anaPhone, actor: ana.id)
+                builder.add(.neighed(.init(seatId: samSeat, roundNumber: 4)), device: anaPhone, actor: ana.id)
+            }
             if round.number == 5 {
+                builder.add(.neighed(.init(seatId: anaSeat, roundNumber: 6)))
                 // Reactions on Round 5 (mockup frame 6), from the phones at the table.
                 builder.add(.reactionAdded(.init(roundNumber: 5, seatId: anaSeat, reaction: .fire)), device: anaPhone, actor: ana.id)
                 builder.add(.reactionAdded(.init(roundNumber: 5, seatId: noahSeat, reaction: .skull)))

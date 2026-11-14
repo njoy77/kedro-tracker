@@ -120,7 +120,10 @@ struct GameEndView: View {
         return VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, standing in
                 if index > 0 { Divider().overlay(.rule) }
-                GameEndRow(standing: standing, record: summary.knockRecords[standing.id], rating: insights.ratings[standing.id])
+                GameEndRow(
+                    standing: standing, record: summary.knockRecords[standing.id], rating: insights.ratings[standing.id],
+                    neighs: state.neighCount(for: standing.id)
+                )
                     .opacity(hasLanded ? 1 : 0)
                     .offset(y: hasLanded || reduceMotion ? 0 : 12)
                     // Standings fill in from the bottom (design §3.7).
@@ -386,12 +389,14 @@ struct GameEndView: View {
     }
 }
 
-/// One final standings row: rank, avatar, name, "✓2 ✗1 · rating +18 → 1,086" (or the debut, or
-/// "guest"), and the final score.
+/// One final standings row: rank, avatar, name, "✓2 ✗1 · rating +18 → 1,086 · 🐴 3" (or the
+/// debut, or "guest"), and the final score.
 private struct GameEndRow: View {
     let standing: Standing
     var record: GameEndSummary.KnockRecord?
     var rating: GameEndRatingChange?
+    /// 🐴 taps on this seat this game.
+    var neighs = 0
 
     var body: some View {
         let isWinner = standing.isLeader
@@ -424,6 +429,7 @@ private struct GameEndRow: View {
         if let rating, !rating.isDebut, let delta = rating.delta {
             parts.append(TableText.text("label.ratingChange", ["delta": ScoreFormat.signed(delta), "rating": rating.after.formatted()]))
         }
+        if let neighs = LeaderboardRowView.neighsText(neighs, spoken: false) { parts.append(neighs) }
         return parts
     }
 
@@ -450,6 +456,7 @@ private struct GameEndRow: View {
                 text.append("rating \(delta >= 0 ? "up" : "down") \(abs(delta)) to \(rating.after)")
             }
         }
+        if let neighs = LeaderboardRowView.neighsText(neighs, spoken: true) { text.append(neighs) }
         return text.joined(separator: ", ")
     }
 }

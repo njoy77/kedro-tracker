@@ -41,6 +41,8 @@ nonisolated struct PlayerGameResult: Hashable, Sendable, Identifiable {
     var tauntsCounted: Int
     /// Games played before this one (0 for a first game).
     var gamesBefore: Int
+    /// 🐴 taps on this person this game.
+    var neighs: Int = 0
 
     var id: GameID { gameID }
 
@@ -111,6 +113,9 @@ nonisolated struct PlayerRecord: Hashable, Sendable, Identifiable {
     var inherentKnocks: Int { results.reduce(0) { $0 + $1.inherentKnocks } }
     var inherentKnocksLanded: Int { results.reduce(0) { $0 + $1.inherentKnocksLanded } }
     var tauntsCounted: Int { results.reduce(0) { $0 + $1.tauntsCounted } }
+    /// 🐴 taps across counted games, and per game.
+    var neighs: Int { results.reduce(0) { $0 + $1.neighs } }
+    var neighsPerGame: Double { gamesPlayed > 0 ? Double(neighs) / Double(gamesPlayed) : 0 }
 
     var isRanked: Bool { gamesPlayed >= Ratings.rankedAfterGames }
     var isGuest: Bool { ref.isGuest }
@@ -196,6 +201,9 @@ nonisolated struct PlayerStats: Hashable, Sendable {
     /// Inherent knocks (went out with all four cards), apart from knocks; and how many were −10.
     var inherentKnocks: Int
     var inherentKnocksLanded: Int
+    /// 🐴 taps across counted games, and per game.
+    var neighs: Int
+    var neighsPerGame: Double
     var nemesis: PlayerRef?
     var nemesisCount: Int
     /// Rating, replayed from game 1. Shown only once `isRanked`.
@@ -226,6 +234,8 @@ nonisolated struct PlayerStats: Hashable, Sendable {
         knockSuccessRate = record.knockSuccessRate
         inherentKnocks = record.inherentKnocks
         inherentKnocksLanded = record.inherentKnocksLanded
+        neighs = record.neighs
+        neighsPerGame = record.neighsPerGame
         landed = record.landed
         tied = record.tied
         failed = record.failed

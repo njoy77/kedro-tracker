@@ -29,6 +29,7 @@ nonisolated struct SoundListener: Sendable {
 /// | Round saved | The saving phone |
 /// | Taunt received | The recipient's phone (the table speaker for "the table") |
 /// | Winner | Every phone at game end |
+/// | 🐴 neigh (`playsNeigh`) | Every phone, live ops only, even with sounds off |
 ///
 /// A knock that fails for a learner, and last place for a learner, stay silent.
 nonisolated enum SoundCues {
@@ -88,6 +89,23 @@ nonisolated enum SoundCues {
             }
         }
         return cues
+    }
+
+    /// How old a `Neighed` op may be and still neigh when it arrives. Live ops land within a
+    /// second or two; older ones are a backfill or catch-up and stay quiet.
+    static let liveNeighWindow: TimeInterval = 30
+
+    /// Whether a change brings a live neigh from another phone, which every phone at the table
+    /// plays (the sound settings don't apply; the tapping phone already played it on tap).
+    /// History, backfills and catch-ups of old ops never neigh.
+    static func playsNeigh(from old: GameState, to new: GameState, listener: SoundListener, now: Date) -> Bool {
+        guard new.neighs.count > old.neighs.count else { return false }
+        let seen = Set(old.neighs.map(\.opId))
+        return new.neighs.contains { neigh in
+            !seen.contains(neigh.opId)
+                && listener.deviceForOperation[neigh.opId] != listener.device
+                && now.timeIntervalSince(neigh.at) <= liveNeighWindow
+        }
     }
 
     /// The table-speaker sound for a saved round, or nil to stay quiet.

@@ -72,7 +72,7 @@ private nonisolated struct GameReducer {
             }
         case .finished:
             switch op.payload {
-            case .receiptSent, .reactionAdded, .tableSpeakerClaimed, .tauntRetracted:
+            case _ where op.type.isAllowedAfterFinish:
                 break
             case .gameFinished:
                 return // a second phone also tapped Finish
@@ -111,6 +111,7 @@ private nonisolated struct GameReducer {
         case .reactionAdded(let p): applyReactionAdded(p, op)
         case .receiptSent(let p): applyReceiptSent(p, op)
         case .tableSpeakerClaimed(let p): state.tableSpeaker = p.deviceId
+        case .neighed(let p): state.neighs.append(NeighRecord(opId: op.opId, seat: p.seatId, roundNumber: p.roundNumber, at: op.hlc.date))
         case .gameFinished(let p): applyGameFinished(p, op, actor)
         case .gameAbandoned: applyGameAbandoned(op, actor)
         case .gameRestored: applyGameRestored(op, actor)

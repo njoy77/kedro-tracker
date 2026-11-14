@@ -116,12 +116,14 @@ final class ClipModel {
         phase = .connecting
         do {
             let access = try await api.startSession(gameID: invite.gameID, tableToken: token, deviceID: deviceID)
-            let operations = try await api.operations(gameID: invite.gameID, after: nil, token: access.accessToken)
+            let page = try await api.operations(gameID: invite.gameID, after: nil, token: access.accessToken)
+            let operations = page.ops
             guard !operations.isEmpty else {
                 phase = .expired
                 return
             }
-            let transport = ClipTransport(api: api, accessToken: access.accessToken, latest: operations.map(\.hlc).max())
+            let latest = ([page.lastHLC] + operations.map(\.hlc)).compactMap(\.self).max()
+            let transport = ClipTransport(api: api, accessToken: access.accessToken, latest: latest)
             self.transport = transport
             accessToken = access.accessToken
             mySeat = rememberedSeat(for: invite.gameID)

@@ -139,6 +139,9 @@ nonisolated struct LeaderboardRow: Hashable, Sendable, Identifiable {
     /// Every sort's number for this person (the Board's stats line), where they have one: no win
     /// rate, average or knock success before the games or knocks to compute it.
     var metrics: [LeaderboardSort: Double] = [:]
+    /// 🐴 taps across counted games, and per game (shown on the row; not a sort).
+    var neighs = 0
+    var neighsPerGame: Double = 0
     var isViewer: Bool
     /// Just ranked (their debut was their latest game): the "new" tag.
     var isNew: Bool
@@ -190,7 +193,7 @@ nonisolated struct Leaderboard: Hashable, Sendable {
 
 /// The 2 × 2 records grid (design §12.4), each with a top-25 board.
 nonisolated enum RecordKind: String, Hashable, Sendable, CaseIterable, Identifiable {
-    case bestGame, longestStreak, mostLandedKnocks, mostGames
+    case bestGame, longestStreak, mostLandedKnocks, mostGames, mostNeighs
 
     var id: String { rawValue }
 
@@ -201,6 +204,7 @@ nonisolated enum RecordKind: String, Hashable, Sendable, CaseIterable, Identifia
         case .longestStreak: "Longest streak"
         case .mostLandedKnocks: "Most landed knocks"
         case .mostGames: "Most games"
+        case .mostNeighs: "Most neighs"
         }
     }
 
@@ -210,6 +214,7 @@ nonisolated enum RecordKind: String, Hashable, Sendable, CaseIterable, Identifia
         case .longestStreak: "Longest run of consecutive wins."
         case .mostLandedKnocks: "Knocks with the strictly lowest hand (−10)."
         case .mostGames: "Finished games, including ended-early ones."
+        case .mostNeighs: "Times the table hit the 🐴 on you, across counted games."
         }
     }
 }
@@ -249,7 +254,8 @@ extension StatsSnapshot {
             let value = sort.value(record)
             return LeaderboardRow(
                 ref: record.ref, identity: record.identity, rank: rank, value: value, valueText: sort.format(value),
-                gamesPlayed: record.gamesPlayed, knocks: record.knocks, metrics: record.metrics, isViewer: record.ref == viewer,
+                gamesPlayed: record.gamesPlayed, knocks: record.knocks, metrics: record.metrics,
+                neighs: record.neighs, neighsPerGame: record.neighsPerGame, isViewer: record.ref == viewer,
                 isNew: record.gamesPlayed == Ratings.rankedAfterGames, lastRatingDelta: record.results.last?.ratingDelta
             )
         }
@@ -316,6 +322,8 @@ extension StatsSnapshot {
                 if record.landed > 0 { entries.append((record, record.landed, nil)) }
             case .mostGames:
                 entries.append((record, record.gamesPlayed, nil))
+            case .mostNeighs:
+                if record.neighs > 0 { entries.append((record, record.neighs, nil)) }
             }
         }
         let ascending = kind == .bestGame

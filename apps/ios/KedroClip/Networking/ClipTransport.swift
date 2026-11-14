@@ -60,10 +60,12 @@ final class ClipTransport: OperationTransport {
     func poll(_ game: GameID) async {
         await flush()
         do {
-            let operations = try await api.operations(gameID: game, after: latest, token: accessToken)
+            let page = try await api.operations(gameID: game, after: latest, token: accessToken)
+            let operations = page.ops
             syncState = unsent.isEmpty ? .online : .syncing
+            // Skipped ops (unknown types) still move the cursor, so they aren't fetched again.
+            latest = ([latest, page.lastHLC] + operations.map(\.hlc)).compactMap(\.self).max()
             guard !operations.isEmpty else { return }
-            latest = operations.map(\.hlc).max().map { max($0, latest ?? $0) } ?? latest
             for continuation in continuations.values {
                 continuation.yield(operations)
             }

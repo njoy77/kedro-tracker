@@ -320,6 +320,18 @@ final class GameSession: Identifiable {
         return try await send(.reactionAdded(.init(roundNumber: round, seatId: seat, reaction: reaction)))
     }
 
+    /// 🐴 on a player: the neigh plays on every phone at the table and counts toward their neighs.
+    /// Allowed whenever the game isn't abandoned (the server accepts it after a finish too).
+    @discardableResult
+    func neigh(_ seat: SeatID) async throws -> GameOperation {
+        guard state.status != .abandoned else { throw SessionError.gameLocked }
+        let round = state.status == .active ? min(state.nextRoundNumber, Self.maxNeighRound) : nil
+        return try await send(.neighed(.init(seatId: seat, roundNumber: round)))
+    }
+
+    /// The largest `roundNumber` the API accepts on `Neighed`.
+    nonisolated static let maxNeighRound = 500
+
     /// "Be the table speaker".
     @discardableResult
     func claimTableSpeaker() async throws -> GameOperation {
