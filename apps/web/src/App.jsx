@@ -262,6 +262,8 @@ function Snow({ intensity = 'normal' }) {
 
 export default function KedroApp() {
   const [view, setView]               = useState('splash');
+  // Home shows right after sign-in while the games' logs load in the background.
+  const [loadingGames, setLoadingGames] = useState(false);
   const [user, setUser]               = useState(null);
   const [allPlayers, setAllPlayers]   = useState([]);
   const [allGames, setAllGames]       = useState([]);
@@ -333,16 +335,21 @@ export default function KedroApp() {
     return games;
   }, [log]);
 
-  /** Fetches this player's games (and their logs) and the player directory. */
+  /** Fetches this player's games (and their logs) and the player directory. The screens fill in
+   *  batch by batch, so a long history doesn't hold everything back. */
   const loadData = useCallback(async (me) => {
+    const directory = Promise.all([fetchAllPlayers(), api.guests('').catch(() => ({ guests: [] }))]);
     const mine = await api.myGames();
     claimedRef.current = new Set(mine.claimedGuestIds);
     const ids = mine.games.map(g => g.gameId);
-    for (let i = 0; i < ids.length; i += 6) await Promise.all(ids.slice(i, i + 6).map(id => log.pull(id)));
+    for (let i = 0; i < ids.length; i += 12) {
+      await Promise.all(ids.slice(i, i + 12).map(id => log.pull(id)));
+      refreshGames(me);
+    }
     await log.flush();
     const games = refreshGames(me);
 
-    const [players, guests] = await Promise.all([fetchAllPlayers(), api.guests('').catch(() => ({ guests: [] }))]);
+    const [players, guests] = await directory;
     const seen = new Set(players.map(p => `p:${p.id}`));
     const guestRows = [];
     for (const g of guests.guests) if (!seen.has(`g:${g.guestId}`)) { seen.add(`g:${g.guestId}`); guestRows.push(webGuest(g.guestId, g.name)); }
@@ -373,15 +380,20 @@ export default function KedroApp() {
       const player = await api.me();
       const me = { ...webPlayer(player), createdAt: player.createdAt };
       setUser(me);
-      await loadData(me);
+      // Straight to Home; games and stats fill in as their logs arrive.
+      navigate('home', 'forward');
+      setLoadingGames(true);
+      try {
+        await loadData(me);
+      } finally {
+        setLoadingGames(false);
+      }
       // Arrived from a claim link: redeem it and show how it went.
       const claim = takePendingClaim();
       if (claim) {
         await redeemClaim(claim, me);
         navigate('profile', 'forward');
-        return;
       }
-      navigate('home', 'forward');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'profileRequired') { navigate('onboarding', 'forward'); return; }
       if (error instanceof ApiError && error.status === 401) { await signOut(); navigate('login', 'back'); return; }
@@ -704,7 +716,7 @@ export default function KedroApp() {
             <>
               {view === 'home' && (
                 <HomeScreen
-                  user={user} stats={getStats(user.id)} session={session} live={live}
+                  user={user} stats={getStats(user.id)} session={session} live={live} loading={loadingGames}
                   recentGames={allGames.filter(g => g.status === 'complete').slice(0, 5)}
                   lastGame={allGames.find(g => g.status === 'complete')}
                   onNewGame={() => navigate('newgame', 'forward')}
@@ -849,7 +861,7 @@ function LoginScreen({ error, devAccounts, onApple, onGoogle, onDevAccount }) {
       </div>
       <div style={s.card({ padding: 28 })}>
         <div style={{ ...s.h2, fontSize: 26, marginBottom: 8 }}>Who's talking shit?</div>
-        <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 20 }}>Sign in to keep score. Same account, same scoreboard as the Kedro iPhone app.</div>
+        <div style={{ color: C.creamDim, fontSize: 13, marginBottom: 20 }}>Beat your friends and climb the leaderboard. Same account, same scoreboard as the Kedro iPhone app.</div>
         <button className="btn-press" onClick={onApple} style={{ ...s.btn('ghost'), width: '100%', padding: 14, fontSize: 15, background: '#fff', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
           Continue with Apple
@@ -918,7 +930,7 @@ function OnboardingScreen({ error, rName, rHandle, rEmoji, onRNameChange, onRHan
   );
 }
 
-function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onDashboard, onLogout, onRematch }) {
+function HomeScreen({ user, stats, session, live, loading, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onDashboard, onLogout, onRematch }) {
   const greet = useMemo(() => TRASH.homeGreet(user.username), [user.username]);
   return (
     <div className="screen" style={{ paddingTop: 36, paddingBottom: 60 }}>
@@ -944,6 +956,15 @@ function HomeScreen({ user, stats, session, live, recentGames, lastGame, onNewGa
         <StatBox label="Win %" value={stats.played ? `${stats.winRate}%` : '—'} accent={C.blue} />
         <StatBox label="Best" value={stats.best} accent={C.gold} />
       </div>
+
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: C.creamDim, fontSize: 12, marginTop: -8, marginBottom: 16 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, animation: `pulse 1.2s ease ${i * .2}s infinite` }} />
+          ))}
+          <span>Loading your games…</span>
+        </div>
+      )}
 
       {session && (
         <div style={{ background: 'rgba(212,43,43,.08)', border: `1px solid rgba(212,43,43,.4)`, borderRadius: 10, padding: '16px 18px', marginBottom: 12, cursor: 'pointer' }} onClick={onResumeGame}>
