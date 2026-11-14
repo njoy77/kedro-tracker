@@ -39,7 +39,8 @@ export const api = {
   directory: (cursor) => request('GET', `/v1/players${query({ cursor, limit: 100 })}`),
   guests: (name) => request('GET', `/v1/players/me/guests${query({ name })}`),
   myGames: () => request('GET', '/v1/players/me/games'),
-  ops: (gameId, after) => request('GET', `/v1/games/${gameId}/ops${query({ after })}`),
+  // `features`: the op types this app decodes beyond the original set (the API leaves the rest out).
+  ops: (gameId, after) => request('GET', `/v1/games/${gameId}/ops${query({ after, features: 'neighs' })}`),
   postOps: (ops) => request('POST', '/v1/ops', { ops }),
   profile: (playerId) => request('GET', `/v1/players/${playerId}/profile`),
   leaderboard: (sort) => request('GET', `/v1/leaderboard${query({ scope: 'global', sort, limit: 200 })}`),
