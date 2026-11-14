@@ -63,6 +63,9 @@ export const payloadSchemas = {
   ReactionAdded: z.object({ roundNumber, seatId: seatIdSchema, reaction: z.enum(REACTIONS) }),
   ReceiptSent: z.object({ fromSeat: seatIdSchema, toSeat: seatIdSchema, receiptKey: z.string().min(1).max(32) }),
   TableSpeakerClaimed: z.object({ deviceId: uuidSchema }),
+  /** Someone tapped a player's 🐴: the neigh plays on every phone and counts toward their neighs.
+   *  Just for fun; no effect on scores. `roundNumber` is the round in play, when there is one. */
+  Neighed: z.object({ seatId: seatIdSchema, roundNumber: z.number().int().min(0).max(500).optional() }),
   GameFinished: z.object({ reason: z.enum(FINISH_REASONS), finalRounds: z.array(roundSchema).max(500).default([]) }),
   GameAbandoned: z.object({}),
   GameRestored: z.object({}),
@@ -82,13 +85,21 @@ export function isStateChanging(type: OperationType): boolean {
 }
 
 const NON_STATE_CHANGING = new Set<OperationType>([
-  'TauntSent', 'TauntRetracted', 'ReactionAdded', 'ReceiptSent', 'TableSpeakerClaimed',
+  'TauntSent', 'TauntRetracted', 'ReactionAdded', 'ReceiptSent', 'TableSpeakerClaimed', 'Neighed',
 ])
 
 /** Accepted after `GameFinished` (the fold applies these to a finished game). */
 export const ALLOWED_AFTER_FINISH = new Set<OperationType>([
-  'ReceiptSent', 'ReactionAdded', 'TableSpeakerClaimed', 'TauntRetracted',
+  'ReceiptSent', 'ReactionAdded', 'TableSpeakerClaimed', 'TauntRetracted', 'Neighed',
 ])
+
+/**
+ * Operation types older apps can't decode (one unknown op fails a whole page of a game's log on
+ * iOS build 3 and earlier). `GET /v1/games/:id/ops` leaves them out unless the client lists the
+ * feature in `?features=` (`OPS_FEATURES`).
+ */
+export const OPS_FEATURES = { neighs: 'Neighed' } as const satisfies Record<string, OperationType>
+export type OpsFeature = keyof typeof OPS_FEATURES
 
 /** An operation with a typed payload. */
 export type Operation<T extends OperationType = OperationType> = {

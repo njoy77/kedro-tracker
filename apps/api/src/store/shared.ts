@@ -20,6 +20,7 @@ export type FinishedSeatDetail = {
   knocksLanded: number
   knocksTied: number
   knocksFailed: number
+  neighs: number
 }
 
 /**
@@ -40,6 +41,7 @@ export function orderStatsRows(seats: readonly FinishedSeatDetail[]): StatsRow[]
       knocksLanded: seat.knocksLanded,
       knocksTied: seat.knocksTied,
       knocksFailed: seat.knocksFailed,
+      neighs: seat.neighs,
     }))
 }
 

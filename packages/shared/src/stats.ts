@@ -27,6 +27,8 @@ export type FinishedSeatResult = {
   knocksFailed: number
   lowestHand: number | null
   highestHand: number | null
+  /** 🐴 taps on this seat (`Neighed`), including any after the game finished. */
+  neighs: number
 }
 
 /** A finished game, ready for stats (a row of `finished_games` plus its seats). */
@@ -88,6 +90,7 @@ export function projectFinishedGame(game: FoldedGame): FinishedGameProjection | 
       knocksFailed: failed,
       lowestHand: lowest,
       highestHand: highest,
+      neighs: game.neighs[seatId] ?? 0,
     }
   })
   return {
@@ -135,6 +138,7 @@ export type StatsRow = {
   knocksLanded: number
   knocksTied: number
   knocksFailed: number
+  neighs: number
 }
 
 export type PlayerStats = {
@@ -169,6 +173,9 @@ export type PlayerStats = {
   longestWinStreakAtMs: number | null
   /** The most recent finished game. */
   lastPlayedMs: number | null
+  /** 🐴 taps across counted games, and per game. */
+  neighs: number
+  neighsPerGame: number
 }
 
 export function statsRowsFromProjection(projection: FinishedGameProjection): StatsRow[] {
@@ -183,6 +190,7 @@ export function statsRowsFromProjection(projection: FinishedGameProjection): Sta
     knocksLanded: seat.knocksLanded,
     knocksTied: seat.knocksTied,
     knocksFailed: seat.knocksFailed,
+    neighs: seat.neighs,
   }))
 }
 
@@ -205,6 +213,7 @@ export function aggregateStats(rows: readonly StatsRow[]): Map<Subject, PlayerSt
     const roundsPlayed = sum((row) => row.roundsPlayed)
     const knocks = sum((row) => row.knocks)
     const knocksLanded = sum((row) => row.knocksLanded)
+    const neighs = sum((row) => row.neighs)
     let longest = 0, run = 0
     let longestAtMs: number | null = null
     let best: StatsRow | null = null
@@ -241,6 +250,8 @@ export function aggregateStats(rows: readonly StatsRow[]): Map<Subject, PlayerSt
       longestWinStreak: longest,
       longestWinStreakAtMs: longestAtMs,
       lastPlayedMs: games.at(-1)?.finishedAtMs ?? null,
+      neighs,
+      neighsPerGame: gamesPlayed === 0 ? 0 : neighs / gamesPlayed,
     })
   }
   return result

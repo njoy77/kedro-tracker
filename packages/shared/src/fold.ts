@@ -73,6 +73,8 @@ export type FoldedGame = {
   tableSpeakerDeviceId: UUID | null
   taunts: TauntRecord[]
   receipts: ReceiptRecord[]
+  /** 🐴 taps per seat (`Neighed`), kept after the game finishes. */
+  neighs: Record<SeatId, number>
   /** opIds of duplicate round records (the earlier record was kept). */
   conflicts: UUID[]
   /** Operations the fold refused. */
@@ -184,6 +186,7 @@ class Reducer {
       tableSpeakerDeviceId: null,
       taunts: [],
       receipts: [],
+      neighs: {},
       conflicts: [],
       late: [],
       latestHlc: null,
@@ -217,6 +220,7 @@ class Reducer {
         case 'ReactionAdded':
         case 'TableSpeakerClaimed':
         case 'TauntRetracted':
+        case 'Neighed':
           break
         case 'GameFinished':
           return // a second phone also tapped Finish
@@ -251,6 +255,9 @@ class Reducer {
       case 'TauntSent': return this.tauntSent(op)
       case 'TauntRetracted': return this.tauntRetracted(op)
       case 'ReactionAdded': return // no server-side effect
+      case 'Neighed':
+        state.neighs[op.payload.seatId] = (state.neighs[op.payload.seatId] ?? 0) + 1
+        return
       case 'ReceiptSent': return this.receiptSent(op)
       case 'TableSpeakerClaimed':
         state.tableSpeakerDeviceId = op.payload.deviceId

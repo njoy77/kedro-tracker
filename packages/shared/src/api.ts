@@ -177,6 +177,9 @@ export type PlayerProfileResponse = {
     knocks: number
     knocksLanded: number
     knockSuccess: number | null
+    /** 🐴 taps across counted games, and per game. */
+    neighs: number
+    neighsPerGame: number
   }
 }
 
@@ -305,6 +308,9 @@ export type LeaderboardRow = {
   knocks: number
   knocksLanded: number
   knockSuccess: number | null
+  /** 🐴 taps across counted games, and per game. Shown, not sortable. */
+  neighs: number
+  neighsPerGame: number
   isMe: boolean
   /** Below a sort's minimum: what's still needed ("needs 10 games for this one"). */
   needs?: { games?: number; knocks?: number }

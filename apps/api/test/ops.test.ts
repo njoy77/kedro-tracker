@@ -211,6 +211,57 @@ describe('POST /v1/ops', () => {
     expect(h.store.finished.get(ids.game)?.seats.map((seat) => seat.total)).toEqual([28, 34, 65, 67, 70])
   })
 
+  test('neighs: counted per seat, taken after the finish, kept out of scores and ratings', async () => {
+    const h = await seededHarness()
+    const ops = sampleWireOperations()
+    await h.upload(ids.noah, ops)
+    const ratingBefore = (await h.get(`/v1/players/${ids.noah}/profile`, ids.noah)).body.rating
+    const late = after(ops, (b) => {
+      b.add('Neighed', { seatId: seats.ana, roundNumber: 8 })
+      b.add('Neighed', { seatId: seats.ana })
+      b.add('Neighed', { seatId: seats.noah }, { device: ids.anaPhone, actor: ids.ana })
+    })
+    const response = await h.upload(ids.noah, late)
+    expect(response.body.rejected).toEqual([])
+    expect(response.body.accepted).toHaveLength(3)
+
+    const finished = h.store.finished.get(ids.game)
+    expect(finished?.seats.map((seat) => seat.total)).toEqual([28, 34, 65, 67, 70])
+    expect(Object.fromEntries((finished?.seats ?? []).map((seat) => [seat.seatId, seat.neighs]))).toMatchObject({ [seats.ana]: 2, [seats.noah]: 1, [seats.ben]: 0 })
+
+    const profile = (await h.get(`/v1/players/${ids.noah}/profile`, ids.noah)).body
+    expect(profile.rating).toBe(ratingBefore)
+    expect(profile.stats.neighs).toBe(1)
+    expect(profile.stats.neighsPerGame).toBe(1)
+
+    const records = (await h.get('/v1/records?scope=global', ids.noah)).body.records
+    const mostNeighs = records.find((record: { kind: string }) => record.kind === 'mostNeighs')
+    expect(mostNeighs.rows.map((row: { value: number }) => row.value)).toEqual([2, 1])
+  })
+
+  test('only clients that ask for neighs get Neighed ops, and pages stay full for the rest', async () => {
+    const h = await seededHarness()
+    const ops = sampleWireOperations()
+    const neighs = after(ops, (b) => {
+      for (let tap = 0; tap < 5; tap++) b.add('Neighed', { seatId: seats.ben })
+      b.add('ReceiptSent', { fromSeat: seats.noah, toSeat: seats.ana, receiptKey: 'RC-01' })
+    })
+    await h.upload(ids.noah, [...ops, ...neighs])
+    const types = (body: { ops: WireOperation[] }) => body.ops.map((op) => op.type)
+
+    const old = await h.get(`/v1/games/${ids.game}/ops`, ids.noah)
+    expect(types(old.body)).not.toContain('Neighed')
+    expect(types(old.body).at(-1)).toBe('ReceiptSent')
+
+    const current = await h.get(`/v1/games/${ids.game}/ops?features=neighs`, ids.noah)
+    expect(types(current.body).filter((type) => type === 'Neighed')).toHaveLength(5)
+
+    // A page of 2 after the finish: the old client still gets the receipt, not an empty page.
+    const cursor = encodeURIComponent(hlcString(ops[ops.length - 1].hlc))
+    const page = await h.get(`/v1/games/${ids.game}/ops?after=${cursor}&limit=2`, ids.noah)
+    expect(types(page.body)).toEqual(['ReceiptSent'])
+  })
+
   test('an abandon within 15 minutes of the finish voids the game for stats; a restore brings it back', async () => {
     const h = await seededHarness()
     const ops = sampleWireOperations()

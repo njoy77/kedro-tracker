@@ -281,7 +281,8 @@ describe('GET /v1/records', () => {
     const response = await h.get<Records>('/v1/records?scope=playedWith', ids.ana)
     expect(response.status).toBe(200)
     expect(response.body.scope).toBe('playedWith')
-    expect(response.body.records.map((record) => record.kind)).toEqual(['bestGame', 'longestStreak', 'mostLandedKnocks', 'mostGames'])
+    expect(response.body.records.map((record) => record.kind)).toEqual(['bestGame', 'longestStreak', 'mostLandedKnocks', 'mostGames', 'mostNeighs'])
+    expect(rows(response.body, 'mostNeighs')).toEqual([]) // nobody has neighed yet
 
     // Best game: lowest final score, with the game it was set in (the earliest when tied).
     const best = rows(response.body, 'bestGame')

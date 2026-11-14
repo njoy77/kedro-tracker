@@ -122,6 +122,30 @@ describe('legacy web history', () => {
     expect((await h.get(`/v1/games/${mine.body.games[0].gameId}/ops`, me)).status).toBe(200)
   })
 
+  test('web neigh counts become Neighed ops after the finish; re-importing adds only the new neighs', async () => {
+    const base = legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }, { scores: [14, 1, 3], knockedBy: 'lp1' }])
+    const h = harness()
+    const before = await importLegacy({ players, games: [base] }, { store: h.store, services: h.services, apply: true })
+    const codes = Object.fromEntries(before.codes.map((row) => [row.legacyId, row.claimCode]))
+    const opIds = (game: { operations: unknown[] }) => game.operations.map((op) => (op as { opId: string }).opId)
+    const withNeighs = { ...base, neighCounts: { lp1: 2, lp2: 1 } }
+    const plain = convertLegacy({ players, games: [base] }, () => 'a'.repeat(64)).games[0]
+    const converted = convertLegacy({ players, games: [withNeighs] }, () => 'a'.repeat(64)).games[0]
+    // The earlier ops keep their IDs; the neighs come after GameFinished.
+    expect(opIds(converted).slice(0, plain.operations.length)).toEqual(opIds(plain))
+    expect(converted.operations.slice(plain.operations.length).map((op) => (op as { type: string }).type)).toEqual(['Neighed', 'Neighed', 'Neighed'])
+    const folded = fold(converted)
+    expect(folded.status).toBe('finished')
+    expect(folded.late).toHaveLength(0)
+    expect(folded.seats.map((seat) => folded.neighs[seatIdOf(seat.player)] ?? 0)).toEqual([2, 1, 0])
+
+    const again = await importLegacy({ players, games: [withNeighs] }, { store: h.store, services: h.services, existingCodes: codes, apply: true })
+    expect([again.imported, again.alreadyImported]).toEqual([1, 0])
+    const row = [...h.store.finished.values()][0]
+    expect(row.projection.seats.map((seat) => seat.neighs).sort()).toEqual([0, 1, 2])
+    expect((await importLegacy({ players, games: [withNeighs] }, { store: h.store, services: h.services, existingCodes: codes, apply: true })).alreadyImported).toBe(1)
+  })
+
   test('a game under 3 rounds is imported as history but not counted for stats', async () => {
     const h = harness()
     const data = { players, games: [legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }])] }

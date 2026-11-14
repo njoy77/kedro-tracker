@@ -8,6 +8,7 @@
 import {
   ALLOWED_AFTER_FINISH,
   MAX_CLOCK_AHEAD_MS,
+  OPS_FEATURES,
   RESTORE_WINDOW_MS,
   compareFoldOrder,
   compareHlc,
@@ -24,6 +25,7 @@ import {
   type OpRejectionReason,
   type Operation,
   type OperationType,
+  type OpsFeature,
   type ParsedOperation,
   type PostOpsResponse,
   type RejectedOp,
@@ -224,6 +226,7 @@ export class OpsService {
     const folded = await this.reproject(gameId, {
       previousStatus: game?.status ?? null,
       changedShape: insertedOps.some((op) => isStateChanging(op.type)),
+      changedStats: insertedOps.some((op) => op.type === 'Neighed'),
       uploader: caller,
     })
     await this.notifySavedSeats(before, folded, caller)
@@ -329,6 +332,7 @@ export class OpsService {
     await this.reproject(clip.gameId, {
       previousStatus: game.status,
       changedShape: insertedOps.some((op) => isStateChanging(op.type)),
+      changedStats: insertedOps.some((op) => op.type === 'Neighed'),
       uploader: null,
     })
     return result
@@ -351,22 +355,22 @@ export class OpsService {
   }
 
   /** GET /v1/games/:gameId/ops for an App Clip session. */
-  async operationsForClip(clip: ClipSession, gameId: UUID, options: { after?: string; limit?: number }): Promise<WireOperation[]> {
+  async operationsForClip(clip: ClipSession, gameId: UUID, options: OpsReadOptions): Promise<WireOperation[]> {
     if (gameId !== clip.gameId) throw forbidden('This session is for another table')
     if (!(await this.deps.store.getGame(gameId))) throw notFound('No such game')
     const limit = Math.min(Math.max(1, options.limit ?? DEFAULT_OPS_PAGE), MAX_OPS_PAGE)
-    return this.deps.store.getOps(gameId, { after: options.after, limit })
+    return this.deps.store.getOps(gameId, { after: options.after, limit, excludeTypes: excludedTypes(options.features) })
   }
 
   // MARK: Reads
 
-  async operationsAfter(caller: UUID, gameId: UUID, options: { after?: string; limit?: number }): Promise<WireOperation[]> {
+  async operationsAfter(caller: UUID, gameId: UUID, options: OpsReadOptions): Promise<WireOperation[]> {
     const { store } = this.deps
     const game = await store.getGame(gameId)
     if (!game) throw notFound('No such game')
     if (!(await store.isSeated(gameId, caller))) throw forbidden('You are not seated in this game')
     const limit = Math.min(Math.max(1, options.limit ?? DEFAULT_OPS_PAGE), MAX_OPS_PAGE)
-    return store.getOps(gameId, { after: options.after, limit })
+    return store.getOps(gameId, { after: options.after, limit, excludeTypes: excludedTypes(options.features) })
   }
 
   // MARK: Projection
@@ -374,7 +378,19 @@ export class OpsService {
   /** Rebuilds a game's projections from its whole log. Also used after claims and by maintenance. */
   async reproject(
     gameId: UUID,
-    { previousStatus, changedShape, uploader }: { previousStatus: GameStatus | null; changedShape: boolean; uploader: UUID | null },
+    {
+      previousStatus,
+      changedShape,
+      changedStats = false,
+      uploader,
+    }: {
+      previousStatus: GameStatus | null
+      changedShape: boolean
+      /** A finished game's stats changed without its result (a neigh after the finish): project
+       *  it again, but the ratings stand. */
+      changedStats?: boolean
+      uploader: UUID | null
+    },
   ): Promise<FoldedGame> {
     const { store, ratings, broadcaster } = this.deps
     const folded = foldGame(await this.loadOperations(gameId), gameId)
@@ -393,6 +409,8 @@ export class OpsService {
       if (projection && (!wasFinished || changedShape)) {
         await store.projectFinishedGame(projection)
         ratingsChanged = true
+      } else if (projection && changedStats) {
+        await store.projectFinishedGame(projection)
       }
     } else if (folded.status === 'abandoned' && folded.finishedAtMs !== null && wasFinished) {
       await store.setFinishedGameAbandoned(gameId, true)
@@ -658,4 +676,14 @@ function seatRows(game: FoldedGame): SeatRow[] {
     seatOrder: seat.order,
     deviceId: seat.deviceId ?? null,
   }))
+}
+
+/** A read of a game's ops: `features` are what the client can decode (`?features=neighs`). */
+export type OpsReadOptions = { after?: string; limit?: number; features?: readonly string[] }
+
+/** The op types a client didn't ask for (see `OPS_FEATURES`): older apps never receive them. */
+export function excludedTypes(features: readonly string[] = []): OperationType[] {
+  return (Object.entries(OPS_FEATURES) as [OpsFeature, OperationType][])
+    .filter(([feature]) => !features.includes(feature))
+    .map(([, type]) => type)
 }

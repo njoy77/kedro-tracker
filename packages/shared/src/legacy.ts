@@ -35,6 +35,8 @@ export type LegacyGame = {
   status?: string
   players: { id: string; username: string; emoji?: string; total?: number }[]
   rounds: LegacyRound[]
+  /** 🐴 taps per legacy player id, saved when the game ended. */
+  neighCounts?: Record<string, number>
 }
 
 export type LegacyExport = { players: LegacyPlayer[]; games: LegacyGame[] }
@@ -168,6 +170,7 @@ export function legacyLeaderboard(data: LegacyExport, sort: LeaderboardSort): Bu
       statsRows.push({
         gameId: game.id, finishedAtMs, subject: subjectOf(player.id), total, isWinner: total === best,
         roundsPlayed: rounds.length, knocks, knocksLanded: landed, knocksTied: tied, knocksFailed: failed,
+        neighs: game.neighCounts?.[player.id] ?? 0,
       })
     })
   }
