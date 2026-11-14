@@ -7,6 +7,9 @@ protocol SoundPlaying: AnyObject {
     func play(_ moment: SoundMoment, settings: SoundSettings)
     /// Settings → Sounds preview button: plays regardless of the switches.
     func preview(_ moment: SoundMoment)
+    /// The 🐴 neigh: plays even with the app's sounds off (it's the point of the button), but
+    /// still respects the Silent switch like every other sound.
+    func neigh()
 }
 
 extension SoundPlaying {
@@ -44,6 +47,11 @@ final class SoundPlayer: SoundPlaying {
 
     func preview(_ moment: SoundMoment) {
         start(moment)
+    }
+
+    /// The winner's sound is the Kedro neigh (the web app's `neigh.mp4`, `Tools/generate-sounds.swift`).
+    func neigh() {
+        start(.winner)
     }
 
     /// Loads every sound so the first knock doesn't lag. Optional; `play` loads on demand.

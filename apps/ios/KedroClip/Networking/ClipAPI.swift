@@ -7,7 +7,7 @@ import Foundation
 /// Endpoints (shared contract with `apps/api`):
 /// - `POST /v1/clip/sessions {gameId, tableToken, deviceId}` → `{accessToken, expiresAt}`
 ///   (clip-only addition; the bearer token is accepted by the two game endpoints below for that game)
-/// - `GET  /v1/games/:gameId/ops?after=<hlcString>` → `{ops:[Operation]}`
+/// - `GET  /v1/games/:gameId/ops?after=<hlcString>&features=neighs` → `{ops:[Operation]}`
 /// - `POST /v1/ops {ops:[Operation]}` → `{accepted:[opId], duplicates:[opId]}`
 /// - `POST /v1/clip/claims {gameId, seatId}` → `{claimToken}` (clip-only addition: the token the
 ///   full app later redeems with `POST /v1/claims`)
@@ -21,10 +21,6 @@ nonisolated struct ClipAPI: Sendable {
     struct SessionResponse: Codable, Sendable {
         var accessToken: String
         var expiresAt: Date?
-    }
-
-    struct OperationsResponse: Codable, Sendable {
-        var ops: [GameOperation]
     }
 
     struct SendResponse: Codable, Sendable {
@@ -56,14 +52,21 @@ nonisolated struct ClipAPI: Sendable {
         return try await request("POST", "v1/clip/sessions", body: Body(gameId: gameID, tableToken: tableToken, deviceId: deviceID), token: nil)
     }
 
-    func operations(gameID: GameID, after: HLC?, token: String) async throws -> [GameOperation] {
-        var path = "v1/games/\(gameID.uuidString)/ops"
-        if let after {
-            let value = after.stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? after.stringValue
-            path += "?after=\(value)"
-        }
-        let response: OperationsResponse = try await request("GET", path, body: Optional<String>.none, token: token)
-        return response.ops
+    /// One page of a game's ops, decoded lossily (unknown op types skipped; `OperationsPage`).
+    func operations(gameID: GameID, after: HLC?, token: String) async throws -> OperationsPage {
+        let response: OperationsPage = try await request("GET", Self.operationsPath(gameID: gameID, after: after), body: Optional<String>.none, token: token)
+        return response
+    }
+
+    /// `v1/games/:gameId/ops?after=…&features=neighs` (`features`: `OperationType.opsFeatures`).
+    static func operationsPath(gameID: GameID, after: HLC?) -> String {
+        var components = URLComponents()
+        components.path = "v1/games/\(gameID.uuidString)/ops"
+        var items: [URLQueryItem] = []
+        if let after { items.append(URLQueryItem(name: "after", value: after.stringValue)) }
+        items.append(OperationType.opsFeaturesQueryItem)
+        components.queryItems = items
+        return components.string ?? components.path
     }
 
     func send(_ operations: [GameOperation], token: String) async throws -> SendResponse {

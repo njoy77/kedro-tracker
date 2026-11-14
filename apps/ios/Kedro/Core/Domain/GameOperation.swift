@@ -107,6 +107,7 @@ nonisolated enum OperationType: String, Hashable, Sendable, Codable, CaseIterabl
     case reactionAdded = "ReactionAdded"
     case receiptSent = "ReceiptSent"
     case tableSpeakerClaimed = "TableSpeakerClaimed"
+    case neighed = "Neighed"
     case gameFinished = "GameFinished"
     case gameAbandoned = "GameAbandoned"
     case gameRestored = "GameRestored"
@@ -115,9 +116,27 @@ nonisolated enum OperationType: String, Hashable, Sendable, Codable, CaseIterabl
     /// finished or abandoned (and surface as late operations).
     var isStateChanging: Bool {
         switch self {
-        case .tauntSent, .tauntRetracted, .reactionAdded, .receiptSent, .tableSpeakerClaimed: false
+        case .tauntSent, .tauntRetracted, .reactionAdded, .receiptSent, .tableSpeakerClaimed, .neighed: false
         default: true
         }
+    }
+
+    /// Accepted after `GameFinished` (packages/shared `ALLOWED_AFTER_FINISH`): the fold still
+    /// applies these to a finished game.
+    var isAllowedAfterFinish: Bool {
+        switch self {
+        case .receiptSent, .reactionAdded, .tableSpeakerClaimed, .tauntRetracted, .neighed: true
+        default: false
+        }
+    }
+
+    /// The `?features=` the app asks `GET /v1/games/:id/ops` for (packages/shared `OPS_FEATURES`):
+    /// op types newer than TestFlight build 3, which the server leaves out unless asked.
+    static let opsFeatures = ["neighs"]
+
+    /// The `features` query item for every ops read.
+    static var opsFeaturesQueryItem: URLQueryItem {
+        URLQueryItem(name: "features", value: opsFeatures.joined(separator: ","))
     }
 }
 
@@ -265,6 +284,14 @@ nonisolated enum Op {
         var deviceId: DeviceID
     }
 
+    /// Someone tapped a player's 🐴: the neigh plays on every phone and counts toward that seat's
+    /// neighs. Just for fun; no effect on scores. Allowed after finish.
+    /// `{"seatId":"p:…","roundNumber":6}` (`roundNumber`: the round in play, when there is one).
+    struct Neighed: Hashable, Sendable, Codable {
+        var seatId: SeatID
+        var roundNumber: Int?
+    }
+
     /// Locks the game. `finalRounds` is the finisher's view of every round and is authoritative:
     /// every phone shows exactly these rounds, and anything that disagrees is surfaced as late.
     /// `{"reason":"completed","finalRounds":[{…Round…}]}`
@@ -312,6 +339,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
     case reactionAdded(Op.ReactionAdded)
     case receiptSent(Op.ReceiptSent)
     case tableSpeakerClaimed(Op.TableSpeakerClaimed)
+    case neighed(Op.Neighed)
     case gameFinished(Op.GameFinished)
     case gameAbandoned(Op.GameAbandoned)
     case gameRestored(Op.GameRestored)
@@ -338,6 +366,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         case .reactionAdded: .reactionAdded
         case .receiptSent: .receiptSent
         case .tableSpeakerClaimed: .tableSpeakerClaimed
+        case .neighed: .neighed
         case .gameFinished: .gameFinished
         case .gameAbandoned: .gameAbandoned
         case .gameRestored: .gameRestored
@@ -366,6 +395,7 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         case .reactionAdded: self = .reactionAdded(try .init(from: decoder))
         case .receiptSent: self = .receiptSent(try .init(from: decoder))
         case .tableSpeakerClaimed: self = .tableSpeakerClaimed(try .init(from: decoder))
+        case .neighed: self = .neighed(try .init(from: decoder))
         case .gameFinished: self = .gameFinished(try .init(from: decoder))
         case .gameAbandoned: self = .gameAbandoned(try .init(from: decoder))
         case .gameRestored: self = .gameRestored(try .init(from: decoder))
@@ -394,9 +424,66 @@ nonisolated enum OperationPayload: Hashable, Sendable {
         case .reactionAdded(let p): try p.encode(to: encoder)
         case .receiptSent(let p): try p.encode(to: encoder)
         case .tableSpeakerClaimed(let p): try p.encode(to: encoder)
+        case .neighed(let p): try p.encode(to: encoder)
         case .gameFinished(let p): try p.encode(to: encoder)
         case .gameAbandoned(let p): try p.encode(to: encoder)
         case .gameRestored(let p): try p.encode(to: encoder)
+        }
+    }
+}
+
+/// A page of `GET /v1/games/:gameId/ops` (`{"ops":[…]}`), decoded lossily: an op whose `type`
+/// this build doesn't know is skipped instead of failing the whole page, so a future op type can
+/// never break an installed app. Any other malformed op still fails the page.
+///
+/// `receivedCount` and `lastHLC` count the skipped ops too, so paging ("a full page means ask
+/// again after its last op") and polling cursors still move past them.
+nonisolated struct OperationsPage: Codable, Sendable {
+    var ops: [GameOperation]
+    /// How many ops the server sent, skipped ones included.
+    var receivedCount: Int
+    /// The HLC of the last op the server sent, skipped ones included.
+    var lastHLC: HLC?
+
+    init(ops: [GameOperation]) {
+        self.ops = ops
+        receivedCount = ops.count
+        lastHLC = ops.last?.hlc
+    }
+
+    private enum CodingKeys: String, CodingKey { case ops }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let entries = try container.decode([Entry].self, forKey: .ops)
+        ops = entries.compactMap(\.operation)
+        receivedCount = entries.count
+        lastHLC = entries.last?.hlc
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(ops, forKey: .ops)
+    }
+
+    /// One op of the page: decoded, or skipped because its type is unknown.
+    private struct Entry: Decodable {
+        var operation: GameOperation?
+        var hlc: HLC?
+
+        private enum Keys: String, CodingKey { case type, hlc }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: Keys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            guard OperationType(rawValue: type) != nil else {
+                operation = nil
+                hlc = try? container.decode(HLC.self, forKey: .hlc)
+                return
+            }
+            let operation = try GameOperation(from: decoder)
+            self.operation = operation
+            hlc = operation.hlc
         }
     }
 }

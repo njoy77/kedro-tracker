@@ -274,6 +274,10 @@ struct ProfileView: View {
                 StatTile(value: StatsFormat.percent(stats.winRate), caption: "Win rate", info: .winRate)
                 StatTile(value: stats.knockSuccess.map { StatsFormat.percent($0) } ?? "–", caption: "Knocks", info: .knockSuccess)
             }
+            StatsCard(title: "Just for fun") {
+                StatRow("🐴 Neighs", value: Self.neighsValue(stats.neighs ?? 0, perGame: stats.neighsPerGame ?? 0), info: .neighs)
+            }
+            .padding(.top, 16)
         }
     }
 
@@ -367,7 +371,23 @@ struct ProfileView: View {
             gameMarkRow("Worst game", mark: stats.worstGame, info: .worstGame)
             Divider().overlay(Color.rule)
             StatRow("Average per game", value: stats.averageScorePerGame.map(StatsFormat.decimal) ?? "–", info: .averageGame)
+            Divider().overlay(Color.rule)
+            neighsRow(local: (stats.neighs, stats.neighsPerGame))
         }
+    }
+
+    /// "🐴 Neighs · 12 · 1.5 a game": the server's count when loaded (every game, every phone),
+    /// this phone's history otherwise.
+    private func neighsRow(local: (neighs: Int, perGame: Double)) -> some View {
+        let remote = server.profile(player)?.stats
+        let neighs = remote?.neighs ?? local.neighs
+        let perGame = remote?.neighsPerGame ?? local.perGame
+        return StatRow("🐴 Neighs", value: Self.neighsValue(neighs, perGame: perGame), info: .neighs)
+    }
+
+    /// "12 · 1.5 a game", or "0".
+    static func neighsValue(_ neighs: Int, perGame: Double) -> String {
+        neighs > 0 ? "\(neighs) · \(StatsFormat.decimal(perGame)) a game" : "0"
     }
 
     @ViewBuilder

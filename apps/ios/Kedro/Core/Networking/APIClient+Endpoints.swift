@@ -27,12 +27,14 @@ extension APIClient {
     /// The server's page size for `GET /v1/games/:gameId/ops` (apps/api `DEFAULT_OPS_PAGE`).
     static let opsPageSize = 2000
 
-    /// `GET /v1/games/:gameId/ops?after=<hlcString>`: one page in fold order, starting at the
-    /// beginning when `after` is nil. A full page (`opsPageSize`) means ask again after its last op.
-    func operations(for game: GameID, after: HLC? = nil) async throws -> [GameOperation] {
-        let query = after.map { [URLQueryItem(name: "after", value: $0.stringValue)] } ?? []
-        let page: OpsPage = try await send("GET", "v1/games/\(game.uuidString)/ops", query: query)
-        return page.ops
+    /// `GET /v1/games/:gameId/ops?after=<hlcString>&features=neighs`: one page in fold order,
+    /// starting at the beginning when `after` is nil. A full page (`opsPageSize` received, skipped
+    /// ops included) means ask again after its `lastHLC`. `features` asks for op types newer
+    /// than TestFlight build 3 (`OperationType.opsFeatures`).
+    func operations(for game: GameID, after: HLC? = nil) async throws -> OpsPage {
+        var query = after.map { [URLQueryItem(name: "after", value: $0.stringValue)] } ?? []
+        query.append(OperationType.opsFeaturesQueryItem)
+        return try await send("GET", "v1/games/\(game.uuidString)/ops", query: query)
     }
 
     // MARK: Players

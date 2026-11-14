@@ -108,6 +108,7 @@ nonisolated struct StatDefinition: Hashable, Sendable {
     static let knockOutcomes = StatDefinition(name: "Knock outcomes", text: "Landed: strictly lowest hand, −10. Tied: tied for lowest, scores the hand. Failed: someone was lower, hand + 10.")
     static let nemesis = StatDefinition(name: "Nemesis", text: "The player who has finished ahead of you most often in shared games. Ties go to whoever got there first.")
     static let rating = StatDefinition(name: "Rating", text: "Pairwise Elo from finishing order. Starts at 1,000, moves twice as fast for your first 10 games, and shows from your 10th game.")
+    static let neighs = StatDefinition(name: "Neighs", text: "Times someone at the table hit the 🐴 on you, across counted games, and per game. Just for fun.")
     static let form = StatDefinition(name: "Form", text: "Your last five finishes, oldest first.")
     static let gamesTogether = StatDefinition(name: "Games together", text: "Finished games you both played.")
     static let finishedAhead = StatDefinition(name: "Finished ahead", text: "Shared games where one of you had the lower final score. Equal scores count for neither.")

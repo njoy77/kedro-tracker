@@ -191,7 +191,8 @@ nonisolated struct StatsSnapshot: Sendable {
             isComeback: isWinner && half >= 1 && !ledAtHalf, bottledFinalRound: bottled,
             biggestLead: biggestLead, deepestDeficit: deepest,
             ratingBefore: ratingBefore, ratingAfter: ratingAfter,
-            tauntsSent: taunts, tauntsCounted: min(3, taunts), gamesBefore: record.gamesPlayed
+            tauntsSent: taunts, tauntsCounted: min(3, taunts), gamesBefore: record.gamesPlayed,
+            neighs: game.neighs[me] ?? 0
         )
         record.results.append(result)
         record.identity = participant

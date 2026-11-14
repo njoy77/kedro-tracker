@@ -187,8 +187,8 @@ final class BackendSync {
             var remote: [GameOperation] = []
             while true {
                 let page = try await api.operations(for: game, after: after)
-                remote += page
-                guard page.count >= APIClient.opsPageSize, let last = page.last?.hlc, last != after else { break }
+                remote += page.ops
+                guard page.receivedCount >= APIClient.opsPageSize, let last = page.lastHLC, last != after else { break }
                 after = last
             }
             lastError = nil

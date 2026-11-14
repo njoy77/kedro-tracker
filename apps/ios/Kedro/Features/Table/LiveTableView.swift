@@ -181,7 +181,9 @@ struct LiveTableView: View {
                 mySeat: session.mySeatID,
                 hidesDeltas: visible.isHidden,
                 excluding: pinnedSeat,
-                onDealerTap: session.canEdit ? { sheet = .dealer } : nil
+                onDealerTap: session.canEdit ? { sheet = .dealer } : nil,
+                onNeigh: canNeigh ? { neigh($0) } : nil,
+                neighCounts: state.neighCounts
             )
             if !visible.isHidden, let banter = TableVoice.banter(for: state) {
                 Text(banter.render(voice, gameID: state.gameID, round: state.rounds.count))
@@ -203,7 +205,11 @@ struct LiveTableView: View {
     private func bottomInset(visible: (state: GameState, isHidden: Bool)) -> some View {
         VStack(spacing: 0) {
             if let pinnedSeat, let standing = visible.state.standing(for: pinnedSeat) {
-                StandingRow(standing: standing, isMe: true, compact: true, hidesDelta: visible.isHidden, showsLeader: !state.rounds.isEmpty)
+                StandingRow(
+                    standing: standing, isMe: true, compact: true, hidesDelta: visible.isHidden, showsLeader: !state.rounds.isEmpty,
+                    neighs: state.neighCount(for: pinnedSeat),
+                    onNeigh: canNeigh ? { neigh(pinnedSeat) } : nil
+                )
                     .padding(.horizontal, 16)
                     .background(.surface)
             }
@@ -461,6 +467,16 @@ struct LiveTableView: View {
 
     private func react(_ reaction: Reaction) {
         run { try await session.react(reaction) }
+    }
+
+    /// 🐴 during a game, for anyone seated at the table.
+    private var canNeigh: Bool { state.status == .active && session.mySeatID != nil }
+
+    /// Neighs on this phone at once (even with sounds off; the Silent switch still wins), then
+    /// sends the op so every other phone at the table neighs too.
+    private func neigh(_ seat: SeatID) {
+        talk.sound.neigh()
+        run { try await session.neigh(seat) }
     }
 
     private func run(_ work: @escaping () async throws -> Void) {

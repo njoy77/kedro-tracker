@@ -137,6 +137,8 @@ final class ServerStats {
                     .rating: Double(row.rating), .wins: Double(row.wins), .winRate: row.winRate,
                     .avgScore: row.avgScore, .knockSuccess: row.knockSuccess,
                 ].compactMapValues { $0 },
+                neighs: row.neighs ?? 0,
+                neighsPerGame: row.neighsPerGame ?? 0,
                 isViewer: row.isMe || row.player.ref == viewer,
                 isNew: false,
                 lastRatingDelta: nil

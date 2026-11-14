@@ -45,6 +45,8 @@ nonisolated struct GameState: Hashable, Sendable {
     /// Taunts in order, including retracted ones (`isRetracted`), which UIs must hide.
     var taunts: [TauntRecord]
     var receipts: [ReceiptRecord]
+    /// 🐴 taps (`Neighed`), oldest first, including any after the game finished.
+    var neighs: [NeighRecord]
     /// "On the record": every logged change, oldest first (PRD §4.5).
     var audit: [AuditEntry]
     /// The game's chronological feed (design §8.4), oldest first.
@@ -73,6 +75,7 @@ nonisolated struct GameState: Hashable, Sendable {
         reactions = [:]
         taunts = []
         receipts = []
+        neighs = []
         audit = []
         feed = []
         conflicts = []
@@ -95,6 +98,12 @@ nonisolated struct GameState: Hashable, Sendable {
         guard number >= 1, number <= rounds.count else { return nil }
         return rounds[number - 1]
     }
+
+    /// How many times a seat was neighed (🐴).
+    func neighCount(for seat: SeatID) -> Int { neighs.count { $0.seat == seat } }
+
+    /// Neighs per seat (seats nobody neighed are left out).
+    var neighCounts: [SeatID: Int] { neighs.reduce(into: [:]) { $0[$1.seat, default: 0] += 1 } }
 
     /// Display name for a seat ("Someone" if it isn't at the table).
     func name(of id: SeatID) -> String { seat(id)?.displayName ?? "Someone" }
@@ -301,6 +310,16 @@ nonisolated struct ReceiptRecord: Hashable, Sendable, Identifiable {
     var from: SeatID
     var to: SeatID
     var receiptKey: String
+    var at: Date
+
+    var id: UUID { opId }
+}
+
+/// One 🐴 tap (`Neighed`).
+nonisolated struct NeighRecord: Hashable, Sendable, Identifiable {
+    var opId: UUID
+    var seat: SeatID
+    var roundNumber: Int?
     var at: Date
 
     var id: UUID { opId }

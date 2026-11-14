@@ -111,6 +111,8 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
     var ranks: [PlayerRef: Rank]
     var winners: Set<PlayerRef>
     var taunts: [StatsTaunt]
+    /// 🐴 taps per counted person, including any after the finish (packages/shared `stats.ts`).
+    var neighs: [PlayerRef: Int] = [:]
 
     var refs: [PlayerRef] { participants.map(\.ref) }
     var playerCount: Int { participants.count }
@@ -199,6 +201,10 @@ nonisolated struct StatsGame: Hashable, Sendable, Identifiable {
             guard let from = taunt.from else { return nil }
             let target: PlayerRef? = if case .seat(let seat) = taunt.target { person(seat) } else { nil }
             return StatsTaunt(from: person(from), target: target, content: taunt.content)
+        }
+        neighs = state.neighCounts.reduce(into: [:]) { counts, entry in
+            guard countedIDs.contains(entry.key) else { return }
+            counts[person(entry.key), default: 0] += entry.value
         }
     }
 

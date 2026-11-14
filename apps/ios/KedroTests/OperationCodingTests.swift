@@ -78,6 +78,7 @@ struct OperationCodingTests {
         case .reactionAdded: .reactionAdded(.init(roundNumber: 1, seatId: seat, reaction: .salute))
         case .receiptSent: .receiptSent(.init(fromSeat: seat, toSeat: PreviewData.anaSeat, receiptKey: "RC-02"))
         case .tableSpeakerClaimed: .tableSpeakerClaimed(.init(deviceId: DeviceID()))
+        case .neighed: .neighed(.init(seatId: seat, roundNumber: 3))
         case .gameFinished: .gameFinished(.init(reason: .endedEarly, finalRounds: [round]))
         case .gameAbandoned: .gameAbandoned(.init())
         case .gameRestored: .gameRestored(.init())

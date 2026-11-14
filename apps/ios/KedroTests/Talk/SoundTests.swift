@@ -239,4 +239,10 @@ final class RecordingSoundPlayer: SoundPlaying {
     func preview(_ moment: SoundMoment) {
         played.append(moment)
     }
+
+    private(set) var neighs = 0
+
+    func neigh() {
+        neighs += 1
+    }
 }

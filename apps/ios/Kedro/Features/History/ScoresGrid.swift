@@ -49,6 +49,9 @@ struct ScoresGrid: View {
             .scrollBounceBehavior(.basedOnSize)
             Divider().overlay(.rule)
             totals
+            if !state.neighs.isEmpty {
+                neighsRow
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
@@ -145,6 +148,28 @@ struct ScoresGrid: View {
         .padding(.top, 8)
     }
 
+    /// 🐴 taps per seat this game, under the totals (only when someone was neighed).
+    private var neighsRow: some View {
+        let counts = state.neighCounts
+        return HStack(spacing: 0) {
+            Text(verbatim: "🐴")
+                .font(.subheadline)
+                .frame(width: Self.roundColumn, alignment: .leading)
+                .padding(.leading, 4)
+                .accessibilityHidden(true)
+            ForEach(state.seats) { seat in
+                let count = counts[seat.id, default: 0]
+                Text(count, format: .number)
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(count > 0 ? Color.silver : Color.silverDim)
+                    .modifier(ColumnWidth(compact: isCompact))
+                    .accessibilityLabel("\(seat.displayName), neighed \(count) \(count == 1 ? "time" : "times")")
+            }
+        }
+        .padding(.top, 6)
+    }
+
     // MARK: Accessibility list
 
     private var roundList: some View {
@@ -184,6 +209,13 @@ struct ScoresGrid: View {
                 ForEach(state.standings) { standing in
                     HStack {
                         Text(standing.seat.displayName).foregroundStyle(.cream)
+                        let neighs = state.neighCount(for: standing.id)
+                        if neighs > 0 {
+                            Text(verbatim: "🐴 \(neighs)")
+                                .font(.subheadline)
+                                .foregroundStyle(.silver)
+                                .accessibilityLabel("neighed \(neighs) \(neighs == 1 ? "time" : "times")")
+                        }
                         Spacer()
                         ScoreText(value: standing.total, style: .scoreCompact)
                             .foregroundStyle(standing.isLeader ? Color.gold : Color.cream)
