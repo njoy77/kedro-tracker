@@ -54,7 +54,6 @@ struct LeaderboardView: View {
             .safeAreaInset(edge: .bottom) { pinnedRow(board, snapshot: snapshot, proxy: proxy) }
         }
         .navigationTitle("Board")
-        .toolbar { sortMenu }
         .navigationDestination(item: $record) { kind in
             RecordBoardView(kind: kind, scope: effectiveScope)
         }
@@ -92,9 +91,12 @@ struct LeaderboardView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
             }
+            SortChips(sort: $sort)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0))
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(effectiveScope.label) · \(sort.headerLabel)")
+                Text([effectiveScope.label, sort.headerLabel, sort.caption].compactMap(\.self).joined(separator: " · "))
                     .kedroFont(.label)
                     .foregroundStyle(.silver)
                     .accessibilityAddTraits(.isHeader)
@@ -110,26 +112,6 @@ struct LeaderboardView: View {
     private struct GlobalKey: Hashable {
         var scope: LeaderboardScope
         var sort: LeaderboardSort
-    }
-
-    private var sortMenu: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Picker("Sort", selection: $sort) {
-                    ForEach(LeaderboardSort.allCases) { option in
-                        VStack {
-                            Text(option.label)
-                            if let caption = option.caption { Text(caption) }
-                        }
-                        .tag(option)
-                    }
-                }
-            } label: {
-                Label("Sort: \(sort.label)", systemImage: "arrow.up.arrow.down")
-                    .labelStyle(.titleAndIcon)
-            }
-            .accessibilityLabel("Sort by \(sort.label)")
-        }
     }
 
     // MARK: Ranked
@@ -310,6 +292,15 @@ struct LeaderboardRowView: View {
                 if let title = snapshot.displayTitle(for: row.ref, chosen: row.identity.titleID) {
                     TitleLabel(title: title, voice: voice)
                 }
+                // One line: drops the last numbers when they don't fit, rather than cutting off.
+                ViewThatFits(in: .horizontal) {
+                    ForEach([3, 2, 1], id: \.self) { count in
+                        Text(statsLine(spoken: false, numbers: count)).lineLimit(1)
+                    }
+                }
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.silver)
                 if row.isViewer, let viewerLine {
                     Text(viewerLine)
                         .font(.caption)
@@ -328,6 +319,19 @@ struct LeaderboardRowView: View {
     }
 
     private var isTop: Bool { row.rank?.position == 1 }
+
+    /// The other numbers, so the board reads like a table: "7 W · 32% · avg 17.7 · 22 GP". The
+    /// sorted-by number is the big one on the right, so it isn't repeated here.
+    var statsLine: String { statsLine(spoken: false) }
+
+    /// Up to `numbers` of the other sorts' numbers (rating, wins, win rate, average, in that
+    /// order of importance), then games played.
+    func statsLine(spoken: Bool, numbers: Int = 3) -> String {
+        let others = [LeaderboardSort.rating, .wins, .winRate, .avgScore].filter { $0 != sort }
+        let parts = others.compactMap { other in row.metrics[other].map { other.statText($0, spoken: spoken) } }
+        let games = spoken ? "\(row.gamesPlayed) games" : "\(row.gamesPlayed) GP"
+        return (parts.prefix(numbers) + [games]).joined(separator: spoken ? ", " : " · ")
+    }
 
     private var rankColor: Color {
         if isTop { return .gold }
@@ -350,6 +354,7 @@ struct LeaderboardRowView: View {
         var parts = [row.isViewer ? "\(row.identity.name), you" : row.identity.name]
         if let rank = row.rank { parts.append("rank \(rank.position)\(rank.isShared ? ", shared" : "")") }
         parts.append("\(sort.label) \(row.valueText)")
+        parts.append(statsLine(spoken: true))
         if row.isViewer, let viewerLine { parts.append(viewerLine) }
         return parts.joined(separator: ", ")
     }
@@ -405,6 +410,37 @@ private struct UnrankedRowView: View {
             ProgressMeter(value: row.gamesPlayed)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The sort as a row of chips under the scope picker, so every sort is one visible tap away
+/// (design §12.4 had it in a toolbar menu, which testers didn't find).
+private struct SortChips: View {
+    @Binding var sort: LeaderboardSort
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(LeaderboardSort.allCases) { option in
+                    let isSelected = option == sort
+                    Button {
+                        sort = option
+                    } label: {
+                        Text(option.chipLabel)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isSelected ? .cream : .silver)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 36)
+                            .background(isSelected ? Color.kedroRed : Color.surface, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Sort by \(option.label)")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
     }
 }
 

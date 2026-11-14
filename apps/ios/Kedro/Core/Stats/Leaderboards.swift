@@ -49,6 +49,29 @@ nonisolated enum LeaderboardSort: String, Hashable, Sendable, CaseIterable, Iden
     /// "BY WIN RATE" in the header.
     var headerLabel: String { "By " + label.lowercased() }
 
+    /// The Board's sort chip.
+    var chipLabel: String {
+        switch self {
+        case .rating: "Rating"
+        case .winRate: "Win %"
+        case .wins: "Wins"
+        case .avgScore: "Avg"
+        case .knockSuccess: "Knocks"
+        }
+    }
+
+    /// A number in a row's stats line, labeled where the bare number would be ambiguous:
+    /// "1,041 rating", "7 W", "32%", "avg 17.7", "61% knocks". `spoken` words it for VoiceOver.
+    func statText(_ value: Double, spoken: Bool = false) -> String {
+        switch self {
+        case .rating: "\(format(value)) rating"
+        case .wins: spoken ? "\(format(value)) wins" : "\(format(value)) W"
+        case .winRate: spoken ? "\(format(value)) win rate" : format(value)
+        case .avgScore: spoken ? "average \(format(value))" : "avg \(format(value))"
+        case .knockSuccess: "\(format(value)) knocks"
+        }
+    }
+
     /// Lower is better for average score only.
     var ascending: Bool { self == .avgScore }
 
@@ -113,6 +136,9 @@ nonisolated struct LeaderboardRow: Hashable, Sendable, Identifiable {
     var valueText: String
     var gamesPlayed: Int
     var knocks: Int
+    /// Every sort's number for this person (the Board's stats line), where they have one: no win
+    /// rate, average or knock success before the games or knocks to compute it.
+    var metrics: [LeaderboardSort: Double] = [:]
     var isViewer: Bool
     /// Just ranked (their debut was their latest game): the "new" tag.
     var isNew: Bool
@@ -223,7 +249,7 @@ extension StatsSnapshot {
             let value = sort.value(record)
             return LeaderboardRow(
                 ref: record.ref, identity: record.identity, rank: rank, value: value, valueText: sort.format(value),
-                gamesPlayed: record.gamesPlayed, knocks: record.knocks, isViewer: record.ref == viewer,
+                gamesPlayed: record.gamesPlayed, knocks: record.knocks, metrics: record.metrics, isViewer: record.ref == viewer,
                 isNew: record.gamesPlayed == Ratings.rankedAfterGames, lastRatingDelta: record.results.last?.ratingDelta
             )
         }
