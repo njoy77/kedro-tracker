@@ -1,7 +1,7 @@
 {
   "name": "Kedro",
   "short_name": "Kedro",
-  "description": "Keep score. Talk trash. A Cambio score tracker.",
+  "description": "Keep score. Talk trash. Beat your friends and climb the leaderboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
