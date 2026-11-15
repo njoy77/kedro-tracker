@@ -17,6 +17,9 @@ final class PushService {
     /// `consumeInvite()` once shown.
     private(set) var pendingInvite: TableInvite?
     private(set) var authorization: UNAuthorizationStatus = .notDetermined
+    /// The year's Wrapped a tapped reminder (N-09) asks Play to open; clear it with
+    /// `consumeWrapped()` once pushed.
+    private(set) var pendingWrappedYear: Int?
 
     @ObservationIgnored private let api: APIClient
     @ObservationIgnored private let center: UNUserNotificationCenter
@@ -135,6 +138,15 @@ final class PushService {
         return true
     }
 
+    /// A tapped Wrapped reminder (from `PushAppDelegate`).
+    func didOpenWrapped(year: Int) {
+        pendingWrappedYear = year
+    }
+
+    func consumeWrapped() {
+        pendingWrappedYear = nil
+    }
+
     func consumeInvite() {
         pendingInvite = nil
     }
@@ -157,6 +169,48 @@ final class PushService {
         } catch {
             log.info("Couldn't post a notification: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    // MARK: Wrapped (N-09)
+
+    /// The hour on December 1 the Wrapped reminder goes off, in the phone's time zone.
+    static let wrappedReminderHour = 10
+
+    /// The reminder's `userInfo` key for its year.
+    nonisolated static let wrappedYearKey = "kedro.wrapped"
+
+    static func wrappedReminderID(year: Int) -> String { "kedro.wrapped.\(year)" }
+
+    /// Keeps the one "Your {year} in Kedro is ready" notification (N-09, passive, design §13.4) in
+    /// step with a year's Wrapped: scheduled for December 1 at 10:00 while it's waiting only for the
+    /// date, removed otherwise (not enough games yet, or already open). Local, so it arrives even
+    /// offline; without notification permission it's simply never shown.
+    func syncWrappedReminder(year: Int, availability: WrappedAvailability, body: String, now: Date = .now) async {
+        let id = Self.wrappedReminderID(year: year)
+        guard case .arrives(let release) = availability, release > now else {
+            center.removePendingNotificationRequests(withIdentifiers: [id])
+            return
+        }
+        let pending = await center.pendingNotificationRequests().first { $0.identifier == id }
+        if let pending, pending.content.body == body { return }
+
+        let content = UNMutableNotificationContent()
+        content.body = body
+        content.interruptionLevel = .passive
+        content.userInfo = [Self.wrappedYearKey: year]
+        let date = DateComponents(year: year, month: 12, day: 1, hour: Self.wrappedReminderHour)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: false)
+        do {
+            try await center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+        } catch {
+            log.info("Couldn't schedule the Wrapped reminder: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Removes every scheduled Wrapped reminder (signing in as someone else).
+    func cancelWrappedReminders() async {
+        let ids = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix("kedro.wrapped.") }
+        center.removePendingNotificationRequests(withIdentifiers: ids)
     }
 
     /// How a notification shows while Kedro is open: never on a phone seated at a live table.

@@ -166,6 +166,9 @@ final class NetworkServices {
             await refreshLinkIdentity()
             await sync.pullAccountHistory()
             await push.accountChanged()
+            // Someone else's Wrapped (and its December 1 reminder) isn't this account's.
+            ServerStats.shared.resetWrapped()
+            await push.cancelWrappedReminders()
         }
     }
 

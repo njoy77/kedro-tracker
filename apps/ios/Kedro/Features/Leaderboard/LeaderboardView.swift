@@ -193,16 +193,27 @@ struct LeaderboardView: View {
 
     // MARK: Records and Hall of Shame
 
+    /// The record tiles in rows of two.
+    private static let recordRows: [[RecordKind]] = stride(from: 0, to: RecordKind.allCases.count, by: 2).map { start in
+        Array(RecordKind.allCases[start..<min(start + 2, RecordKind.allCases.count)])
+    }
+
     private func recordsSection(_ snapshot: StatsSnapshot) -> some View {
         Section {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(RecordKind.allCases) { kind in
-                    Button {
-                        record = kind
-                    } label: {
-                        RecordTile(kind: kind, leader: recordLeader(kind, snapshot: snapshot))
+            // Two to a row; an odd one out spans the row rather than sitting alone in half of it.
+            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                ForEach(Self.recordRows, id: \.self) { row in
+                    GridRow {
+                        ForEach(row) { kind in
+                            Button {
+                                record = kind
+                            } label: {
+                                RecordTile(kind: kind, leader: recordLeader(kind, snapshot: snapshot))
+                            }
+                            .buttonStyle(.plain)
+                            .gridCellColumns(row.count == 1 ? 2 : 1)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .listRowBackground(Color.clear)

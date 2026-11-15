@@ -101,8 +101,9 @@ protocol StakesProvider: AnyObject {
     func tonightsStakes(for me: PlayerRef, table: [PlayerRef], voice: Voice) -> TonightStakes
     /// The "Since you last looked" feed (pass `AppPreferences.lastLookedAt`).
     func sinceYouLastLooked(for me: PlayerRef, since: Date?, voice: Voice) -> [SinceYouLastLookedItem]
-    /// The Wrapped slot: nil outside December unless last year's is still current.
-    func wrappedSlot(for me: PlayerRef, voice: Voice, now: Date) -> WrappedSlot?
+    /// The Wrapped slot: nil outside December unless last year's is still current. `server` is
+    /// what the server said per year (it sees games this phone may not hold).
+    func wrappedSlot(for me: PlayerRef, voice: Voice, now: Date, server: [Int: WrappedAvailability]) -> WrappedSlot?
     /// Meter, rating and ranks for anyone (a lobby seat, the Table card).
     func progress(for me: PlayerRef) -> PlayerProgress
 }
@@ -124,12 +125,16 @@ extension StatsSnapshot {
     }
 
     /// The Play tab's Wrapped slot. In December: this year's card (or its progress line). From
-    /// January until the next one: last year's card if there was one.
-    func wrappedSlot(for ref: PlayerRef, voice: Voice, now: Date = .now) -> WrappedSlot? {
+    /// January until the next one: last year's card if there was one. Each year goes with whichever
+    /// of this phone and `server` is further along (`WrappedAvailability.furthest`).
+    func wrappedSlot(for ref: PlayerRef, voice: Voice, now: Date = .now, server: [Int: WrappedAvailability] = [:]) -> WrappedSlot? {
         let year = calendar.component(.year, from: now)
         let month = calendar.component(.month, from: now)
+        func availability(_ year: Int) -> WrappedAvailability {
+            wrappedAvailability(for: ref, year: year, now: now).furthest(server[year])
+        }
         if month == 12 {
-            switch wrappedAvailability(for: ref, year: year, now: now) {
+            switch availability(year) {
             case .available:
                 return WrappedSlot(year: year, state: .ready, text: voice.line("WR-01", ["year": String(year)]))
             case let .needsGames(played, needed):
@@ -139,7 +144,7 @@ extension StatsSnapshot {
                 return nil
             }
         }
-        guard wrappedAvailability(for: ref, year: year - 1, now: now) == .available else { return nil }
+        guard availability(year - 1) == .available else { return nil }
         return WrappedSlot(year: year - 1, state: .ready, text: voice.line("WR-01", ["year": String(year - 1)]))
     }
 }

@@ -143,6 +143,14 @@ struct StakesTests {
         #expect(slot.state == .needsGames(played: 6, needed: 10))
         #expect(slot.text == "Play 4 more games this year to get your Wrapped. (6 of 10)")
         #expect(short.snapshot().wrapped(for: me, year: 2026) == nil)
+
+        // The server saw all 12 (this phone holds 6): the card is ready, and last year's stays.
+        let shortSnapshot = short.snapshot()
+        #expect(shortSnapshot.wrappedSlot(for: me, voice: clean, now: december, server: [2026: .available])?.state == .ready)
+        #expect(shortSnapshot.wrappedSlot(for: me, voice: clean, now: march, server: [2026: .available])?.year == 2026)
+        // A server that counted fewer doesn't take the phone's progress back.
+        let fewer = shortSnapshot.wrappedSlot(for: me, voice: clean, now: december, server: [2026: .needsGames(played: 2, needed: 10)])
+        #expect(fewer?.state == .needsGames(played: 6, needed: 10))
     }
 
     @Test("The sample game's progression for the table agent")

@@ -19,6 +19,7 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate {
 
     private var pendingToken: Data?
     private var pendingInvites: [TableInvite] = []
+    private var pendingWrappedYear: Int?
     private let log = Logger(subsystem: "com.njoy77.kedro", category: "Push")
 
     func application(
@@ -49,6 +50,14 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate {
         }
     }
 
+    fileprivate func openedWrapped(year: Int) {
+        if let service {
+            service.didOpenWrapped(year: year)
+        } else {
+            pendingWrappedYear = year
+        }
+    }
+
     fileprivate var presentation: UNNotificationPresentationOptions {
         service?.foregroundPresentation ?? [.banner, .list]
     }
@@ -61,6 +70,10 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate {
         }
         for invite in pendingInvites { service.didOpen(invite) }
         pendingInvites = []
+        if let year = pendingWrappedYear {
+            pendingWrappedYear = nil
+            service.didOpenWrapped(year: year)
+        }
     }
 }
 
@@ -69,8 +82,13 @@ extension PushAppDelegate: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
-              let invite = TableInvite(userInfo: response.notification.request.content.userInfo) else { return }
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        let userInfo = response.notification.request.content.userInfo
+        if let year = userInfo[PushService.wrappedYearKey] as? Int {
+            await MainActor.run { openedWrapped(year: year) }
+            return
+        }
+        guard let invite = TableInvite(userInfo: userInfo) else { return }
         await MainActor.run { opened(invite) }
     }
 

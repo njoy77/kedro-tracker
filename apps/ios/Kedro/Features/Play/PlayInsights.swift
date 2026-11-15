@@ -138,12 +138,12 @@ nonisolated enum PlayInsights {
     static func stakes(for me: PlayerRef, in games: [GameState], opponents: Set<PlayerRef>? = nil, limit: Int = 2) -> [StakesLine] {
         var lines: [StakesLine] = []
         if gamesPlayed(by: me, in: games) == Ratings.rankedAfterGames - 1 { lines.append(.debutGame) }
-        // TODO(stats): J-06 "a win tonight would likely put you past {name}" from ratings.
+        // Passing someone on the board (J-06) and the closest badge need ratings and badge
+        // progress: they come from Core/Stats (`StatsSnapshot.tonightsStakes`) once it loads.
         let rivals = rivalries(for: me, in: games).values
             .filter { $0.theyLead && (opponents?.contains($0.opponent) ?? true) }
             .sorted { ($0.theirs - $0.mine, -$0.gamesTogether, $0.name) < ($1.theirs - $1.mine, -$1.gamesTogether, $1.name) }
         if let rival = rivals.first { lines.append(.rivalLeads(rival)) }
-        // TODO(stats): closest badge.
         return lines.isEmpty ? [.nothing] : Array(lines.prefix(limit))
     }
 }
