@@ -16,6 +16,7 @@ struct WrappedView: View {
     #endif
 
     private var stats: StatsModel { .shared(for: app.store) }
+    private var server: ServerStats { .shared }
     private var me: PlayerRef? { app.profile?.identity }
 
     var body: some View {
@@ -24,8 +25,10 @@ struct WrappedView: View {
             if let me {
                 switch gate(snapshot, me: me) {
                 case .available:
-                    if let summary = snapshot.wrapped(for: me, year: year) {
+                    if let summary = summary(snapshot, me: me) {
                         stories(summary)
+                    } else {
+                        ProgressView()
                     }
                 case let .needsGames(played, needed):
                     ContentUnavailableView {
@@ -52,14 +55,28 @@ struct WrappedView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task { await stats.follow(app.store, viewer: me) }
+        .task { if me?.playerID != nil { await server.loadWrapped(api: app.api, year: year) } }
     }
 
+    /// The phone's answer, or the server's when it's further along (it sees every game).
     private func gate(_ snapshot: StatsSnapshot, me: PlayerRef) -> WrappedAvailability {
-        let availability = snapshot.wrappedAvailability(for: me, year: year)
+        let availability = snapshot.wrappedAvailability(for: me, year: year).furthest(server.wrappedAvailability(year: year))
         #if DEBUG
         if peeksEarly, case .arrives = availability { return .available }
         #endif
         return availability
+    }
+
+    /// The phone's recap, or the server's when it counted more of the year's games (a new phone,
+    /// games logged on someone else's).
+    private func summary(_ snapshot: StatsSnapshot, me: PlayerRef) -> WrappedSummary? {
+        let local = snapshot.wrapped(for: me, year: year)
+        let identity = local?.identity ?? snapshot.record(me)?.identity ?? app.profile.map {
+            StatsParticipant(ref: me, seatedAs: me, name: $0.displayName, avatar: $0.avatar, handle: $0.handle, titleID: $0.titleID)
+        }
+        guard let identity, let remote = server.wrapped[year]?.wrappedSummary(for: identity) else { return local }
+        guard let local else { return remote }
+        return remote.games > local.games ? remote : local
     }
 
     // MARK: Stories

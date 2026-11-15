@@ -26,6 +26,8 @@ final class ServerStats {
     /// Badges and titles by player, as last fetched (other people's profiles: this phone only
     /// holds the games it shared with them).
     private(set) var progressions: [PlayerID: PlayerProgressionResponse] = [:]
+    /// The signed-in player's Wrapped by year, as last fetched (this phone may not hold every game).
+    private(set) var wrapped: [Int: WrappedResponse] = [:]
 
     @ObservationIgnored private var fetchedAt: [String: Date] = [:]
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "ServerStats")
@@ -108,6 +110,34 @@ final class ServerStats {
 
     func progression(_ player: PlayerRef) -> PlayerProgressionResponse? {
         player.playerID.flatMap { progressions[$0] }
+    }
+
+    /// Fetches the signed-in player's Wrapped for a year (no-op without an account, or while fresh).
+    func loadWrapped(api: APIClient, year: Int, force: Bool = false) async {
+        let key = "wrapped.\(year)"
+        guard force || isStale(key), await api.hasAccount() else { return }
+        do {
+            wrapped[year] = try await api.wrapped(year: year)
+            fetchedAt[key] = .now
+        } catch {
+            log.info("Wrapped not loaded: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// What the server says about a year's Wrapped, if fetched.
+    func wrappedAvailability(year: Int) -> WrappedAvailability? {
+        wrapped[year]?.availability.value
+    }
+
+    /// Every fetched year's availability (for `wrappedSlot(…, server:)`).
+    var wrappedAvailabilities: [Int: WrappedAvailability] {
+        wrapped.compactMapValues(\.availability.value)
+    }
+
+    /// Forgets the signed-in player's Wrapped (signing out or in as someone else).
+    func resetWrapped() {
+        wrapped = [:]
+        fetchedAt = fetchedAt.filter { !$0.key.hasPrefix("wrapped.") }
     }
 
     private func isStale(_ key: String) -> Bool {

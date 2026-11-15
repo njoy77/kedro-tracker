@@ -81,6 +81,15 @@ extension APIClient {
         ])
     }
 
+    /// `GET /v1/players/me/wrapped?year=&tz=`: a year's Wrapped from every game the caller has
+    /// finished (`tz` places December 1 and the year in this phone's calendar).
+    func wrapped(year: Int) async throws -> WrappedResponse {
+        try await send("GET", "v1/players/me/wrapped", query: [
+            URLQueryItem(name: "year", value: String(year)),
+            URLQueryItem(name: "tz", value: TimeZone.current.identifier),
+        ])
+    }
+
     /// `GET /v1/leaderboard?scope=&sort=`: the server's board over every finished game.
     func leaderboard(scope: String = "global", sort: String = "rating", limit: Int = 100) async throws -> LeaderboardResponse {
         try await send("GET", "v1/leaderboard", query: [

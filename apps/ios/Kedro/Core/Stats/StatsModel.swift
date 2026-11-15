@@ -95,8 +95,8 @@ final class StatsModel: StakesProvider {
         snapshot.sinceYouLastLooked(for: me, since: since, voice: voice)
     }
 
-    func wrappedSlot(for me: PlayerRef, voice: Voice, now: Date) -> WrappedSlot? {
-        snapshot.wrappedSlot(for: me, voice: voice, now: now)
+    func wrappedSlot(for me: PlayerRef, voice: Voice, now: Date, server: [Int: WrappedAvailability]) -> WrappedSlot? {
+        snapshot.wrappedSlot(for: me, voice: voice, now: now, server: server)
     }
 
     func progress(for me: PlayerRef) -> PlayerProgress {

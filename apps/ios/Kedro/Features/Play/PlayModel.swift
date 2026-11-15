@@ -31,6 +31,9 @@ final class PlayModel {
     private(set) var finished: [GameState] = []
     /// The Wrapped slot from Core/Stats (December, or last year's until the next one).
     private(set) var wrapped: WrappedSlot?
+    /// This year's Wrapped as far as the phone or the server knows (for the December 1 reminder).
+    /// nil until stats have loaded.
+    private(set) var wrappedThisYear: WrappedYear?
 
     @ObservationIgnored private let app: AppModel
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "Play")
@@ -263,7 +266,27 @@ final class PlayModel {
                 if case .stats(let line) = item { return !stakesText.contains(line.text) }
                 return true
             }
-        wrapped = stats.isLoaded ? stats.wrappedSlot(for: me, voice: voice, now: .now) : nil
+        let server = ServerStats.shared
+        wrapped = stats.isLoaded ? stats.wrappedSlot(for: me, voice: voice, now: .now, server: server.wrappedAvailabilities) : nil
+        let year = Calendar.kedro.component(.year, from: .now)
+        wrappedThisYear = stats.isLoaded
+            ? WrappedYear(year: year, availability: stats.snapshot.wrappedAvailability(for: me, year: year).furthest(server.wrappedAvailability(year: year)))
+            : nil
+    }
+
+    /// Asks the server about this year's Wrapped (and last year's, outside December): it counts
+    /// games this phone may not hold. Signed-in players only.
+    func loadServerWrapped() async {
+        guard app.profile?.identity.playerID != nil else { return }
+        let calendar = Calendar.kedro
+        let now = Date.now
+        let year = calendar.component(.year, from: now)
+        let server = ServerStats.shared
+        await server.loadWrapped(api: app.api, year: year)
+        if calendar.component(.month, from: now) != 12 {
+            await server.loadWrapped(api: app.api, year: year - 1)
+        }
+        refreshInsights()
     }
 
     /// Stakes for the people at a table (the card).
@@ -294,4 +317,10 @@ final class PlayModel {
         }
         savedSeats = saved
     }
+}
+
+/// A year's Wrapped and where it stands.
+nonisolated struct WrappedYear: Hashable, Sendable {
+    var year: Int
+    var availability: WrappedAvailability
 }

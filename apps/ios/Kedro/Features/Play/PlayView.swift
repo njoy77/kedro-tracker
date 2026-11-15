@@ -125,6 +125,20 @@ private struct PlayScreen: View {
                 if await model.open(Self.link(for: invite).url) { app.selectedTab = .play }
             }
         }
+        // The server counts games this phone may not hold; again after each game here.
+        .task(id: model.finished.count) { await model.loadServerWrapped() }
+        // The December 1 reminder (N-09) follows this year's Wrapped.
+        .onChange(of: model.wrappedThisYear, initial: true) { _, current in
+            guard let current, let push = network?.push else { return }
+            let body = app.voice.line("N-09", ["year": String(current.year)])
+            Task { await push.syncWrappedReminder(year: current.year, availability: current.availability, body: body) }
+        }
+        // A tapped Wrapped reminder opens it.
+        .onChange(of: network?.push.pendingWrappedYear, initial: true) { _, year in
+            guard let year else { return }
+            network?.push.consumeWrapped()
+            app.navigate(to: .wrapped(year: year), in: .play)
+        }
         // Stats reload off the main actor; refresh the digest, stakes and Wrapped when they land.
         .onChange(of: StatsKey(stats: StatsModel.shared(for: app.store))) { model.refreshInsights() }
         .onDisappear { model.markLooked() }
@@ -251,7 +265,7 @@ private struct PlayScreen: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(isWin ? Color.gold : .surfaceRaised, in: .capsule)
-                    // TODO(stats): J-09 adds "Rating {delta}" once Core/Stats exposes rating changes.
+                    // Before stats load: no rating yet. The stats digest says "Rating {delta}" (J-09).
                     Text(isWin ? "Won at \(word)." : "\(rank.ordinal) at \(word).")
                         .font(.subheadline)
                         .foregroundStyle(.cream)
