@@ -98,7 +98,7 @@ describe('progression', () => {
   test('Wrapped: arrives December 1 in the player’s time zone, with 10+ games', async () => {
     const h = await history()
     const early = await h.get<WrappedResponse>('/v1/players/me/wrapped?tz=America/Los_Angeles', ids.noah)
-    expect(early.body).toEqual({ year: 2026, availability: { kind: 'arrives', at: '2026-12-01T08:00:00.000Z' } })
+    expect(early.body).toEqual({ year: 2026, availability: { kind: 'arrives', at: '2026-12-01T08:00:00Z' } })
 
     h.setNow(DEC_2_2026)
     const ready = await h.get<WrappedResponse>('/v1/players/me/wrapped', ids.noah)

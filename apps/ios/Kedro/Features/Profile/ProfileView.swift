@@ -33,6 +33,7 @@ struct ProfileView: View {
                         header(identity: identity, snapshot: snapshot, record: nil)
                         if !isMe { actions(identity: identity, snapshot: snapshot) }
                         lifetime(remoteStats)
+                        if let progression = server.progression(player) { badges(progression.awards) }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 32)
@@ -88,8 +89,14 @@ struct ProfileView: View {
             Text("Make sure you have a profile, then try again.")
         }
         .task { await stats.follow(app.store, viewer: me) }
-        .task(id: player) { await server.loadProfile(api: app.api, player: player) }
-        .refreshable { await server.loadProfile(api: app.api, player: player, force: true) }
+        .task(id: player) {
+            await server.loadProfile(api: app.api, player: player)
+            if !isMe { await server.loadProgression(api: app.api, player: player) }
+        }
+        .refreshable {
+            await server.loadProfile(api: app.api, player: player, force: true)
+            if !isMe { await server.loadProgression(api: app.api, player: player, force: true) }
+        }
     }
 
     private func identity(in snapshot: StatsSnapshot) -> StatsParticipant {
@@ -125,7 +132,7 @@ struct ProfileView: View {
                 knocking(playerStats)
                 games(playerStats)
                 rivalry(playerStats, snapshot: snapshot)
-                badges(record)
+                badges(earnedBadges(record))
                 shame(snapshot)
                 if isMe { wrapped(snapshot) }
                 history(record)
@@ -188,7 +195,10 @@ struct ProfileView: View {
 
     @ViewBuilder
     private func titleLine(identity: StatsParticipant, snapshot: StatsSnapshot) -> some View {
-        let title = snapshot.displayTitle(for: player, chosen: identity.titleID)
+        // Someone else's title is the server's call when loaded (their held titles depend on games
+        // this phone never saw).
+        let remote = isMe ? nil : server.progression(player)
+        let title = remote.map(\.displayTitle) ?? snapshot.displayTitle(for: player, chosen: identity.titleID)
         if isMe {
             Button {
                 isPickingTitle = true
@@ -461,11 +471,19 @@ struct ProfileView: View {
         .accessibilityLabel("\(snapshot.name(of: rival)), \(h2h.gamesTogether) games together, \(h2h.aAhead) to \(h2h.bAhead)")
     }
 
-    private func badges(_ record: PlayerRecord) -> some View {
-        let earned = BadgeDefinition.all.filter { record.badges[$0.id] != nil }
+    /// Someone else's badges come from the server when loaded: this phone only holds the games it
+    /// shared with them. Your own are this phone's replay (the same rules, and it works offline).
+    private func earnedBadges(_ record: PlayerRecord) -> [BadgeID: BadgeAward] {
+        (!isMe ? server.progression(player)?.awards : nil) ?? record.badges
+    }
+
+    private func badges(_ awards: [BadgeID: BadgeAward]) -> some View {
+        let earned = BadgeDefinition.all.filter { awards[$0.id] != nil }
             .sorted { lhs, rhs in
                 if lhs.tier != rhs.tier { return lhs.tier > rhs.tier }
-                return (record.badges[lhs.id]?.gameIndex ?? 0) > (record.badges[rhs.id]?.gameIndex ?? 0)
+                let left = awards[lhs.id], right = awards[rhs.id]
+                if let l = left?.gameIndex, let r = right?.gameIndex { return l > r }
+                return (left?.date ?? .distantPast) > (right?.date ?? .distantPast)
             }
         return NavigationLink(value: AppRoute.badges(player)) {
             VStack(alignment: .leading, spacing: 10) {

@@ -8,6 +8,7 @@ import {
   parseOperation,
   playerSeatId,
   guestSeatId,
+  isoSeconds,
   progression,
   type EarnedBadge,
   type HallOfShameResponse,
@@ -29,7 +30,8 @@ import type { PlayersService } from './players.ts'
 type Snapshot = progression.ProgressionSnapshot
 type Ref = progression.Ref
 
-const iso = (ms: number) => new Date(ms).toISOString()
+/** Whole-second ISO 8601, like every other API date (the iPhone app's decoder takes no fractions). */
+const iso = (ms: number) => isoSeconds(ms)
 
 /** A valid IANA time zone, or the default. */
 export function timeZoneParam(value: string | undefined): string {

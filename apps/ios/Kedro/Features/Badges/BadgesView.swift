@@ -7,6 +7,7 @@ struct BadgesView: View {
 
     @Environment(AppModel.self) private var app
     @State private var selected: BadgeID?
+    @State private var server = ServerStats.shared
 
     private var stats: StatsModel { .shared(for: app.store) }
     private var voice: Voice { app.voice }
@@ -20,7 +21,8 @@ struct BadgesView: View {
     var body: some View {
         let snapshot = stats.snapshot
         let record = snapshot.record(player)
-        let earned = record?.badges ?? [:]
+        // Someone else's: the server's, from every game they've finished, when loaded.
+        let earned = (isMe ? nil : server.progression(player)?.awards) ?? record?.badges ?? [:]
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 if isMe, let record {
@@ -47,6 +49,7 @@ struct BadgesView: View {
             BadgeDetailSheet(badge: badge, award: earned[badge], share: snapshot.badgeShare(badge), voice: voice)
         }
         .task { await stats.follow(app.store, viewer: app.profile?.identity) }
+        .task(id: player) { if !isMe { await server.loadProgression(api: app.api, player: player) } }
     }
 
     @ViewBuilder
