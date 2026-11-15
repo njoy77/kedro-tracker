@@ -4,7 +4,7 @@
 // strategy decodes. Optional keys are omitted rather than sent as null unless noted.
 
 import { z } from 'zod'
-import { avatarSchema, handleSchema, seatIdSchema, uuidSchema, type Avatar } from './domain.ts'
+import { avatarSchema, handleSchema, seatIdSchema, uuidSchema, type Avatar, type TauntContent } from './domain.ts'
 import type { UUID } from './ids.ts'
 import type { LeaderboardScope, LeaderboardSort } from './leaderboard.ts'
 import type { RecordKind } from './records.ts'
@@ -363,4 +363,130 @@ export type PushHealthResponse =
 /** ISO 8601 with whole seconds and a Z ("2026-10-24T21:00:00Z"), which Swift's `.iso8601` decodes. */
 export function isoSeconds(date: Date | number | string): string {
   return new Date(date).toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+// MARK: Progression (badges, titles, Hall of Shame, head-to-head, Wrapped)
+//
+// Computed by replaying finished games with `progression` (a port of the iOS app's Core/Stats),
+// from the same games the player's own phone holds: everything they've played, claimed guests
+// included. Badge and title IDs are copy deck IDs (BG-xx, TI-xx); names and rules come from
+// `progression.BADGES` / `progression.TITLES`.
+
+/** Someone in a progression response: an account (`kind: 'player'`) or an unclaimed guest. */
+export type ProgressionPerson = { kind: 'player' | 'guest'; id: UUID; displayName: string }
+
+export type EarnedBadge = {
+  badge: string
+  /** The game that earned it (null for Did the Reading). */
+  gameId: UUID | null
+  tableWord: string | null
+  roundNumber: number | null
+  earnedAt: string | null
+}
+
+/** GET /v1/players/:playerId/progression: one person's badges and titles. */
+export type PlayerProgressionResponse = {
+  playerId: UUID
+  /** Earned badges, oldest first. */
+  badges: EarnedBadge[]
+  /** Counting badges still to earn, closest first (at most 3). */
+  nextUp: { badge: string; value: number; target: number }[]
+  titles: {
+    /** Permanent titles unlocked by badges (Fresh Meat for everyone). */
+    earned: string[]
+    /** Titles held right now among their people (can be lost). */
+    held: string[]
+    /** What shows under their name: their chosen title, or the fallback when a held one was lost. */
+    display: string | null
+  }
+  /** Top-3 Hall of Shame entries they hold among their people. */
+  hallOfShameEntries: number
+  /** The people they've played with most. */
+  rivals: { person: ProgressionPerson; games: number }[]
+}
+
+export type ShameEntryDTO = {
+  person: ProgressionPerson
+  gameId: UUID
+  tableWord: string
+  finishedAt: string
+  roundNumber: number | null
+  /** Bigger is worse: the hand, the knock's gap, the score, the lead, failed knocks or the deficit. */
+  value: number
+  hand: number | null
+  low: number | null
+  finishPosition: number | null
+}
+
+/** GET /v1/players/me/hall-of-shame?scope=yourPeople|yours: top 3 per category. */
+export type HallOfShameResponse = {
+  scope: 'yourPeople' | 'yours'
+  boards: { category: string; name: string; entries: ShameEntryDTO[] }[]
+}
+
+export type KnockTallyDTO = { landed: number; tied: number; failed: number }
+
+/** GET /v1/players/me/head-to-head/:playerId: the caller (a) against another player (b). */
+export type HeadToHeadResponse = {
+  a: ProgressionPerson
+  b: ProgressionPerson
+  gamesTogether: number
+  aAhead: number
+  bAhead: number
+  aWins: number
+  bWins: number
+  aKnocks: KnockTallyDTO
+  bKnocks: KnockTallyDTO
+  aAverageFinal: number | null
+  bAverageFinal: number | null
+  lastMeeting: { gameId: UUID; tableWord: string; finishedAt: string; aScore: number; bScore: number } | null
+}
+
+export type WrappedKnockDTO = { gameId: UUID; tableWord: string; date: string; roundNumber: number; hand: number; lowestOther: number | null }
+
+export type WrappedSummaryDTO = {
+  year: number
+  games: number
+  rounds: number
+  hours: number
+  people: number
+  wins: number
+  winRate: number
+  /** Finishing position → games. */
+  finishes: Record<string, number>
+  isWinRateHigh: boolean
+  ratingLine: { date: string; rating: number }[]
+  ratingStart: number
+  ratingPeak: number
+  ratingNow: number
+  /** Global rank by rating, when ranked. */
+  currentRank: number | null
+  knocks: number
+  knockSuccess: number
+  favoriteKnockValue: number | null
+  bestKnock: WrappedKnockDTO | null
+  worstKnock: WrappedKnockDTO | null
+  nemesis: { person: ProgressionPerson; count: number } | null
+  victim: { person: ProgressionPerson; count: number } | null
+  redKings: number
+  ghostHands: number
+  biggestHand: number
+  tauntsSent: number
+  favoriteTaunt: TauntContent | null
+  mostTaunted: { person: ProgressionPerson; count: number } | null
+  badges: EarnedBadge[]
+  titles: string[]
+  shame: (ShameEntryDTO & { category: string })[]
+  persona: { id: string; name: string; copyId: string }
+}
+
+/**
+ * GET /v1/players/me/wrapped?year=YYYY&tz=Area/City: a year's recap. Without `year`, the one to
+ * show now (this year's from December 1, otherwise last year's). `summary` is present only once
+ * the year's Wrapped is available (10+ games, from December 1 in `tz`).
+ */
+export type WrappedResponse = {
+  year: number
+  availability: { kind: 'available' } | { kind: 'needsGames'; played: number; needed: number } | { kind: 'arrives'; at: string }
+  summary?: WrappedSummaryDTO
 }

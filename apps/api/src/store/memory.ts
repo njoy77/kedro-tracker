@@ -124,6 +124,19 @@ export class MemoryStore implements Store {
       .map((game) => ({ gameId: game.id, status: game.status, finishedAt: game.finishedAt, lastHlc: game.lastHlc }))
   }
 
+  async opsForGames(gameIds: readonly UUID[]): Promise<Map<UUID, WireOperation[]>> {
+    const result = new Map<UUID, WireOperation[]>()
+    for (const gameId of new Set(gameIds)) result.set(gameId, await this.getOps(gameId))
+    return result
+  }
+
+  async guestClaims(guestIds: readonly UUID[]): Promise<Map<UUID, UUID>> {
+    return new Map(guestIds.flatMap((id) => {
+      const claimedBy = this.guests.get(id)?.claimedBy
+      return claimedBy ? [[id, claimedBy] as const] : []
+    }))
+  }
+
   async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
     return [...this.guests.values()].filter((guest) => guest.claimedBy === playerId).map((guest) => guest.id).sort()
   }
