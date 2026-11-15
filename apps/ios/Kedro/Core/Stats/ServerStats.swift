@@ -23,6 +23,9 @@ final class ServerStats {
     private(set) var records: [LeaderboardScope: [RecordKind: [RecordEntry]]] = [:]
     /// Profiles by player, as last fetched.
     private(set) var profiles: [PlayerID: PlayerProfileResponse] = [:]
+    /// Badges and titles by player, as last fetched (other people's profiles: this phone only
+    /// holds the games it shared with them).
+    private(set) var progressions: [PlayerID: PlayerProgressionResponse] = [:]
 
     @ObservationIgnored private var fetchedAt: [String: Date] = [:]
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "ServerStats")
@@ -88,6 +91,23 @@ final class ServerStats {
 
     func profile(_ player: PlayerRef) -> PlayerProfileResponse? {
         player.playerID.flatMap { profiles[$0] }
+    }
+
+    /// Fetches a player's badges and titles (players only; guests have none).
+    func loadProgression(api: APIClient, player: PlayerRef, force: Bool = false) async {
+        guard let id = player.playerID else { return }
+        let key = "progression.\(id.uuidString)"
+        guard force || isStale(key), await api.hasAccount() else { return }
+        do {
+            progressions[id] = try await api.playerProgression(id)
+            fetchedAt[key] = .now
+        } catch {
+            log.info("Progression not loaded: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func progression(_ player: PlayerRef) -> PlayerProgressionResponse? {
+        player.playerID.flatMap { progressions[$0] }
     }
 
     private func isStale(_ key: String) -> Bool {

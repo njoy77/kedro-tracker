@@ -73,6 +73,14 @@ extension APIClient {
         try await send("GET", "v1/players/\(player.uuidString.lowercased())/profile")
     }
 
+    /// `GET /v1/players/:playerId/progression?tz=`: their badges and titles from every game they've
+    /// finished (`tz` places the yearly titles in this phone's calendar).
+    func playerProgression(_ player: PlayerID) async throws -> PlayerProgressionResponse {
+        try await send("GET", "v1/players/\(player.uuidString.lowercased())/progression", query: [
+            URLQueryItem(name: "tz", value: TimeZone.current.identifier),
+        ])
+    }
+
     /// `GET /v1/leaderboard?scope=&sort=`: the server's board over every finished game.
     func leaderboard(scope: String = "global", sort: String = "rating", limit: Int = 100) async throws -> LeaderboardResponse {
         try await send("GET", "v1/leaderboard", query: [

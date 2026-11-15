@@ -37,6 +37,12 @@ const apns = config.apns ? new ApnsClient(config.apns) : undefined
 if (config.apns) log(`APNs: ${config.apns.environment}, key ${config.apns.keyId}, ${config.apns.bundleId}`)
 else log('APNs is not configured (APNS_KEY_ID, APNS_PRIVATE_KEY): pushes are logged, not sent')
 
+// Local only (dev auth and the in-memory store): KEDRO_DEV_NOW=<ISO date> moves the API's clock,
+// e.g. to preview December's Wrapped.
+const devNow = !config.supabase && config.devAuth && process.env.KEDRO_DEV_NOW ? Date.parse(process.env.KEDRO_DEV_NOW) : Number.NaN
+const devClockOffset = Number.isNaN(devNow) ? 0 : devNow - Date.now()
+if (devClockOffset) log(`KEDRO_DEV_NOW: the clock reads ${new Date(Date.now() + devClockOffset).toISOString()}`)
+
 const { app, services } = createApp({
   store,
   verifier,
@@ -47,6 +53,7 @@ const { app, services } = createApp({
   linkSigningKey: config.linkSigningKey,
   publicUrl: config.publicUrl,
   defer: waitUntil,
+  now: devClockOffset ? () => Date.now() + devClockOffset : undefined,
 })
 
 // Local test data (see dev/seed.ts). Only with dev auth and the in-memory store.

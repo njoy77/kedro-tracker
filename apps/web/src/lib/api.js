@@ -27,6 +27,11 @@ async function request(method, path, body) {
   return json;
 }
 
+/** The browser's IANA time zone (the API falls back to New York without one). */
+const timeZone = () => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return undefined; }
+};
+
 const query = (params) => {
   const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '');
   return entries.length ? `?${new URLSearchParams(entries)}` : '';
@@ -45,6 +50,11 @@ export const api = {
   profile: (playerId) => request('GET', `/v1/players/${playerId}/profile`),
   leaderboard: (sort) => request('GET', `/v1/leaderboard${query({ scope: 'global', sort, limit: 200 })}`),
   claim: (claimToken) => request('POST', '/v1/claims', { claimToken }),
+  // Progression: badges, titles, the Hall of Shame and Wrapped (the server replays the same games
+  // the iPhone app does). `tz` puts years and December 1 in the player's own calendar.
+  progression: (playerId = 'me') => request('GET', `/v1/players/${playerId}/progression${query({ tz: timeZone() })}`),
+  hallOfShame: (scope) => request('GET', `/v1/players/me/hall-of-shame${query({ scope, tz: timeZone() })}`),
+  wrapped: (year) => request('GET', `/v1/players/me/wrapped${query({ year, tz: timeZone() })}`),
   /** Local only (`dev:seed`): the seeded test accounts. */
   devAccounts: () => fetch(`${API_URL}/dev/accounts`).then((response) => (response.ok ? response.json() : { accounts: [] })),
 };

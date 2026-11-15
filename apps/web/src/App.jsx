@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
+import { BackBtn, C, GLASS_SHADOW, StatBox, s } from './ui';
+import { HallOfShameScreen, ProgressionCard, WrappedHomeCard, WrappedScreen } from './Progression';
 import { COUNTED_MIN_ROUNDS, HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
 import { ApiError, allPlayers as fetchAllPlayers, api } from './lib/api';
 import { devSignInAvailable, inAppBrowser, isSignedIn, onAuthChange, signInAsDevAccount, signInWithApple, signInWithGoogle, signOut, stashClaimFromURL, takePendingClaim } from './lib/auth';
@@ -14,34 +16,6 @@ const countsForStats = (g) => g.status === 'complete' && (g.rounds?.length || 0)
 const roundsPlayedBy = (g, playerId) => (g.rounds || []).filter(r => r.scores.some(sc => sc.playerId === playerId)).length;
 const shortGameNote = (g) => (g.status === 'complete' && !countsForStats(g) ? ` · Under ${COUNTED_MIN_ROUNDS} rounds, didn't count` : '');
 
-const C = {
-  bg: '#0a0a0e',
-  bgGradFrom: '#15151c',
-  bgGradTo: '#08080c',
-  // Translucent glass surfaces — used by s.card() with backdrop-filter blur
-  surface:  'rgba(22, 22, 30, 0.55)',
-  surface2: 'rgba(28, 28, 38, 0.55)',
-  surface3: 'rgba(35, 35, 45, 0.55)',
-  // Solid surfaces for inputs and elements where blur hurts readability
-  inputBg: '#13131a',
-  ink: '#0c0c12',
-  // Near-opaque panel for modals and bottom sheets — content behind should NOT show through
-  panel: 'rgba(16, 16, 22, 0.96)',
-  border:       'rgba(255, 255, 255, 0.06)',
-  borderLight:  'rgba(255, 255, 255, 0.12)',
-  red:      '#e63946',
-  redHover: '#ff4d6d',
-  redDeep:  '#b81d2a',
-  redGlow:  'rgba(230, 57, 70, 0.35)',
-  silver: '#c0c0c0', silverDim: '#888888',
-  cream:     '#f5efe6',
-  creamDim:  'rgba(245, 239, 230, 0.55)',
-  creamFaint:'rgba(245, 239, 230, 0.28)',
-  green: '#3dba6a', blue: '#4a9edd',
-  gold:     '#f5c842',
-  goldDeep: '#d4a829',
-  white: '#ffffff',
-};
 
 // A player in the shape the screens use: `id` is the seat ID ("p:<uuid>" or "g:<uuid>"), `ref` the
 // {kind, id} a seat needs.
@@ -165,70 +139,9 @@ function playNeigh() {
 /** A neigh older than this when it arrives is history catching up, not a tap at the table. */
 const LIVE_NEIGH_MS = 60_000;
 
-const GLASS_SHADOW = '0 10px 30px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.04) inset, 0 0 0 1px rgba(0,0,0,.4)';
 
-const s = {
-  btn: (variant = 'red', extra = {}) => ({
-    padding: '12px 22px', borderRadius: 12, border: 'none', cursor: 'pointer',
-    fontFamily: 'Barlow, sans-serif', fontSize: 13, fontWeight: 700,
-    transition: 'all .2s cubic-bezier(.4,0,.2,1)', letterSpacing: '.08em', textTransform: 'uppercase',
-    ...(variant === 'red' ? {
-      background: `linear-gradient(180deg, ${C.red}, ${C.redDeep})`, color: C.white,
-      boxShadow: `0 8px 24px ${C.redGlow}, 0 2px 0 rgba(0,0,0,.3) inset, 0 1px 0 rgba(255,255,255,.18) inset`,
-    } : {}),
-    ...(variant === 'outline' ? {
-      background: C.surface, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-      color: C.cream, border: `1px solid ${C.border}`,
-      boxShadow: GLASS_SHADOW,
-    } : {}),
-    ...(variant === 'ghost'   ? { background: 'transparent', color: C.creamDim, padding: '8px 14px' } : {}),
-    ...(variant === 'danger'  ? { background: 'rgba(230,57,70,.15)', color: C.red, border: `1px solid rgba(230,57,70,.3)` } : {}),
-    ...(variant === 'gold'    ? {
-      background: `linear-gradient(180deg, ${C.gold}, ${C.goldDeep})`, color: '#000', fontWeight: 800,
-      boxShadow: `0 8px 24px rgba(245,200,66,.30), 0 1px 0 rgba(255,255,255,.4) inset`,
-    } : {}),
-    ...extra,
-  }),
-  card: (extra = {}) => ({
-    background: C.surface,
-    backdropFilter: 'blur(20px) saturate(140%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-    border: `1px solid ${C.border}`,
-    borderRadius: 14,
-    padding: '20px',
-    boxShadow: GLASS_SHADOW,
-    ...extra,
-  }),
-  input: (extra = {}) => ({
-    background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 10,
-    color: C.cream, fontFamily: 'Barlow, sans-serif', fontSize: 15,
-    padding: '12px 14px', outline: 'none', width: '100%', boxSizing: 'border-box',
-    transition: 'border-color .2s, box-shadow .2s',
-    ...extra,
-  }),
-  label: { color: C.creamFaint, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 8, display: 'block' },
-  h1: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0, letterSpacing: '.03em' },
-  h2: { fontFamily: "'Bebas Neue', sans-serif", color: C.cream, margin: 0, letterSpacing: '.03em' },
-};
 
 // ─── Helper Components ────────────────────────────────────────────────────────
-
-function StatBox({ label, value, accent }) {
-  return (
-    <div style={s.card({ padding: '14px 16px', textAlign: 'center', flex: 1, minWidth: 0 })}>
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, color: accent || C.red, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, color: C.creamDim, marginTop: 4, textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
-    </div>
-  );
-}
-
-function BackBtn({ onBack, label = 'Back' }) {
-  return (
-    <button onClick={onBack} style={s.btn('ghost', { display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 0, fontSize: 12 })}>
-      ← {label}
-    </button>
-  );
-}
 
 function KedroLogo({ height = 60 }) {
   return <img src={LOGO_B64} alt="Kedro" style={{ height, display: 'block', mixBlendMode: 'screen' }} />;
@@ -266,6 +179,7 @@ function Snow({ intensity = 'normal' }) {
 
 export default function KedroApp() {
   const [view, setView]               = useState('splash');
+  const [wrappedData, setWrappedData] = useState(null);
   // Home shows right after sign-in while the games' logs load in the background.
   const [loadingGames, setLoadingGames] = useState(false);
   const [user, setUser]               = useState(null);
@@ -488,6 +402,11 @@ export default function KedroApp() {
     } catch (error) {
       setProfileError(error.message || 'Could not save your profile');
     }
+  }
+
+  async function handleChooseTitle(titleId) {
+    const player = await api.saveProfile({ displayName: user.username, handle: user.handle, avatar: user.avatar, titleId });
+    setUser({ ...webPlayer(player), createdAt: player.createdAt });
   }
 
   function handleClaim(code) {
@@ -740,6 +659,8 @@ export default function KedroApp() {
                   onHistory={() => navigate('history', 'forward')}
                   onProfile={() => navigate('profile', 'forward')}
                   onDashboard={() => navigate('dashboard', 'forward')}
+                  onHallOfShame={() => navigate('shame', 'forward')}
+                  onWrapped={(data) => { setWrappedData(data); navigate('wrapped', 'forward'); }}
                   onLogout={logout}
                   onRematch={(g) => rematch(g.players)}
                 />
@@ -830,7 +751,17 @@ export default function KedroApp() {
                   editEmoji={editEmoji} onEditEmoji={setEditEmoji}
                   onSaveEdit={handleEditProfile} profileError={profileError}
                   claimMessage={claimMessage} onClaim={handleClaim}
+                  onChooseTitle={handleChooseTitle}
+                  onHallOfShame={() => navigate('shame', 'forward')}
                 />
+              )}
+
+              {view === 'shame' && (
+                <HallOfShameScreen onBack={() => navigate('home', 'back')} />
+              )}
+
+              {view === 'wrapped' && wrappedData?.summary && (
+                <WrappedScreen wrapped={wrappedData} user={user} onBack={() => navigate('home', 'back')} />
               )}
 
               {view === 'dashboard' && (
@@ -946,7 +877,7 @@ function OnboardingScreen({ error, rName, rHandle, rEmoji, onRNameChange, onRHan
   );
 }
 
-function HomeScreen({ user, stats, session, live, loading, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onDashboard, onLogout, onRematch }) {
+function HomeScreen({ user, stats, session, live, loading, recentGames, lastGame, onNewGame, onResumeGame, onHistory, onProfile, onDashboard, onHallOfShame, onWrapped, onLogout, onRematch }) {
   const greet = useMemo(() => TRASH.homeGreet(user.username), [user.username]);
   return (
     <div className="screen" style={{ paddingTop: 36, paddingBottom: 60 }}>
@@ -995,6 +926,8 @@ function HomeScreen({ user, stats, session, live, loading, recentGames, lastGame
         </div>
       )}
 
+      <WrappedHomeCard onOpen={onWrapped} />
+
       <button className="btn-red btn-press" onClick={onNewGame} style={{ ...s.btn('red'), width: '100%', padding: 14, fontSize: 15, marginBottom: 8 }}>
         + New Game 🐴
       </button>
@@ -1032,6 +965,7 @@ function HomeScreen({ user, stats, session, live, loading, recentGames, lastGame
       <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 28, flexWrap: 'wrap' }}>
         <button className="btn-press" onClick={onDashboard} style={s.btn('ghost')}>📊 Leaderboard</button>
         <button className="btn-press" onClick={onHistory} style={s.btn('ghost')}>📋 History</button>
+        <button className="btn-press" onClick={onHallOfShame} style={s.btn('ghost')}>💀 Shame</button>
         <button className="btn-press" onClick={onProfile} style={s.btn('ghost')}>👤 Profile</button>
         <button className="btn-press" onClick={onLogout} style={s.btn('ghost', { fontSize: 11 })}>Sign out</button>
       </div>
@@ -1857,7 +1791,7 @@ function HistoryScreen({ games, user, selected, onSelect, onBack }) {
   );
 }
 
-function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, profileError, claimMessage, onClaim }) {
+function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, onStartEdit, onCancelEdit, editUsername, onEditUsername, editEmoji, onEditEmoji, onSaveEdit, profileError, claimMessage, onClaim, onChooseTitle, onHallOfShame }) {
   const [claimCode, setClaimCode] = useState('');
   const claimMessageRef = useRef(null);
   // A claim link lands here with the outcome at the bottom of the page: bring it into view.
@@ -1918,6 +1852,8 @@ function ProfileScreen({ user, stats, games, onBack, onLogout, editingProfile, o
         <StatBox label="🐴 Neighs"     value={stats.neighs} accent={C.red} />
         <StatBox label="Neighs / Game" value={stats.played ? (stats.neighs / stats.played).toFixed(1) : '—'} />
       </div>
+
+      <ProgressionCard playerId="me" isMe onChooseTitle={onChooseTitle} onHallOfShame={onHallOfShame} />
 
       {stats.totalKnocks > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>

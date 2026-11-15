@@ -115,6 +115,10 @@ export interface Store {
   gamesFor(playerId: UUID): Promise<PlayerGameRow[]>
   /** Guests this player claimed (their seats count as the player's). */
   claimedGuestIds(playerId: UUID): Promise<UUID[]>
+  /** Whole op logs for several games at once (progression replays), each in log order. */
+  opsForGames(gameIds: readonly UUID[]): Promise<Map<UUID, WireOperation[]>>
+  /** The player who claimed each of these guests; unclaimed and unknown guests are left out. */
+  guestClaims(guestIds: readonly UUID[]): Promise<Map<UUID, UUID>>
   /** When the server received each of these ops (ms since epoch); unknown op IDs are left out. */
   receivedAt(opIds: readonly UUID[]): Promise<Map<UUID, number>>
   /** The table's registered invite key (base64url), or null. */

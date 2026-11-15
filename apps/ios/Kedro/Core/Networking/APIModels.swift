@@ -101,6 +101,43 @@ nonisolated struct PlayerProfileResponse: Codable, Hashable, Sendable {
     var stats: Stats?
 }
 
+/// `GET /v1/players/:playerId/progression` (packages/shared `PlayerProgressionResponse`): a player's
+/// badges and titles replayed on the server from every game they've finished, so other people's
+/// profiles show what their own phone shows. Unknown badge or title IDs (a newer server's) are
+/// skipped by the screens; fields this app doesn't use are ignored.
+nonisolated struct PlayerProgressionResponse: Codable, Hashable, Sendable {
+    nonisolated struct EarnedBadge: Codable, Hashable, Sendable {
+        var badge: String
+        var gameId: GameID?
+        var tableWord: String?
+        var roundNumber: Int?
+        var earnedAt: Date?
+    }
+
+    nonisolated struct Titles: Codable, Hashable, Sendable {
+        var earned: [String]
+        var held: [String]
+        var display: String?
+    }
+
+    var playerId: PlayerID
+    var badges: [EarnedBadge]
+    var titles: Titles
+    var hallOfShameEntries: Int
+
+    /// Earned badges as the awards the badge screens render (no replay position: server-side).
+    var awards: [BadgeID: BadgeAward] {
+        Dictionary(badges.compactMap { earned in
+            BadgeID(rawValue: earned.badge).map { id in
+                (id, BadgeAward(badge: id, gameID: earned.gameId, tableWord: earned.tableWord, roundNumber: earned.roundNumber, date: earned.earnedAt))
+            }
+        }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// The title shown under their name.
+    var displayTitle: TitleID? { titles.display.flatMap(TitleID.init(rawValue:)) }
+}
+
 /// `GET /v1/leaderboard` response (packages/shared `LeaderboardResponse`).
 nonisolated struct LeaderboardResponse: Codable, Hashable, Sendable {
     nonisolated struct Row: Codable, Hashable, Sendable {

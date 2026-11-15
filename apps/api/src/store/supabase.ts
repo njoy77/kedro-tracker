@@ -183,6 +183,35 @@ export class SupabaseStore implements Store {
     return games.sort((a, b) => (b.lastHlc ?? '').localeCompare(a.lastHlc ?? '') || a.gameId.localeCompare(b.gameId))
   }
 
+  async opsForGames(gameIds: readonly UUID[]): Promise<Map<UUID, WireOperation[]>> {
+    const result = new Map<UUID, WireOperation[]>(gameIds.map((id) => [id, []]))
+    for (const ids of chunks([...new Set(gameIds)], IN_CHUNK)) {
+      for (let from = 0; ; from += PAGE) {
+        const page = must(await this.db
+          .from('ops')
+          .select('op_id, game_id, hlc, device_id, actor, type, payload')
+          .in('game_id', ids)
+          .order('game_id')
+          .order('hlc')
+          .order('device_id')
+          .order('op_id')
+          .range(from, from + PAGE - 1))
+        for (const row of page) result.get(String(row.game_id))?.push(toWireOperation(row))
+        if (page.length < PAGE) break
+      }
+    }
+    return result
+  }
+
+  async guestClaims(guestIds: readonly UUID[]): Promise<Map<UUID, UUID>> {
+    const found = new Map<UUID, UUID>()
+    for (const ids of chunks([...new Set(guestIds)], IN_CHUNK)) {
+      const rows = must(await this.db.from('guests').select('id, claimed_by').in('id', ids).not('claimed_by', 'is', null))
+      for (const row of rows) found.set(String(row.id), String(row.claimed_by))
+    }
+    return found
+  }
+
   async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
     const rows = must(await this.db.from('guests').select('id').eq('claimed_by', playerId))
     return rows.map((row) => String(row.id)).sort()

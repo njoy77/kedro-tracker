@@ -41,6 +41,10 @@ import {
   type OkResponse,
   type PhotoUploadResponse,
   type PlayerProfileResponse,
+  type PlayerProgressionResponse,
+  type HallOfShameResponse,
+  type HeadToHeadResponse,
+  type WrappedResponse,
   type Player,
   type PlayedWithResponse,
   type PlayerSummary,
@@ -58,6 +62,7 @@ import { ApnsNotifier, StubNotifier, type Notifier } from './push/notifications.
 import { ClipService, ClipTokens } from './services/clip.ts'
 import { decodeInviteKey } from './services/invites.ts'
 import { LeaderboardService } from './services/leaderboard.ts'
+import { ProgressionService, timeZoneParam } from './services/progression.ts'
 import { LinkAttestor } from './services/link.ts'
 import { TauntFilter } from './services/moderation.ts'
 import { OpsService } from './services/ops.ts'
@@ -91,6 +96,7 @@ export type Services = {
   ops: OpsService
   players: PlayersService
   leaderboard: LeaderboardService
+  progression: ProgressionService
   social: SocialService
   ratings: RatingsService
   filter: TauntFilter
@@ -107,6 +113,7 @@ export function createServices({ store, apns, broadcaster, notifier, clipSecret,
   const ratings = new RatingsService(store)
   const filter = new TauntFilter(store, now)
   const players = new PlayersService(store)
+  const leaderboard = new LeaderboardService(store, players)
   const clipTokens = new ClipTokens(clipSecret, now)
   const alerts = notifier ?? (apns ? new ApnsNotifier({ apns, store, defer, now, log }) : new StubNotifier(store, log))
   const live = broadcaster ?? (apns ? new ApnsLiveActivityBroadcaster({ apns, store, now, log }) : new StubLiveActivityBroadcaster(log))
@@ -119,14 +126,15 @@ export function createServices({ store, apns, broadcaster, notifier, clipSecret,
     clip: new ClipService(store, clipTokens, now),
     link: new LinkAttestor(linkSigningKey, now),
     ops: new OpsService({ store, ratings, filter, broadcaster: live, notifier: alerts, defer, now, log }),
-    leaderboard: new LeaderboardService(store, players),
+    leaderboard,
+    progression: new ProgressionService(store, players, leaderboard, now),
     social: new SocialService(store, players, ratings),
   }
 }
 
 export function createApp(deps: AppDeps) {
   const services = createServices(deps)
-  const { ops, players, leaderboard, social, filter, clip, clipTokens, link } = services
+  const { ops, players, leaderboard, progression, social, filter, clip, clipTokens, link } = services
   const now = deps.now ?? Date.now
   const log = deps.log ?? console.error
 
@@ -283,6 +291,33 @@ export function createApp(deps: AppDeps) {
     const version = await deps.store.putPhoto(caller, { bytes, contentType })
     const origin = (deps.publicUrl ?? new URL(c.req.url).origin).replace(/\/+$/, '')
     return c.json<PhotoUploadResponse>({ avatar: { kind: 'photo', url: `${origin}/photos/${caller}?v=${version}` } })
+  })
+
+  // Progression: badges, titles, the Hall of Shame, head-to-head and Wrapped (`?tz=` sets the
+  // calendar for yearly titles and Wrapped; New York when absent).
+  v1.get('/players/me/hall-of-shame', async (c) => {
+    const scope = c.req.query('scope') ?? 'yourPeople'
+    if (scope !== 'yourPeople' && scope !== 'yours') throw badRequest('scope is yourPeople or yours')
+    return c.json<HallOfShameResponse>(await progression.hallOfShame(c.get('user').id, scope, timeZoneParam(c.req.query('tz'))))
+  })
+
+  v1.get('/players/me/wrapped', async (c) => {
+    const yearParam = c.req.query('year')
+    const year = yearParam === undefined ? null : Number(yearParam)
+    if (year !== null && (!Number.isInteger(year) || year < 2023 || year > 2100)) throw badRequest('year is a four-digit year')
+    return c.json<WrappedResponse>(await progression.wrapped(c.get('user').id, year, timeZoneParam(c.req.query('tz'))))
+  })
+
+  v1.get('/players/me/head-to-head/:playerId', async (c) => {
+    const other = uuidParam(c.req.param('playerId'), 'playerId')
+    return c.json<HeadToHeadResponse>(await progression.headToHead(c.get('user').id, other, timeZoneParam(c.req.query('tz'))))
+  })
+
+  v1.get('/players/:playerId/progression', async (c) => {
+    const caller = c.get('user').id
+    const param = c.req.param('playerId')
+    const playerId = param === 'me' ? caller : uuidParam(param, 'playerId')
+    return c.json<PlayerProgressionResponse>(await progression.progression(caller, playerId, timeZoneParam(c.req.query('tz'))))
   })
 
   v1.get('/players/:playerId/profile', async (c) => {
