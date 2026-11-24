@@ -212,6 +212,25 @@ export class SupabaseStore implements Store {
     return found
   }
 
+  async guestIdsInGames(gameIds: readonly UUID[]): Promise<UUID[]> {
+    const ids = new Set<UUID>()
+    for (const chunk of chunks([...new Set(gameIds)], IN_CHUNK)) {
+      for (let from = 0; ; from += PAGE) {
+        const page = must(await this.db
+          .from('seats')
+          .select('game_id, seat_id, guest_id')
+          .in('game_id', chunk)
+          .not('guest_id', 'is', null)
+          .order('game_id')
+          .order('seat_id')
+          .range(from, from + PAGE - 1))
+        for (const row of page) ids.add(String(row.guest_id))
+        if (page.length < PAGE) break
+      }
+    }
+    return [...ids].sort()
+  }
+
   async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
     const rows = must(await this.db.from('guests').select('id').eq('claimed_by', playerId))
     return rows.map((row) => String(row.id)).sort()

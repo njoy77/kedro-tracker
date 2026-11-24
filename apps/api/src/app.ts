@@ -273,9 +273,17 @@ export function createApp(deps: AppDeps) {
   v1.get('/players/me/games', async (c) => {
     const caller = c.get('user').id
     const games = await deps.store.gamesFor(caller)
+    // Who claimed each guest seated at these tables: a claimed guest is that account from game 1,
+    // on every screen (the server's boards already count it so). People hidden from the caller
+    // (blocks either way) stay the guest they were seated as.
+    const [claims, hidden] = await Promise.all([
+      deps.store.guestIdsInGames(games.map((game) => game.gameId)).then((ids) => deps.store.guestClaims(ids)),
+      players.hiddenFrom(caller),
+    ])
     return c.json<MyGamesResponse>({
       games: games.map((game) => (game.finishedAt ? { gameId: game.gameId, status: game.status, finishedAt: isoSeconds(game.finishedAt) } : { gameId: game.gameId, status: game.status })),
       claimedGuestIds: await deps.store.claimedGuestIds(caller),
+      claims: Object.fromEntries([...claims].filter(([, playerId]) => playerId === caller || !hidden.has(playerId)).sort(([a], [b]) => a.localeCompare(b))),
     })
   })
 

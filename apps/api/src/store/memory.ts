@@ -137,6 +137,12 @@ export class MemoryStore implements Store {
     }))
   }
 
+  async guestIdsInGames(gameIds: readonly UUID[]): Promise<UUID[]> {
+    const ids = new Set<UUID>()
+    for (const gameId of gameIds) for (const seat of this.seats.get(gameId) ?? []) if (seat.guestId) ids.add(seat.guestId)
+    return [...ids].sort()
+  }
+
   async claimedGuestIds(playerId: UUID): Promise<UUID[]> {
     return [...this.guests.values()].filter((guest) => guest.claimedBy === playerId).map((guest) => guest.id).sort()
   }

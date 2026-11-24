@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LOGO_B64 } from './lib/logo';
+import { claimAlias } from './lib/claims';
 import { BackBtn, C, GLASS_SHADOW, StatBox, s } from './ui';
 import { HallOfShameScreen, ProgressionCard, WrappedHomeCard, WrappedScreen } from './Progression';
 import { COUNTED_MIN_ROUNDS, HANDLE_PATTERN, LEADERBOARD_MINIMUMS, SEAT_LIMITS, knockOutcome, parseSeatId } from '@kedro/shared';
@@ -193,6 +194,7 @@ export default function KedroApp() {
   if (!logRef.current) logRef.current = new GameLog();
   const log = logRef.current;
   const claimedRef = useRef(new Set());
+  const claimsRef = useRef({});
   const userRef = useRef(null);
   userRef.current = user;
 
@@ -239,10 +241,8 @@ export default function KedroApp() {
   // ── Loading ─────────────────────────────────────────────────────────────────
   /** Re-folds every game in the log into the screens' shape, newest first. */
   const refreshGames = useCallback((me = userRef.current) => {
-    const aliasFor = (seatId) => {
-      const ref = parseSeatId(seatId);
-      return ref?.kind === 'guest' && claimedRef.current.has(ref.id) && me ? me.id : seatId;
-    };
+    // A claimed guest is the account that claimed it (a friend's web-era seat included).
+    const aliasFor = claimAlias({ claims: claimsRef.current, ownGuestIds: claimedRef.current, me });
     const games = log.gameIds()
       .map(id => toWebGame(log.folded(id), aliasFor))
       .filter(g => g.folded.created)
@@ -257,6 +257,7 @@ export default function KedroApp() {
     const directory = Promise.all([fetchAllPlayers(), api.guests('').catch(() => ({ guests: [] }))]);
     const mine = await api.myGames();
     claimedRef.current = new Set(mine.claimedGuestIds);
+    claimsRef.current = mine.claims ?? {};
     const ids = mine.games.map(g => g.gameId);
     for (let i = 0; i < ids.length; i += 12) {
       await Promise.all(ids.slice(i, i + 12).map(id => log.pull(id)));

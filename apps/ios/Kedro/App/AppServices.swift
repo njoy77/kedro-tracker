@@ -29,7 +29,7 @@ private struct AppServicesHost: ViewModifier {
             .task(id: app.profile?.identity) {
                 await stats.follow(app.store, viewer: app.profile?.identity)
             }
-            .onChange(of: AliasKey(guests: claimed.guestIDs, viewer: app.profile?.identity), initial: true) { _, key in
+            .onChange(of: AliasKey(guests: claimed.guestIDs, accounts: claimed.accounts, viewer: app.profile?.identity), initial: true) { _, key in
                 let aliases = claimed.aliases(for: key.viewer)
                 guard stats.options.aliases != aliases else { return }
                 stats.options.aliases = aliases
@@ -47,6 +47,7 @@ private struct AppServicesHost: ViewModifier {
 
     private struct AliasKey: Equatable {
         var guests: Set<GuestID>
+        var accounts: [GuestID: PlayerID]
         var viewer: PlayerRef?
     }
 
