@@ -30,17 +30,36 @@ struct ReceiptTests {
         #expect(failed.values == ["hand": 8])
         #expect(failed.line(level: .clean) == "Knocking on 8 is a choice. A bad choice.")
         #expect(failed.line(level: .spicy) == "Knocking on 8 is a choice. A shit choice.")
-        let roast = try #require(Receipts.roast(for: failed, in: state))
+        let roast = try #require(Receipts.roast(for: failed, in: state, rival: PreviewData.noahSeat))
         #expect(roast.contains("Noah knocked on 8"))
 
         let gap = try #require(options.first { $0.key == "RC-04" })
         #expect(gap.values == ["gap": 6])
     }
 
-    @Test("Last place gets its own line")
-    func lastPlace() {
+    @Test("Last place gets its own line, and the card says who finished last")
+    func lastPlace() throws {
         #expect(keys(from: PreviewData.noahSeat, to: PreviewData.samSeat).contains("RC-05"))
         #expect(!keys(from: PreviewData.samSeat, to: PreviewData.noahSeat).contains("RC-05"))
+        let last = try #require(Receipts.option("RC-05", in: state, from: PreviewData.anaSeat, to: PreviewData.samSeat))
+        #expect(Receipts.roast(for: last, in: state, rival: PreviewData.samSeat) == "Sam finished last of 5 on 70.")
+    }
+
+    @Test("Shared last place: the card says tied")
+    func sharedLastPlace() throws {
+        // Ben and Sam level on the bottom (as Christine and NJOY were at Back Alley, 48 each).
+        var game = TestGame(players: 4)
+        game.setUp(planned: 3)
+        let hands = [0, 5, 9, 9]
+        for _ in 1...3 { game.record(hands, knocker: 0) }
+        game.add(.gameFinished(.init(reason: .completed, finalRounds: (1...3).map { game.round($0, hands, knocker: 0) })))
+        let state = game.state
+        let seats = (0..<4).map(game.seat)
+        let option = try #require(Receipts.option("RC-05", in: state, from: seats[1], to: seats[2]))
+        let roast = try #require(Receipts.roast(for: option, in: state, rival: seats[2]))
+        #expect(roast.hasPrefix("\(state.name(of: seats[2])) tied for last of 4 on "))
+        // The sender isn't offered it about themselves, nor when everyone ties.
+        #expect(Receipts.option("RC-05", in: state, from: seats[2], to: seats[3]) == nil)
     }
 
     @Test("Every phone rebuilds the same line from the key")

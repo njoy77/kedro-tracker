@@ -79,9 +79,19 @@ nonisolated enum Receipts {
         state.receipts.contains { $0.from == sender && $0.to == rival }
     }
 
-    /// The literal round behind a knock receipt, fact and verdict on two lines:
-    /// "Round 3. Noah knocked on 8.\nFailed: 8 + 10 = 18."
-    static func roast(for option: ReceiptOption, in state: GameState) -> String? {
+    /// The literal fact behind a receipt, so the card says who it's about: the round behind a
+    /// knock receipt, fact and verdict on two lines ("Round 3. Noah knocked on 8.\nFailed: 8 + 10
+    /// = 18."), or where the rival finished for Last place ("Sam finished last of 5 on 70.").
+    static func roast(for option: ReceiptOption, in state: GameState, rival: SeatID) -> String? {
+        if option.key == "RC-05" {
+            guard let theirs = state.standing(for: rival) else { return nil }
+            let tied = state.standings.count { $0.total == theirs.total } > 1
+            let name = state.name(of: rival)
+            let total = ScoreFormat.string(theirs.total)
+            return tied
+                ? "\(name) tied for last of \(state.standings.count) on \(total)."
+                : "\(name) finished last of \(state.standings.count) on \(total)."
+        }
         guard let number = option.roundNumber, let record = state.round(number), let outcome = record.outcome,
               let hand = record.round.knockerHand
         else { return nil }

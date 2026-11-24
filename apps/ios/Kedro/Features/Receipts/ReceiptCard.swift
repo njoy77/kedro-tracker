@@ -23,14 +23,19 @@ struct ReceiptCard: View {
                 .kedroFont(.label)
                 .foregroundStyle(.silver)
                 .padding(.top, 10)
+            // Whom the line's "you" means: the rival, not whoever is looking at the card.
+            Text("To \(rival.displayName)")
+                .kedroFont(.label)
+                .foregroundStyle(.kedroRed)
+                .padding(.top, 12)
             Text(option.line(level: level))
                 .font(.custom(KedroTextStyle.bebas, size: 46, relativeTo: .largeTitle))
                 .textCase(.uppercase)
                 .foregroundStyle(.cream)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.5)
-                .padding(.top, 12)
-            if let roast = Receipts.roast(for: option, in: state) {
+                .padding(.top, 2)
+            if let roast = Receipts.roast(for: option, in: state, rival: rival.id) {
                 Text(roast)
                     .font(.footnote)
                     .foregroundStyle(.silver)
