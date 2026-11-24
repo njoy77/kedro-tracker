@@ -188,6 +188,13 @@ export type MyGamesResponse = {
   games: { gameId: UUID; status: string; finishedAt?: string }[]
   /** Guests the caller claimed: the phone counts those seats as the caller's (stats aliases). */
   claimedGuestIds: UUID[]
+  /**
+   * Guest ID → the account that claimed it, for every claimed guest seated in these games (the
+   * caller's own claims included; people hidden from the caller left out). Clients count each such
+   * guest as that account everywhere, so a friend's web-era history and their account are one
+   * person. Absent from older servers.
+   */
+  claims?: Record<UUID, UUID>
 }
 
 /** PUT /v1/players/me/photo: a JPEG or PNG body (≤ 512 KB). The response's avatar is what to send in profile updates and seats. */

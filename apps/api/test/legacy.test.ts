@@ -122,6 +122,33 @@ describe('legacy web history', () => {
     expect((await h.get(`/v1/games/${mine.body.games[0].gameId}/ops`, me)).status).toBe(200)
   })
 
+  test("the games list says who claimed every guest at the caller's tables, not only the caller's own", async () => {
+    const h = harness()
+    const data = { players, games: [legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }, { scores: [14, 1, 3], knockedBy: 'lp1' }])] }
+    const report = await importLegacy(data, { store: h.store, services: h.services, apply: true })
+    const code = (legacyId: string) => report.codes.find((row) => row.legacyId === legacyId)?.claimCode ?? ''
+    const noah = '000000aa-0000-4000-8000-000000000042'
+    const ana = '000000aa-0000-4000-8000-000000000043'
+    await h.profile(noah, 'Noah', 'noah')
+    await h.profile(ana, 'Ana', 'ana.k')
+    const noahGuest = (await h.post<{ guestId: string }>('/v1/claims', noah, { claimToken: code('lp1') })).body.guestId
+    type Mine = { claimedGuestIds: string[]; claims: Record<string, string> }
+    // Before Ana claims hers: only Noah's own guest is an account.
+    expect((await h.get<Mine>('/v1/players/me/games', noah)).body.claims).toEqual({ [noahGuest]: noah })
+
+    const anaGuest = (await h.post<{ guestId: string }>('/v1/claims', ana, { claimToken: code('lp2') })).body.guestId
+    const mine = (await h.get<Mine>('/v1/players/me/games', noah)).body
+    expect(mine.claimedGuestIds).toEqual([noahGuest])
+    // Ana's web-era seat is Ana's account on Noah's screens too; Ben (unclaimed) stays a guest.
+    expect(mine.claims).toEqual({ [noahGuest]: noah, [anaGuest]: ana })
+    expect((await h.get<Mine>('/v1/players/me/games', ana)).body.claims).toEqual({ [noahGuest]: noah, [anaGuest]: ana })
+
+    // Blocked people stay the guest they were seated as.
+    await h.post('/v1/blocks', noah, { playerId: ana })
+    expect((await h.get<Mine>('/v1/players/me/games', noah)).body.claims).toEqual({ [noahGuest]: noah })
+    expect((await h.get<Mine>('/v1/players/me/games', ana)).body.claims).toEqual({ [anaGuest]: ana })
+  })
+
   test('web neigh counts become Neighed ops after the finish; re-importing adds only the new neighs', async () => {
     const base = legacyGame('g1', [{ scores: [-10, 6, 9], knockedBy: 'lp1' }, { scores: [5, 5, 12] }, { scores: [14, 1, 3], knockedBy: 'lp1' }])
     const h = harness()

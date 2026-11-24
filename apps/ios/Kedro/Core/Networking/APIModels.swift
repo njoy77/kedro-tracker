@@ -65,18 +65,38 @@ nonisolated struct MyGamesResponse: Codable, Sendable {
 
     var games: [Game]
     var claimedGuestIds: [GuestID] = []
+    /// Guest → the account that claimed it, for every claimed guest at these tables (the
+    /// caller's own included). nil from older servers, which don't send it.
+    var claims: [GuestID: PlayerID]?
 
-    private enum CodingKeys: String, CodingKey { case games, claimedGuestIds }
+    private enum CodingKeys: String, CodingKey { case games, claimedGuestIds, claims }
 
-    init(games: [Game], claimedGuestIds: [GuestID] = []) {
+    init(games: [Game], claimedGuestIds: [GuestID] = [], claims: [GuestID: PlayerID]? = nil) {
         self.games = games
         self.claimedGuestIds = claimedGuestIds
+        self.claims = claims
     }
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         games = try container.decode([Game].self, forKey: .games)
         claimedGuestIds = (try? container.decodeIfPresent([GuestID].self, forKey: .claimedGuestIds)) ?? []
+        // JSON object keys are strings; malformed pairs are skipped rather than failing the list.
+        claims = (try? container.decodeIfPresent([String: String].self, forKey: .claims)).flatMap { $0 }.map { pairs in
+            Dictionary(pairs.compactMap { guest, player in
+                guard let guest = GuestID(uuidString: guest), let player = PlayerID(uuidString: player) else { return nil }
+                return (guest, player)
+            }, uniquingKeysWith: { first, _ in first })
+        }
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(games, forKey: .games)
+        try container.encode(claimedGuestIds, forKey: .claimedGuestIds)
+        if let claims {
+            try container.encode(Dictionary(uniqueKeysWithValues: claims.map { ($0.key.uuidString, $0.value.uuidString) }), forKey: .claims)
+        }
     }
 }
 

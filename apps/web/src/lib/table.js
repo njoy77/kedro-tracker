@@ -218,7 +218,7 @@ const webStatus = { lobby: 'active', active: 'active', finished: 'complete', aba
 
 /**
  * A folded game in the shape the screens use. `alias` maps a seat ID to the key the screens
- * compare (a guest the user claimed becomes the user).
+ * compare (`claimAlias`: a claimed guest becomes the account that claimed it).
  */
 export function toWebGame(game, alias = (seatId) => seatId) {
   const totals = gameTotals(game);

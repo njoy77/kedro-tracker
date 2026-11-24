@@ -89,6 +89,7 @@ final class NetworkServices {
             return (TableKey.inviteKey(secret: secret, game: game), TableKey.inviteCode(secret: secret, game: game))
         }
         sync.onClaimedGuests = { ClaimedGuests.shared.record($0) }
+        sync.onGuestAccounts = { ClaimedGuests.shared.replaceAccounts($0) }
         self.sync = sync
         let transport = NetworkedTransport(store: store, link: link, sync: sync, path: path, identity: identity, clock: app.clock)
         self.transport = transport
@@ -164,6 +165,8 @@ final class NetworkServices {
             last = user
             await sync.reachabilityChanged()
             await refreshLinkIdentity()
+            // Other people's claims are listed per account: the pull below lists the new one's.
+            ClaimedGuests.shared.resetAccounts()
             await sync.pullAccountHistory()
             await push.accountChanged()
             // Someone else's Wrapped (and its December 1 reminder) isn't this account's.

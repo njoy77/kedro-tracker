@@ -53,6 +53,8 @@ final class BackendSync {
     @ObservationIgnored private var registeredInviteKeys: Set<GameID> = []
     /// Guests the account claimed, as the server lists them (`pullAccountHistory`).
     @ObservationIgnored var onClaimedGuests: ([GuestID]) -> Void = { _ in }
+    /// Who claimed each guest at the account's tables (`pullAccountHistory`; newer servers only).
+    @ObservationIgnored var onGuestAccounts: ([GuestID: PlayerID]) -> Void = { _ in }
     @ObservationIgnored private let log = Logger(subsystem: "com.njoy77.kedro", category: "Sync")
 
     // MARK: State
@@ -160,6 +162,7 @@ final class BackendSync {
             let response = try await api.myGames()
             games = response.games
             onClaimedGuests(response.claimedGuestIds)
+            if let claims = response.claims { onGuestAccounts(claims) }
         } catch {
             log.info("History list failed: \(String(describing: error), privacy: .public)")
             return 0
