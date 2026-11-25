@@ -42,6 +42,13 @@ nonisolated enum WidgetSamples {
         updatedAt: Int(Date.now.timeIntervalSince1970)
     )
 
+    /// The Rules button tapped: the cheat sheet instead of the standings.
+    static var rules: LiveGameAttributes.ContentState {
+        var state = afterRound5
+        state.showsRules = true
+        return state
+    }
+
     static var liveKnock: LiveGameAttributes.ContentState {
         var state = afterRound5
         state.liveKnockLine = "Sam knocked · last turns"
