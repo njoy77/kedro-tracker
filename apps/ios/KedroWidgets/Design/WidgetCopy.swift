@@ -39,4 +39,14 @@ nonisolated enum WidgetCopy {
 nonisolated enum LiveActivityCopy {
     /// The red tag on the Lock Screen header (mockup 18).
     static let live = "LIVE"
+    /// The Lock Screen button that flips to the rules cheat sheet, and back.
+    static let rules = "Rules"
+    static let scores = "Scores"
+    /// The header's round slot once the game is over.
+    static let final = "Final"
+
+    /// "ROUND 6 OF 8" for the Lock Screen header.
+    static func round(_ number: Int, of planned: Int) -> String {
+        "Round \(number) of \(planned)"
+    }
 }

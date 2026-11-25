@@ -50,6 +50,10 @@ nonisolated struct LiveGameAttributes: ActivityAttributes {
         /// When this content was produced, in whole seconds since 1970 (server-friendly; a
         /// `Date` would encode as seconds since 2001 with ActivityKit's coder).
         var updatedAt: Int
+        /// Set only by this phone's Rules / Scores button (`LiveRules.show`): the rules cheat
+        /// sheet instead of the standings. Servers never send it; without it the Lock Screen goes
+        /// by what the button saved for the round (`showsRules(gameID:)`).
+        var showsRules: Bool?
 
         /// The live knock line if a knock is marked, else the fact line.
         var statusLine: String? { liveKnockLine ?? factLine }

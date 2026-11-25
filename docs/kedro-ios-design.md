@@ -660,8 +660,9 @@ Any card can be shared on its own. Everything comes from finished, non-abandoned
 
 | Presentation | Content |
 |---|---|
-| Lock Screen | Small mark + table word · "ROUND 6 OF 8 · NOAH DEALS" · up to 5 rows (avatar 20 pt, rank, name, score, last delta) · last-round fact line or the live knock line · **Record Round** / **Report Hand** (App Intents) |
-| Truncation | In the top 5: ranks 1–5. Otherwise ranks 1–4, `···`, then your row with your true rank, highlighted. |
+| Lock Screen | Up to 4 lines of standings (avatar 18 pt, rank, name, score, last delta; the dealer's chip on their avatar) · bottom row: **ROUND 6 OF 8** (with the red live dot) over the last-round fact line or the live knock line, then **Rules** and **Record Round** / **Report Hand** (App Intents) |
+| Rules | **Rules** flips the standings to a cheat sheet (card values, power cards, knock scoring) without unlocking; **Scores** flips back, and the next round closes it. Literal, identical to the Rules reference. |
+| Truncation | Four lines (iOS cuts a Lock Screen activity off at about 160 pt, and the round, Rules and Record Round must stay in view). In the top 4: ranks 1–4. Otherwise ranks 1–2, `···`, then your row with your true rank, highlighted. |
 | Island compact | Leading: small mark + `R6/8`. Trailing: `1st · 26`. |
 | Island minimal | Your rank. |
 | Island expanded | Round, your score and delta, top 3 + you, last outcome, action button. |
