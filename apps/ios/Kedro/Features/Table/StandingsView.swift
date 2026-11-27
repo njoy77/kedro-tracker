@@ -82,7 +82,10 @@ struct StandingRow: View {
                 nameBlock
                 Spacer(minLength: 8)
                 neighButton
-                if compact {
+                // Compact rows put a plain delta (+12) beside the total, but a knock's badge and
+                // math ("failed 2 + 10") under it, like the regular rows: beside it, they left the
+                // total too little width and its digits wrapped.
+                if compact, !showsKnock {
                     HStack(spacing: 8) {
                         delta
                         score
@@ -176,9 +179,17 @@ struct StandingRow: View {
         return title
     }
 
+    /// The total is one line, always: the name truncates before a digit wraps.
     private var score: some View {
         ScoreText(value: standing.total, style: compact ? .scoreCompact : .score)
             .foregroundStyle(isLeading ? Color.gold : Color.cream)
+            .lineLimit(1)
+            .fixedSize()
+    }
+
+    /// Whether the delta is a knock's badge and math rather than a plain number.
+    private var showsKnock: Bool {
+        !hidesDelta && standing.lastRound?.outcome != nil
     }
 
     @ViewBuilder
